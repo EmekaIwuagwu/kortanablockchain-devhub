@@ -21,6 +21,7 @@ pub struct UnbondingRequest {
     pub release_block: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StakingStore {
     pub delegations: HashMap<Address, Vec<Delegation>>, // validator -> delegations
     pub unbonding: Vec<UnbondingRequest>,

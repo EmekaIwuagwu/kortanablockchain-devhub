@@ -33,7 +33,7 @@ impl TrieNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MerklePatriciaTrie {
     pub root_hash: [u8; 32],
     pub nodes: HashMap<[u8; 32], TrieNode>,

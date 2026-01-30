@@ -49,7 +49,7 @@ impl Storage {
             None => Ok(None),
         }
     }
-
+    
     pub fn put_receipt(&self, receipt: &crate::types::transaction::TransactionReceipt) -> Result<(), String> {
         let key = format!("receipt:0x{}", hex::encode(receipt.tx_hash));
         let val = serde_json::to_vec(receipt).map_err(|e| e.to_string())?;
@@ -58,11 +58,34 @@ impl Storage {
     }
 
     pub fn get_receipt(&self, hash_hex: &str) -> Result<Option<crate::types::transaction::TransactionReceipt>, String> {
-        let key = format!("receipt:{}", hash_hex);
+        let key = format!("receipt:0x{}", hash_hex.strip_prefix("0x").unwrap_or(hash_hex));
         let val = self.db.get(key).map_err(|e| e.to_string())?;
         match val {
             Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
             None => Ok(None),
         }
+    }
+
+    pub fn put_state(&self, height: u64, state: &crate::state::account::State) -> Result<(), String> {
+        let key = format!("state:{}", height);
+        let val = serde_json::to_vec(state).map_err(|e| e.to_string())?;
+        self.db.insert(key, val).map_err(|e| e.to_string())?;
+        // Also update latest state pointer
+        self.db.insert("latest_state_height", &height.to_be_bytes()).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_latest_state(&self) -> Result<Option<(u64, crate::state::account::State)>, String> {
+        let height_val = self.db.get("latest_state_height").map_err(|e| e.to_string())?;
+        if let Some(h_bytes) = height_val {
+            let height = u64::from_be_bytes(h_bytes.as_ref().try_into().unwrap_or([0; 8]));
+            let key = format!("state:{}", height);
+            let state_val = self.db.get(key).map_err(|e| e.to_string())?;
+            if let Some(data) = state_val {
+                let state = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
+                return Ok(Some((height, state)));
+            }
+        }
+        Ok(None)
     }
 }

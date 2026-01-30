@@ -17,8 +17,12 @@ pub fn create_genesis_state() -> State {
     // Initial Validator
     let validator_addr = Address::from_pubkey(b"genesis_validator");
     let mut validator_acc = Account::new();
-    validator_acc.balance = 32_000_000_000_000_000_000; // 32 DNR (min stake)
+    let stake = 32_000_000_000_000_000_000; // 32 DNR (min stake)
+    validator_acc.balance = stake;
     state.update_account(validator_addr, validator_acc);
+    
+    // Add to staking store as initial stake
+    state.staking.delegate(validator_addr, validator_addr, stake, 0);
 
     // Faucet Account (Priv: 2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa)
     // Addr: kn:0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64

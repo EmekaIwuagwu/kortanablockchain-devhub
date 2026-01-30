@@ -26,6 +26,7 @@ pub struct JsonRpcError {
 }
 
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
 use crate::state::account::State;
 use crate::mempool::Mempool;
 use crate::types::transaction::Transaction;
@@ -36,6 +37,7 @@ pub struct RpcHandler {
     pub mempool: Arc<Mutex<Mempool>>,
     pub storage: Arc<crate::storage::Storage>,
     pub network_tx: tokio::sync::mpsc::Sender<crate::network::messages::NetworkMessage>,
+    pub height: Arc<AtomicU64>,
 }
 
 impl RpcHandler {
@@ -43,10 +45,8 @@ impl RpcHandler {
         let result = match request.method.as_str() {
             "eth_chainId" => Some(serde_json::to_value(format!("0x{:x}", self.chain_id)).unwrap()),
             "eth_blockNumber" => {
-                let state = self.state.lock().unwrap();
-                // In this implementation, height might be stored in state or storage
-                // Simple stub if not tracked globally
-                Some(serde_json::to_value("0x0").unwrap())
+                let h = self.height.load(Ordering::Relaxed);
+                Some(serde_json::to_value(format!("0x{:x}", h)).unwrap())
             }
             "eth_getBlockByNumber" => {
                 let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
@@ -179,16 +179,59 @@ impl RpcHandler {
                     if let Some(hash_str) = p.first() {
                          let hash_hex = hash_str.strip_prefix("0x").unwrap_or(hash_str);
                          if let Ok(Some(receipt)) = self.storage.get_receipt(&format!("0x{}", hash_hex)) {
-                             // Enrich receipt with block info if possible (stubbed here)
-                             // Normally we'd look up which block the tx is in.
-                             // For now return raw receipt fields + dummy block info required by explorers
-                             let mut val = serde_json::to_value(receipt).unwrap();
-                             /* 
-                                Ideally inject: blockNumber, transactionIndex, etc.
-                                For MVP, just returning what we stored.
-                             */
+                             let val = serde_json::to_value(receipt).unwrap();
                              Some(val)
                          } else { None }
+                    } else { None }
+                } else { None }
+            }
+            "eth_stakingValidators" => {
+                let state = self.state.lock().unwrap();
+                let mut vals = Vec::new();
+                for (v_addr, delegations) in &state.staking.delegations {
+                    let total_stake: u128 = delegations.iter().map(|d| d.amount).sum();
+                    vals.push(serde_json::json!({
+                        "address": v_addr.to_hex(),
+                        "totalStake": format!("0x{:x}", total_stake),
+                        "delegatorCount": delegations.len()
+                    }));
+                }
+                Some(serde_json::to_value(vals).unwrap())
+            }
+            "eth_stakingInfo" => {
+                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                if let Ok(p) = params {
+                    if let Some(addr_str) = p.first() {
+                        if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
+                            let state = self.state.lock().unwrap();
+                            let mut user_delegations = Vec::new();
+                            for delegations in state.staking.delegations.values() {
+                                for d in delegations {
+                                    if d.delegator == addr {
+                                        user_delegations.push(serde_json::json!({
+                                            "validator": d.validator.to_hex(),
+                                            "amount": format!("0x{:x}", d.amount)
+                                        }));
+                                    }
+                                }
+                            }
+                            
+                            let mut unbondings = Vec::new();
+                            for u in &state.staking.unbonding {
+                                if u.delegator == addr {
+                                    unbondings.push(serde_json::json!({
+                                        "validator": u.validator.to_hex(),
+                                        "amount": format!("0x{:x}", u.amount),
+                                        "releaseBlock": format!("0x{:x}", u.release_block)
+                                    }));
+                                }
+                            }
+
+                            Some(serde_json::json!({
+                                "delegations": user_delegations,
+                                "unbonding": unbondings
+                            }))
+                        } else { None }
                     } else { None }
                 } else { None }
             }

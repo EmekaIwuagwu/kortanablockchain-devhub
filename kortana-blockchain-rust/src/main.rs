@@ -7,6 +7,7 @@ use kortana_blockchain_rust::staking::StakingStore;
 use kortana_blockchain_rust::core::fees::FeeMarket;
 use kortana_blockchain_rust::consensus::bft::FinalityGadget;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use clap::Parser;
 
@@ -30,11 +31,10 @@ pub struct KortanaNode {
     pub consensus: Arc<Mutex<ConsensusEngine>>,
     pub state: Arc<Mutex<State>>,
     pub mempool: Arc<Mutex<Mempool>>,
-    pub staking: Arc<Mutex<StakingStore>>,
     pub fees: Arc<Mutex<FeeMarket>>,
     pub finality: Arc<Mutex<FinalityGadget>>,
     pub storage: Arc<kortana_blockchain_rust::storage::Storage>,
-    pub height: u64,
+    pub height: Arc<AtomicU64>,
 }
 
 #[tokio::main]
@@ -44,12 +44,26 @@ async fn main() {
     println!("RPC Addr: {}", args.rpc_addr);
     println!("P2P Addr: {}", args.p2p_addr);
 
-    // 1. Initialize Genesis State
-    let state = kortana_blockchain_rust::core::genesis::create_genesis_state();
-    let genesis_root = state.calculate_root();
-    println!("Genesis state root: 0x{}", hex::encode(genesis_root));
+    // 1. Initialize Storage
+    let storage = Arc::new(kortana_blockchain_rust::storage::Storage::new("./data/kortana.db"));
 
-    // 2. Initialize Core Components
+    // 2. Load or Initialize State
+    let (h_init, state) = match storage.get_latest_state() {
+        Ok(Some((h, s))) => {
+            println!("Resuming from stored state at height {}", h);
+            (h, s)
+        },
+        _ => {
+            println!("No stored state found. Initializing from genesis...");
+            let initial_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+            (0, initial_state)
+        }
+    };
+
+    let genesis_root = state.calculate_root();
+    println!("Current state root: 0x{}", hex::encode(genesis_root));
+
+    // 3. Initialize Core Components
     let genesis_validator = ValidatorInfo {
         address: Address::from_pubkey(b"genesis_validator"),
         stake: 32_000_000_000_000_000_000,
@@ -58,20 +72,17 @@ async fn main() {
         missed_blocks: 0,
     };
 
-    let storage = Arc::new(kortana_blockchain_rust::storage::Storage::new("./data/kortana.db"));
-
     let node = KortanaNode {
         consensus: Arc::new(Mutex::new(ConsensusEngine::new(vec![genesis_validator.clone()]))),
         state: Arc::new(Mutex::new(state)),
         mempool: Arc::new(Mutex::new(Mempool::new(MEMPOOL_MAX_SIZE))),
-        staking: Arc::new(Mutex::new(StakingStore::new())),
         fees: Arc::new(Mutex::new(FeeMarket::new())),
         finality: Arc::new(Mutex::new(FinalityGadget::new())),
         storage: storage.clone(),
-        height: 0,
+        height: Arc::new(AtomicU64::new(h_init)),
     };
 
-    println!("Node initialized at height {}", node.height);
+    println!("Node initialized at height {}", node.height.load(Ordering::Relaxed));
 
     // 3. Setup Networking Channels
     let (p2p_tx, p2p_rx) = tokio::sync::mpsc::channel(100);
@@ -100,6 +111,7 @@ async fn main() {
         mempool: node.mempool.clone(),
         storage: node.storage.clone(),
         network_tx: p2p_tx.clone(),
+        height: node.height.clone(),
     };
     
     let rpc_handler = Arc::new(rpc_handler);
@@ -145,10 +157,12 @@ async fn main() {
 
     let mut interval = tokio::time::interval(Duration::from_secs(BLOCK_TIME_SECS));
     let mut current_slot = 0;
+    let mut max_seen_height = 0;
+    let mut sync_check_interval = tokio::time::interval(Duration::from_secs(10));
 
     loop {
         tokio::select! {
-            // Handle Slot Ticks (Block Production)
+            // Periodic Block Production (Leader only)
             _ = interval.tick() => {
                 current_slot += 1;
                 let mut consensus = node.consensus.lock().unwrap();
@@ -157,21 +171,20 @@ async fn main() {
                 if let Some(leader) = consensus.get_leader(current_slot) {
                     consensus.advance_era(current_slot);
                     
-                    if leader == genesis_validator.address {
+                    if leader == genesis_validator.address { 
                         println!("[Slot {}] Producing block as leader...", current_slot);
                         
                         let mut mempool = node.mempool.lock().unwrap();
                         let txs = mempool.select_transactions(GAS_LIMIT_PER_BLOCK);
                         
-                // Generate VRF
-                let leader_priv = hex::decode("2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa").unwrap();
-                let vrf = kortana_blockchain_rust::crypto::vrf::generate_vrf_seed(&leader_priv, b"epoch_seed", current_slot);
+                        let leader_priv = hex::decode("2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa").unwrap();
+                        let vrf = kortana_blockchain_rust::crypto::vrf::generate_vrf_seed(&leader_priv, b"epoch_seed", current_slot);
                         let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
                         let fees = node.fees.lock().unwrap();
                         let mut header = kortana_blockchain_rust::types::block::BlockHeader {
                             version: 1,
-                            height: current_slot,
+                            height: node.height.load(Ordering::SeqCst) + 1,
                             slot: current_slot,
                             timestamp,
                             parent_hash: consensus.finalized_hash,
@@ -197,65 +210,81 @@ async fn main() {
                             }
                         }
 
-                        // Compute Merkle Roots
                         let (tx_root, receipt_root) = kortana_blockchain_rust::types::block::Block::calculate_merkle_roots(&txs, &receipts);
                         header.state_root = state.calculate_root();
                         header.transactions_root = tx_root;
                         header.receipts_root = receipt_root;
                         header.gas_used = receipts.iter().map(|r| r.gas_used).sum();
 
-                        // Save Receipts to Storage (For Explorer)
                         for receipt in &receipts {
                             let _ = node.storage.put_receipt(receipt);
                         }
 
-                        // Create Block
                         let mut block = kortana_blockchain_rust::types::block::Block {
                             header,
                             transactions: txs,
                             signature: vec![], 
                         };
                         
-                        // Sign the block
-                        // Sign the block
                         block.sign(&leader_priv);
                         
-                        // Update our own fee market state
                         drop(fees);
                         let mut fees_mut = node.fees.lock().unwrap();
                         fees_mut.update_base_fee(block.header.gas_used);
 
-                        // Gossip Block
-                        let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::NewBlock(block)).await;
+                        let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::NewBlock(block.clone())).await;
+                        
+                        node.height.fetch_add(1, Ordering::SeqCst);
+                        let _ = node.storage.put_block(&block);
+                        let _ = node.storage.put_state(block.header.height, &*state);
                     }
                 }
             }
+
+            // Periodic Sync Check
+            _ = sync_check_interval.tick() => {
+                let h = node.height.load(Ordering::SeqCst);
+                if max_seen_height > h {
+                     let start = h + 1;
+                     let end = std::cmp::min(start + 50, max_seen_height);
+                     println!("[Sync] Node is behind. Requesting blocks {} to {}", start, end);
+                     let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::SyncRequest { 
+                         start_height: start, 
+                         end_height: end 
+                     }).await;
+                }
+            }
+
             // Handle Incoming P2P Messages
             Some(msg) = node_rx.recv() => {
                 match msg {
                     kortana_blockchain_rust::network::messages::NetworkMessage::NewBlock(block) => {
-                        println!("[P2P] Received new block at height {} from {}", block.header.height, block.header.proposer);
-                        
-                        let mut state = node.state.lock().unwrap();
-                        let mut fees = node.fees.lock().unwrap();
-                        let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
-                        
-                        // Perform State Transition & Validation
-                        match processor.validate_block(&block) {
-                            Ok(_) => {
-                                println!("  Block verified and applied to state.");
-                                // Sync local fee market with verified block
-                                *fees = processor.fee_market;
+                        if block.header.height > max_seen_height {
+                            max_seen_height = block.header.height;
+                        }
 
-                                // Periodic State Pruning
-                                if block.header.height % BLOCKS_PER_EPOCH == 0 {
-                                    // Periodic State Pruning (Placeholder)
-                                    println!("  State pruning check at epoch boundary.");
-                                }
-                            }
-                            Err(e) => {
-                                println!("  Block validation failed: {}", e);
-                            }
+                        if block.header.height == node.height.load(Ordering::SeqCst) + 1 {
+                             println!("[P2P] Received next block at height {} from {}", block.header.height, block.header.proposer);
+                             let mut state = node.state.lock().unwrap();
+                             let mut fees = node.fees.lock().unwrap();
+                             
+                             let mut success = false;
+                             {
+                                 let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
+                                 if let Ok(_) = processor.validate_block(&block) {
+                                     println!("  Block verified and applied.");
+                                     *fees = processor.fee_market;
+                                     success = true;
+                                 }
+                             }
+
+                             if success {
+                                 let root = state.calculate_root();
+                                 let _ = node.storage.put_block(&block);
+                                 let _ = node.storage.put_state_root(block.header.height, root);
+                                 let _ = node.storage.put_state(block.header.height, &*state);
+                                 node.height.fetch_add(1, Ordering::SeqCst);
+                             }
                         }
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::NewTransaction(tx) => {
@@ -280,18 +309,25 @@ async fn main() {
                         println!("[P2P] Received SyncResponse with {} blocks", blocks.len());
                         let mut state = node.state.lock().unwrap();
                         let mut fees = node.fees.lock().unwrap();
-                        let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
 
                         for block in blocks {
-                            // Basic height check to ensure sequential sync
-                            // In a production node this would be more robust
-                            match processor.validate_block(&block) {
-                                Ok(_) => {
-                                    println!("  Sync: Block {} verified.", block.header.height);
-                                    *fees = processor.fee_market.clone();
+                            let h = node.height.load(Ordering::SeqCst);
+                            if block.header.height == h + 1 {
+                                let mut success = false;
+                                {
+                                    let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
+                                    if let Ok(_) = processor.validate_block(&block) {
+                                        println!("  Sync: Block {} verified.", block.header.height);
+                                        *fees = processor.fee_market.clone();
+                                        success = true;
+                                    }
                                 }
-                                Err(e) => {
-                                    println!("  Sync: Block {} validation failed: {}", block.header.height, e);
+                                
+                                if success {
+                                    node.height.fetch_add(1, Ordering::SeqCst);
+                                    let _ = node.storage.put_block(&block);
+                                    let _ = node.storage.put_state(block.header.height, &*state);
+                                } else {
                                     break;
                                 }
                             }
@@ -302,7 +338,6 @@ async fn main() {
                          let consensus = node.consensus.lock().unwrap();
                          if finality.add_vote(block_hash, height, round, validator, signature, &consensus.validators) {
                              println!("FINALITY REACHED for height {} hash 0x{}", height, hex::encode(block_hash));
-                             // Here we would checkpoint state
                          }
                     }
                     _ => {}

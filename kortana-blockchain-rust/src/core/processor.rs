@@ -25,6 +25,14 @@ impl<'a> BlockProcessor<'a> {
             return Err(format!("Invalid chain ID: expected {}, got {}", CHAIN_ID, tx.chain_id));
         }
 
+        // Process matured unbonding at the start of each tx or block
+        let matured = self.state.staking.process_matured_unbonding(header.height);
+        for (recipient_addr, amount) in matured {
+            let mut acc = self.state.get_account(&recipient_addr);
+            acc.balance += amount;
+            self.state.update_account(recipient_addr, acc);
+        }
+
         // 1. Basic validation
         let mut sender = self.state.get_account(&tx.from);
         if sender.nonce != tx.nonce {
@@ -43,7 +51,43 @@ impl<'a> BlockProcessor<'a> {
 
         // 3. Execute payload
         let mut logs = Vec::new();
-        let (status, gas_used) = if let Some(precompile) = crate::vm::precompiles::get_precompile(&tx.to) {
+        
+        let is_staking = tx.to.to_hex() == STAKING_CONTRACT_ADDRESS;
+
+        let (status, gas_used) = if is_staking {
+            // Primitive Staking Logic
+            if tx.data.is_empty() {
+                (0, 21000)
+            } else {
+                match tx.data[0] {
+                    1 => { // Delegate
+                        if tx.data.len() >= 25 {
+                            let mut val_bytes = [0u8; 24];
+                            val_bytes.copy_from_slice(&tx.data[1..25]);
+                            if let Ok(validator_addr) = Address::from_bytes(val_bytes) {
+                                self.state.staking.delegate(tx.from, validator_addr, tx.value, header.height);
+                                (1, 50000)
+                            } else { (0, 21000) }
+                        } else { (0, 21000) }
+                    }
+                    2 => { // Undelegate
+                         if tx.data.len() >= 25 {
+                            let mut val_bytes = [0u8; 24];
+                            val_bytes.copy_from_slice(&tx.data[1..25]);
+                            // Parse amount from remaining data if present, or use tx.value as indicator (though undelegate usually doesn't send money)
+                            let amount = tx.value; // For now use tx.value or parse from data
+                            if let Ok(validator_addr) = Address::from_bytes(val_bytes) {
+                                match self.state.staking.undelegate(tx.from, validator_addr, amount, header.height) {
+                                    Ok(_) => (1, 50000),
+                                    Err(_) => (0, 50000),
+                                }
+                            } else { (0, 21000) }
+                         } else { (0, 21000) }
+                    }
+                    _ => (0, 21000)
+                }
+            }
+        } else if let Some(precompile) = crate::vm::precompiles::get_precompile(&tx.to) {
              match precompile(&tx.data) {
                  Ok(_) => (1, 500u64), // Static cost for precompile
                  Err(_) => (0, 500u64),
@@ -66,8 +110,8 @@ impl<'a> BlockProcessor<'a> {
             }
         };
 
-        // 4. Transfer value
-        if status == 1 && tx.value > 0 {
+        // 4. Transfer value (Only for non-staking, or if staking delegate)
+        if status == 1 && tx.value > 0 && !is_staking {
             let mut recipient = self.state.get_account(&tx.to);
             recipient.balance += tx.value;
             self.state.update_account(tx.to, recipient);

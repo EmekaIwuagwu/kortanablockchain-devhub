@@ -43,6 +43,15 @@ echo -e "${GREEN}[6/7] Configuring Systemd Service...${NC}"
 BINARY_PATH="$(pwd)/target/release/kortana-blockchain-rust"
 SERVICE_FILE="/etc/systemd/system/kortanad.service"
 
+# Get environment variables or use defaults
+P2P_LISTEN=${P2P_ADDR:-"/ip4/0.0.0.0/tcp/30333"}
+BOOT_NODES=${BOOTNODES:-""}
+
+EXEC_COMMAND="$BINARY_PATH --p2p-addr $P2P_LISTEN"
+if [ ! -z "$BOOT_NODES" ]; then
+    EXEC_COMMAND="$EXEC_COMMAND --bootnodes $BOOT_NODES"
+fi
+
 sudo bash -c "cat > $SERVICE_FILE" <<EOF
 [Unit]
 Description=Kortana Blockchain Node
@@ -51,7 +60,7 @@ After=network.target
 [Service]
 User=$USER
 WorkingDirectory=$(pwd)
-ExecStart=$BINARY_PATH
+ExecStart=$EXEC_COMMAND
 Restart=always
 RestartSec=3
 LimitNOFILE=65535

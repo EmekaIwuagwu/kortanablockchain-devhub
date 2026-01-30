@@ -28,12 +28,13 @@ impl Account {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct State {
     pub accounts: HashMap<Address, Account>,
     pub storage: HashMap<Address, HashMap<[u8; 32], [u8; 32]>>,
     pub codes: HashMap<[u8; 32], Vec<u8>>,
     pub trie: MerklePatriciaTrie,
+    pub staking: crate::staking::StakingStore,
 }
 
 impl State {
@@ -43,6 +44,7 @@ impl State {
             storage: HashMap::new(),
             codes: HashMap::new(),
             trie: MerklePatriciaTrie::new(),
+            staking: crate::staking::StakingStore::new(),
         }
     }
 
