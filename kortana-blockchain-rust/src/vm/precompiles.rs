@@ -1,8 +1,7 @@
 // File: src/vm/precompiles.rs
 
 use crate::address::Address;
-use sha3::{Digest, Sha3_256, Keccak256};
-use crate::crypto;
+use sha3::{Digest, Keccak256};
 
 pub type PrecompileFn = fn(&[u8]) -> Result<Vec<u8>, String>;
 

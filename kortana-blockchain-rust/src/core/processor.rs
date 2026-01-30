@@ -105,7 +105,18 @@ impl<'a> BlockProcessor<'a> {
                     }
                 }
                 VmType::Quorlin => {
-                    (1, 0) 
+                    // Quorlin contracts are currently expected to be passed as raw instructions (simplified for this era)
+                    // In production, we'd have a bytecode -> instructions decoder.
+                    // For now, we assume tx.data contains serialized instructions or we decode them.
+                    if let Ok(instructions) = serde_json::from_slice::<Vec<QuorlinOpcode>>(&tx.data) {
+                        let mut executor = QuorlinExecutor::new(tx.gas_limit);
+                        match executor.execute(&instructions) {
+                            Ok(_) => (1, tx.gas_limit - executor.gas_remaining),
+                            Err(_) => (0, tx.gas_limit),
+                        }
+                    } else {
+                        (0, 21000)
+                    }
                 }
             }
         };

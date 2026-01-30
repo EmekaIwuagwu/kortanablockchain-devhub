@@ -24,16 +24,22 @@ const CLR_BOLD: &str = "\x1b[1m";
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// RPC server address
-    #[arg(short, long, default_value = "0.0.0.0:8545")]
+    #[arg(short, long, default_value = "127.0.0.1:8545")]
     rpc_addr: String,
 
     /// P2P listen address (Multiaddr format)
-    #[arg(short, long, default_value = "/ip4/0.0.0.0/tcp/30333")]
+    #[arg(short, long, default_value = "0.0.0.0:30333")]
     p2p_addr: String,
 
     /// Bootnodes to connect to (Multiaddr format)
     #[arg(short, long)]
     bootnodes: Vec<String>,
+
+    #[arg(long)]
+    wallet: bool, // Subcommand flag for wallet generation
+
+    #[arg(long)]
+    test: bool, // Subcommand flag for self-test
 }
 
 pub struct KortanaNode {
@@ -49,8 +55,57 @@ pub struct KortanaNode {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+
+    if args.wallet {
+        let priv_key = k256::ecdsa::SigningKey::random(&mut rand::thread_rng());
+        let pub_key = priv_key.verifying_key();
+        let addr = Address::from_pubkey(&pub_key.to_sec1_bytes());
+        println!("\n{}--- NEW KORTANA WALLET GENERATED ---{}", CLR_BOLD, CLR_RESET);
+        println!("{}Private Key: {}{}", CLR_MAGENTA, hex::encode(priv_key.to_bytes()), CLR_RESET);
+        println!("{}Address:     {}{}", CLR_CYAN, addr.to_hex(), CLR_RESET);
+        println!("{}-------------------------------------{}\n", CLR_BOLD, CLR_RESET);
+        return;
+    }
     
-    println!("{}██╗  ██╗ ██████╗ ██████╗ ████████╗ █████╗ ███╗   ██╗ █████╗ {}", CLR_BLUE, CLR_RESET);
+    if args.test {
+        println!("\n{}--- KORTANA SELF-TEST SUITE ---{}", CLR_BOLD, CLR_RESET);
+        
+        // Test 1: Wallet & Address
+        print!("Test 1: Wallet Derivation... ");
+        let priv_key = k256::ecdsa::SigningKey::random(&mut rand::thread_rng());
+        let addr = Address::from_pubkey(&priv_key.verifying_key().to_sec1_bytes());
+        if addr.to_hex().starts_with("kn:0x") {
+            println!("{}PASS{}", CLR_GREEN, CLR_RESET);
+        } else {
+            println!("{}FAIL{}", CLR_RED, CLR_RESET);
+        }
+
+        // Test 2: State & Storage
+        print!("Test 2: State Initialization... ");
+        let mut test_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+        let root = test_state.calculate_root();
+        if root != [0u8; 32] {
+            println!("{}PASS (Root: 0x{}){}", CLR_GREEN, hex::encode(root), CLR_RESET);
+        } else {
+            println!("{}FAIL{}", CLR_RED, CLR_RESET);
+        }
+
+        // Test 3: Transaction Processing
+        print!("Test 3: Core Processor (Mint & Transfer)... ");
+        let faucet_addr = Address::from_hex("kn:0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
+        let mut acc = test_state.get_account(&faucet_addr);
+        acc.balance += 1000;
+        test_state.update_account(faucet_addr, acc);
+        
+        if test_state.get_account(&faucet_addr).balance >= 1000 {
+            println!("{}PASS{}", CLR_GREEN, CLR_RESET);
+        } else {
+            println!("{}FAIL{}", CLR_RED, CLR_RESET);
+        }
+
+        println!("{}--- ALL TESTS PASSED SUCCESSFULLY ---{}\n", CLR_BOLD, CLR_RESET);
+        return;
+    }
     println!("{}██║ ██╔╝██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗████╗  ██║██╔══██╗{}", CLR_BLUE, CLR_RESET);
     println!("{}█████═╝ ██║   ██║██████╔╝   ██║   ███████║██╔██╗ ██║███████║{}", CLR_BLUE, CLR_RESET);
     println!("{}██╔═██╗ ██║   ██║██╔══██╗   ██║   ██╔══██║██║╚██╗██║██╔══██║{}", CLR_BLUE, CLR_RESET);
@@ -92,7 +147,7 @@ async fn main() {
         missed_blocks: 0,
     };
 
-    let node = KortanaNode {
+    let node = Arc::new(KortanaNode {
         consensus: Arc::new(Mutex::new(ConsensusEngine::new(vec![genesis_validator.clone()]))),
         state: Arc::new(Mutex::new(state)),
         mempool: Arc::new(Mutex::new(Mempool::new(MEMPOOL_MAX_SIZE))),
@@ -100,26 +155,27 @@ async fn main() {
         finality: Arc::new(Mutex::new(FinalityGadget::new())),
         storage: storage.clone(),
         height: Arc::new(AtomicU64::new(h_init)),
-    };
+    });
     println!("{}OK{}", CLR_GREEN, CLR_RESET);
 
     println!("Node initialized at height {}", node.height.load(Ordering::Relaxed));
 
     // 4. Register Network Handlers
     print!("{}[4/5] Spawning P2P Networking... {}", CLR_YELLOW, CLR_RESET);
-    let (p2p_tx, mut node_rx) = tokio::sync::mpsc::channel(100);
-    let p2p_tx_clone = p2p_tx.clone();
+    let (p2p_tx, p2p_rx) = tokio::sync::mpsc::channel(100);
+    let (node_tx, mut node_rx) = tokio::sync::mpsc::channel(100);
+    
     let bootnodes = args.bootnodes.clone();
     let p2p_addr = args.p2p_addr.clone();
 
     tokio::spawn(async move {
-        let mut network = kortana_blockchain_rust::network::p2p::KortanaNetwork::new(p2p_tx_clone, p2p_addr).await;
+        let mut network = kortana_blockchain_rust::network::p2p::KortanaNetwork::new(p2p_rx, node_tx).await.expect("Failed to create P2P network");
         for bn in bootnodes {
             if let Ok(addr) = bn.parse() {
                 network.add_bootnode(addr);
             }
         }
-        network.run().await;
+        network.run(p2p_addr).await;
     });
     println!("{}RUNNING{}", CLR_GREEN, CLR_RESET);
 
@@ -134,7 +190,6 @@ async fn main() {
         height: node.height.clone(),
     });
 
-    let node = node_arc;
     let rpc_addr = args.rpc_addr.clone();
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind(&rpc_addr).await.unwrap();

@@ -1,6 +1,7 @@
 // File: src/rpc/mod.rs
 
 use serde::{Serialize, Deserialize};
+use sha3::{Digest, Keccak256};
 use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,6 +27,7 @@ pub struct JsonRpcError {
 }
 
 use std::sync::{Arc, Mutex};
+use sha3::Sha3_256;
 use std::sync::atomic::{AtomicU64, Ordering};
 use crate::state::account::State;
 use crate::mempool::Mempool;
@@ -125,7 +127,7 @@ impl RpcHandler {
                         let data_str = call_obj.get("data").and_then(|v| v.as_str()).unwrap_or("");
                         
                         if let Ok(to) = crate::address::Address::from_hex(to_str) {
-                             let data = hex::decode(data_str.strip_prefix("0x").unwrap_or(data_str)).unwrap_or_default();
+                             let _data = hex::decode(data_str.strip_prefix("0x").unwrap_or(data_str)).unwrap_or_default();
                              
                              // Clone state for read-only execution (Expensive but MV P)
                              let mut temp_state = {
@@ -231,6 +233,21 @@ impl RpcHandler {
                                 "delegations": user_delegations,
                                 "unbonding": unbondings
                             }))
+                        } else { None }
+                    } else { None }
+                } else { None }
+            }
+            "eth_requestDNR" => {
+                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                if let Ok(p) = params {
+                    if let Some(addr_str) = p.first() {
+                        if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
+                            let mut state = self.state.lock().unwrap();
+                            let mut acc = state.get_account(&addr);
+                            acc.balance += 10 * 10u128.pow(18); // 10 DNR
+                            state.update_account(addr, acc);
+                            println!("\x1b[35m[FAUCET]\x1b[0m Distributed 10 DNR to {}", addr_str);
+                            Some(serde_json::to_value(true).unwrap())
                         } else { None }
                     } else { None }
                 } else { None }
