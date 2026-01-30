@@ -54,14 +54,16 @@ impl RpcHandler {
                 let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
                 if let Ok(p) = params {
                     if let Some(num_str) = p.first() {
-                        let height = if num_str == "latest" { 0 } else { 
+                        let height = if num_str == "latest" { 
+                            self.height.load(Ordering::Relaxed) 
+                        } else { 
                             u64::from_str_radix(num_str.strip_prefix("0x").unwrap_or(num_str), 16).unwrap_or(0)
                         };
                         if let Ok(Some(block)) = self.storage.get_block(height) {
                             Some(serde_json::to_value(block).unwrap())
-                        } else { None }
-                    } else { None }
-                } else { None }
+                        } else { Some(Value::Null) }
+                    } else { Some(Value::Null) }
+                } else { Some(Value::Null) }
             }
             "eth_getTransactionByHash" => {
                 let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
@@ -154,8 +156,14 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_estimateGas" => {
-                // Return static 21000 for standard txs, simple estimation
-                Some(serde_json::to_value("0x5208").unwrap()) 
+                // If there is data, it's likely a contract call, return higher limit
+                let params: Result<Vec<Value>, _> = serde_json::from_value(request.params.clone());
+                let has_data = params.ok().and_then(|p| p.first().and_then(|v| v.get("data"))).is_some();
+                if has_data {
+                    Some(serde_json::to_value("0x186a0").unwrap()) // 100,000
+                } else {
+                    Some(serde_json::to_value("0x5208").unwrap()) // 21,000
+                }
             }
             "eth_getCode" => {
                 let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
@@ -253,6 +261,9 @@ impl RpcHandler {
                 } else { None }
             }
             "net_version" => Some(serde_json::to_value(self.chain_id.to_string()).unwrap()),
+            "net_listening" => Some(serde_json::to_value(true).unwrap()),
+            "eth_syncing" => Some(serde_json::to_value(false).unwrap()),
+            "eth_accounts" => Some(Value::Array(vec![])),
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
             _ => None,
         };

@@ -9,13 +9,13 @@ Since you are running your own blockchain, you need to add it as a **"Custom Net
 
 | Field | Value |
 |-------|-------|
-| **Network Name** | `Kortana Local` |
+| **Network Name** | `Kortana Testnet` |
 | **RPC URL** | `http://127.0.0.1:8545` |
-| **Chain ID** | `1` |
+| **Chain ID** | `1337` |
 | **Currency Symbol** | `DNR` |
 | **Block Explorer** | (Leave empty or use `http://localhost:3000` if you built one) |
 
-> **Note:** Chain ID `1` is technically Ethereum Mainnet. For local testing, this is fine, but MetaMask might warn you. You can change `CHAIN_ID` in `src/parameters.rs` to something unique like `1337` to avoid this warning in the future.
+> **Note:** We are using Chain ID `1337` for our Testnet/Local environment. This is a standard ID for development and ensures no conflicts with other major networks in your MetaMask wallet.
 
 ## 📝 Step-by-Step Instructions
 
@@ -23,13 +23,13 @@ Since you are running your own blockchain, you need to add it as a **"Custom Net
 2.  Click the **Network Dropdown** (top left) and select **"Add network"**.
 3.  Scroll down and click **"Add a network manually"**.
 4.  **Fill in the details** from the table above:
-    *   **Network Name:** `Kortana Local`
+    *   **Network Name:** `Kortana Testnet`
     *   **New RPC URL:** `http://127.0.0.1:8545`
-    *   **Chain ID:** `1`
+    *   **Chain ID:** `1337`
     *   **Currency Symbol:** `DNR`
 5.  Click **Save**.
 
-🎉 **Success!** You are now connected to your local Kortana node.
+🎉 **Success!** You are now connected to your local Kortana Testnet.
 
 ## 🧪 How to Test
 
