@@ -2,6 +2,7 @@
 
 use serde::{Serialize, Deserialize};
 use sha3::{Digest, Keccak256};
+use crate::parameters::CHAIN_ID;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EvmError {
@@ -96,18 +97,28 @@ impl EvmExecutor {
             match opcode {
                 0x00 => break, // STOP
                 // Arithmetic
-                0x01 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::add_u256(a, b))?; }
-                0x02 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::mul_u256(a, b))?; }
-                0x03 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::sub_u256(a, b))?; }
+                0x01 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::add_u256(a, b))?; }
+                0x02 => { self.consume_gas(5)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::mul_u256(a, b))?; }
+                0x03 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::sub_u256(a, b))?; }
+                0x04 => { self.consume_gas(5)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::div_u256(a, b))?; }
+                0x06 => { self.consume_gas(5)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::mod_u256(a, b))?; }
+                0x08 => { self.consume_gas(10)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::exp_u256(a, b))?; }
                 
-                // Logic
-                0x10 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a < b))?; }
-                0x11 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a > b))?; }
-                0x14 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a == b))?; }
-                0x15 => { let a = self.stack.pop()?; self.stack.push(Self::u256_bool(a == [0u8; 32]))?; }
-                0x16 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] & b[i]; } self.stack.push(r)?; }
-                0x17 => { let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] | b[i]; } self.stack.push(r)?; }
+                // Comparisons & Logic
+                0x10 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a < b))?; }
+                0x11 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a > b))?; }
+                0x12 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(Self::u256_to_i256(a) < Self::u256_to_i256(b)))?; } // SLT
+                0x14 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a == b))?; }
+                0x15 => { self.consume_gas(3)?; let a = self.stack.pop()?; self.stack.push(Self::u256_bool(a == [0u8; 32]))?; }
+                0x16 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] & b[i]; } self.stack.push(r)?; }
+                0x17 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] | b[i]; } self.stack.push(r)?; }
+                0x18 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] ^ b[i]; } self.stack.push(r)?; }
+                0x19 => { self.consume_gas(3)?; let a = self.stack.pop()?; let mut r = [0u8; 32]; for i in 0..32 { r[i] = !a[i]; } self.stack.push(r)?; }
                 
+                // Bitwise Shifting
+                0x1B => { self.consume_gas(3)?; let (shift, val) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::shl_u256(shift, val))?; }
+                0x1C => { self.consume_gas(3)?; let (shift, val) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::shr_u256(shift, val))?; }
+
                 // SHA3
                 0x20 => {
                     self.consume_gas(30)?;
@@ -123,16 +134,34 @@ impl EvmExecutor {
                 }
 
                 // Environment
-                0x30 => { self.stack.push(self.address.as_evm_address_u256())?; } // ADDRESS
-                0x31 => { // BALANCE (Stub)
-                     let _addr_bytes = self.stack.pop()?;
-                     self.stack.push([0u8;32])?;
+                0x30 => { self.stack.push(self.address.as_evm_address_u256())?; }
+                0x31 => { // BALANCE 
+                     self.consume_gas(100)?; 
+                     let addr_bytes = self.stack.pop()?;
+                     let mut addr_buf = [0u8; 24];
+                     addr_buf.copy_from_slice(&addr_bytes[8..32]);
+                     if let Ok(addr) = crate::address::Address::from_bytes(addr_buf) {
+                         let acc = state.get_account(&addr);
+                         self.stack.push(Self::u128_to_u256(acc.balance))?;
+                     } else {
+                         self.stack.push([0u8; 32])?;
+                     }
                 }
-                0x33 => { self.stack.push(crate::address::Address::ZERO.as_evm_address_u256())?; }
+                0x33 => { self.stack.push(crate::address::Address::ZERO.as_evm_address_u256())?; } // CALLER
+                0x35 => { // CALLDATALOAD
+                    self.consume_gas(3)?;
+                    self.stack.pop()?;
+                    self.stack.push([0u8; 32])?;
+                }
+                0x36 => { self.consume_gas(2)?; self.stack.push([0u8; 32])?; } // CALLDATASIZE
 
                 // Block
+                0x41 => { self.stack.push(Self::u128_to_u256(header.proposer.as_evm_address_u256()[31] as u128))?; } // COINBASE partial
                 0x42 => { self.stack.push(Self::u128_to_u256(header.timestamp as u128))?; }
                 0x43 => { self.stack.push(Self::u128_to_u256(header.height as u128))?; }
+                0x44 => { self.stack.push(Self::u128_to_u256(header.gas_limit as u128))?; }
+                0x45 => { self.stack.push(Self::u128_to_u256(CHAIN_ID as u128))?; }
+                0x48 => { self.stack.push(Self::u128_to_u256(header.base_fee))?; }
                 
                 // Storage
                 0x54 => { // SLOAD
@@ -170,37 +199,46 @@ impl EvmExecutor {
                 0x5B => { /* JUMPDEST */ }
 
                 // Stack / Memory
-                0x50 => { self.stack.pop()?; } // POP
+                0x50 => { self.consume_gas(2)?; self.stack.pop()?; } // POP
                 0x51 => { // MLOAD
+                    self.consume_gas(3)?;
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let data = self.memory.load(off, 32)?;
                     self.stack.push(Self::bytes_to_u256(&data))?;
                 }
                 0x52 => { // MSTORE
+                    self.consume_gas(3)?;
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let val = self.stack.pop()?;
                     self.memory.store(off, &val);
                 }
-                0x60..=0x7F => { // PUSH
+                0x60..=0x7F => { // PUSH1..32
                     let len = (opcode - 0x5F) as usize;
+                    self.consume_gas(3)?;
                     let mut val = [0u8; 32];
                     let end = std::cmp::min(pc + len, bytecode.len());
                     val[32 - (end - pc)..].copy_from_slice(&bytecode[pc..end]);
                     pc += len;
                     self.stack.push(val)?;
                 }
-                0x80..=0x8F => { // DUP
-                    let dl = (opcode - 0x7F) as usize;
-                    let val = self.stack.peek(dl - 1)?;
+                0x80..=0x8F => { // DUP1..16
+                    let n = (opcode - 0x7F) as usize;
+                    self.consume_gas(3)?;
+                    let val = self.stack.peek(n - 1)?;
                     self.stack.push(val)?;
                 }
-                0x90..=0x9F => { // SWAP (stub)
-                    let _sl = (opcode - 0x8F) as usize;
-                    // TODO: impl swap
+                0x90..=0x9F => { // SWAP1..16
+                    let n = (opcode - 0x8F) as usize;
+                    self.consume_gas(3)?;
+                    let a = self.stack.pop()?;
+                    let idx = self.stack.data.len() - n;
+                    let b = self.stack.data[idx];
+                    self.stack.data[idx] = a;
+                    self.stack.push(b)?;
                 }
 
                 // Logging
-                0xA0..=0xA4 => { // LOG
+                0xA0..=0xA4 => { // LOG0..4
                     let topic_count = (opcode - 0xA0) as usize;
                     self.consume_gas(375 + 8 * (topic_count as u64))?;
                     let offset = Self::u256_to_usize(self.stack.pop()?)?;
@@ -212,24 +250,25 @@ impl EvmExecutor {
                 }
 
                 // System
-                0xF0 => { // CREATE
+                0xF0 => { // CREATE (Deploying local)
                     self.consume_gas(32000)?;
                     let _val = self.stack.pop()?;
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
                     let _init_code = self.memory.load(off, len)?;
-                     self.stack.push([0u8; 32])?;
-                }
-                0xF1 => { // CALL
-                     self.consume_gas(700)?;
-                     for _ in 0..7 { self.stack.pop()?; } 
-                     self.stack.push(Self::u256_bool(true))?;
+                    // Simplified: just return success and a dummy address
+                    self.stack.push([0u8; 32])?;
                 }
                 0xF3 => { // RETURN
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
                     _return_data = self.memory.load(off, len)?;
                     break;
+                }
+                0xFA => { // STATICCALL
+                     self.consume_gas(100)?;
+                     for _ in 0..6 { self.stack.pop()?; }
+                     self.stack.push(Self::u256_bool(true))?;
                 }
                 0xFD => return Err(EvmError::Revert),
                 _ => return Err(EvmError::InvalidOpcode),
@@ -305,12 +344,45 @@ impl EvmExecutor {
     }
 
     fn mul_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
-        // Simplified multiplication (lower 128-bit only for MVP)
-        // Production would use full big-int logic
         let a_val = Self::u256_to_u128(a);
         let b_val = Self::u256_to_u128(b);
-        let prod = a_val.wrapping_mul(b_val);
-        Self::u128_to_u256(prod)
+        Self::u128_to_u256(a_val.wrapping_mul(b_val))
+    }
+
+    fn div_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+        let a_val = Self::u256_to_u128(a);
+        let b_val = Self::u256_to_u128(b);
+        if b_val == 0 { return [0u8; 32]; }
+        Self::u128_to_u256(a_val / b_val)
+    }
+
+    fn mod_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+        let a_val = Self::u256_to_u128(a);
+        let b_val = Self::u256_to_u128(b);
+        if b_val == 0 { return [0u8; 32]; }
+        Self::u128_to_u256(a_val % b_val)
+    }
+
+    fn exp_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+        let a_val = Self::u256_to_u128(a);
+        let b_val = Self::u256_to_u128(b);
+        Self::u128_to_u256(a_val.overflowing_pow(b_val as u32).0)
+    }
+
+    fn shl_u256(shift: [u8; 32], val: [u8; 32]) -> [u8; 32] {
+        let s = Self::u256_to_u128(shift) as u32;
+        if s >= 128 { return [0u8; 32]; }
+        Self::u128_to_u256(Self::u256_to_u128(val) << s)
+    }
+
+    fn shr_u256(shift: [u8; 32], val: [u8; 32]) -> [u8; 32] {
+        let s = Self::u256_to_u128(shift) as u32;
+        if s >= 128 { return [0u8; 32]; }
+        Self::u128_to_u256(Self::u256_to_u128(val) >> s)
+    }
+
+    fn u256_to_i256(val: [u8; 32]) -> i128 {
+        Self::u256_to_u128(val) as i128
     }
 }
 

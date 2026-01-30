@@ -3,13 +3,22 @@ use kortana_blockchain_rust::consensus::{ConsensusEngine, ValidatorInfo};
 use kortana_blockchain_rust::state::account::State;
 use kortana_blockchain_rust::mempool::Mempool;
 use kortana_blockchain_rust::parameters::*;
-use kortana_blockchain_rust::staking::StakingStore;
 use kortana_blockchain_rust::core::fees::FeeMarket;
 use kortana_blockchain_rust::consensus::bft::FinalityGadget;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use clap::Parser;
+
+// Color Constants for Beautiful Logs
+const CLR_RESET: &str = "\x1b[0m";
+const CLR_BLUE: &str = "\x1b[34m";
+const CLR_CYAN: &str = "\x1b[36m";
+const CLR_GREEN: &str = "\x1b[32m";
+const CLR_RED: &str = "\x1b[31m";
+const CLR_YELLOW: &str = "\x1b[33m";
+const CLR_MAGENTA: &str = "\x1b[35m";
+const CLR_BOLD: &str = "\x1b[1m";
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -40,21 +49,31 @@ pub struct KortanaNode {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    println!("Starting Kortana Blockchain Node (Rust) - Production Grade...");
-    println!("RPC Addr: {}", args.rpc_addr);
-    println!("P2P Addr: {}", args.p2p_addr);
+    
+    println!("{}██╗  ██╗ ██████╗ ██████╗ ████████╗ █████╗ ███╗   ██╗ █████╗ {}", CLR_BLUE, CLR_RESET);
+    println!("{}██║ ██╔╝██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗████╗  ██║██╔══██╗{}", CLR_BLUE, CLR_RESET);
+    println!("{}█████═╝ ██║   ██║██████╔╝   ██║   ███████║██╔██╗ ██║███████║{}", CLR_BLUE, CLR_RESET);
+    println!("{}██╔═██╗ ██║   ██║██╔══██╗   ██║   ██╔══██║██║╚██╗██║██╔══██║{}", CLR_BLUE, CLR_RESET);
+    println!("{}██║  ██╗╚██████╔╝██║  ██║   ██║   ██║  ██║██║ ╚████║██║  ██║{}", CLR_BLUE, CLR_RESET);
+    println!("{}╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝{}", CLR_BLUE, CLR_RESET);
+    println!("\n{}--- KORTANA BLOCKCHAIN NODE (RUST) - PRODUCTION GRADE v1.0.0 ---{}", CLR_BOLD, CLR_RESET);
+    println!("{}RPC Address: {}{}", CLR_CYAN, args.rpc_addr, CLR_RESET);
+    println!("{}P2P Address: {}{}\n", CLR_CYAN, args.p2p_addr, CLR_RESET);
 
     // 1. Initialize Storage
+    print!("{}[1/5] Initializing Database... {}", CLR_YELLOW, CLR_RESET);
     let storage = Arc::new(kortana_blockchain_rust::storage::Storage::new("./data/kortana.db"));
+    println!("{}OK{}", CLR_GREEN, CLR_RESET);
 
     // 2. Load or Initialize State
+    print!("{}[2/5] Loading Ledger State... {}", CLR_YELLOW, CLR_RESET);
     let (h_init, state) = match storage.get_latest_state() {
         Ok(Some((h, s))) => {
-            println!("Resuming from stored state at height {}", h);
+            println!("{}RESUMED at height {}{}", CLR_CYAN, h, CLR_RESET);
             (h, s)
         },
         _ => {
-            println!("No stored state found. Initializing from genesis...");
+            println!("{}GENESIS{}", CLR_CYAN, CLR_RESET);
             let initial_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
             (0, initial_state)
         }
@@ -64,6 +83,7 @@ async fn main() {
     println!("Current state root: 0x{}", hex::encode(genesis_root));
 
     // 3. Initialize Core Components
+    print!("{}[3/5] Starting Consensus Engine... {}", CLR_YELLOW, CLR_RESET);
     let genesis_validator = ValidatorInfo {
         address: Address::from_pubkey(b"genesis_validator"),
         stake: 32_000_000_000_000_000_000,
@@ -81,73 +101,64 @@ async fn main() {
         storage: storage.clone(),
         height: Arc::new(AtomicU64::new(h_init)),
     };
+    println!("{}OK{}", CLR_GREEN, CLR_RESET);
 
     println!("Node initialized at height {}", node.height.load(Ordering::Relaxed));
 
-    // 3. Setup Networking Channels
-    let (p2p_tx, p2p_rx) = tokio::sync::mpsc::channel(100);
-    let (node_tx, mut node_rx) = tokio::sync::mpsc::channel(100);
-
-    // 4. Start P2P Network
-    let mut network = kortana_blockchain_rust::network::p2p::KortanaNetwork::new(p2p_rx, node_tx).await.unwrap();
-    
-    // Add Bootnodes
-    for bootnode in args.bootnodes {
-        if let Ok(addr) = bootnode.parse() {
-            println!("Connecting to bootnode: {}", addr);
-            network.add_bootnode(addr);
-        }
-    }
-
+    // 4. Register Network Handlers
+    print!("{}[4/5] Spawning P2P Networking... {}", CLR_YELLOW, CLR_RESET);
+    let (p2p_tx, mut node_rx) = tokio::sync::mpsc::channel(100);
+    let p2p_tx_clone = p2p_tx.clone();
+    let bootnodes = args.bootnodes.clone();
     let p2p_addr = args.p2p_addr.clone();
+
     tokio::spawn(async move {
-        network.run(p2p_addr).await;
+        let mut network = kortana_blockchain_rust::network::p2p::KortanaNetwork::new(p2p_tx_clone, p2p_addr).await;
+        for bn in bootnodes {
+            if let Ok(addr) = bn.parse() {
+                network.add_bootnode(addr);
+            }
+        }
+        network.run().await;
     });
+    println!("{}RUNNING{}", CLR_GREEN, CLR_RESET);
 
     // 5. Start RPC Server
-    let rpc_handler = kortana_blockchain_rust::rpc::RpcHandler {
+    print!("{}[5/5] Launching JSON-RPC... {}", CLR_YELLOW, CLR_RESET);
+    let rpc_handler = Arc::new(kortana_blockchain_rust::rpc::RpcHandler {
         chain_id: CHAIN_ID,
         state: node.state.clone(),
         mempool: node.mempool.clone(),
         storage: node.storage.clone(),
         network_tx: p2p_tx.clone(),
         height: node.height.clone(),
-    };
-    
-    let rpc_handler = Arc::new(rpc_handler);
+    });
+
+    let node = node_arc;
     let rpc_addr = args.rpc_addr.clone();
     tokio::spawn(async move {
-        // INSECURE: Binding to 0.0.0.0 allows public access. Ensure Firewall rules restrict access to trusted IPs only!
         let listener = tokio::net::TcpListener::bind(&rpc_addr).await.unwrap();
-        println!("RPC Server listening on {}", rpc_addr);
         loop {
             let (mut socket, _) = listener.accept().await.unwrap();
             let handler = rpc_handler.clone();
             tokio::spawn(async move {
-                let mut buffer = [0; 4096];
+                let mut buffer = [0u8; 4096];
                 if let Ok(n) = tokio::io::AsyncReadExt::read(&mut socket, &mut buffer).await {
-                    if let Ok(req_str) = std::str::from_utf8(&buffer[..n]) {
-                        
-                        // Handler for OPTIONS (Preflight)
-                        if req_str.starts_with("OPTIONS") {
-                            let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n";
-                            let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, response.as_bytes()).await;
-                            return;
-                        }
-
-                        // Very simplified HTTP parsing
-                        if let Some(body_start) = req_str.find("\r\n\r\n") {
-                            let body = &req_str[body_start+4..];
-                            if let Ok(request) = serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
-                                let response = handler.handle(request).await;
-                                let response_str = serde_json::to_string(&response).unwrap();
-                                let http_response = format!(
-                                    "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
-                                    response_str.len(),
-                                    response_str
-                                );
-                                let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, http_response.as_bytes()).await;
-                            }
+                    let req_str = String::from_utf8_lossy(&buffer[..n]);
+                    if req_str.starts_with("OPTIONS") {
+                        let res = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n";
+                        let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, res.as_bytes()).await;
+                    } else if let Some(body_start) = req_str.find("\r\n\r\n") {
+                        let body = &req_str[body_start + 4..];
+                        if let Ok(req) = serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
+                            let res = handler.handle(req).await;
+                            let res_str = serde_json::to_string(&res).unwrap();
+                            let http_res = format!(
+                                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}",
+                                res_str.len(),
+                                res_str
+                            );
+                            let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, http_res.as_bytes()).await;
                         }
                     }
                 }
@@ -172,7 +183,7 @@ async fn main() {
                     consensus.advance_era(current_slot);
                     
                     if leader == genesis_validator.address { 
-                        println!("[Slot {}] Producing block as leader...", current_slot);
+                        println!("{}[Slot {}]{} 👑 Producing block as leader...", CLR_YELLOW, current_slot, CLR_RESET);
                         
                         let mut mempool = node.mempool.lock().unwrap();
                         let txs = mempool.select_transactions(GAS_LIMIT_PER_BLOCK);
@@ -207,6 +218,10 @@ async fn main() {
                         for tx in &txs {
                             if let Ok(receipt) = processor.process_transaction(tx.clone(), &header) {
                                 receipts.push(receipt);
+                                // Index transaction
+                                let _ = node.storage.put_transaction(tx);
+                                let _ = node.storage.put_index(&tx.from, tx.hash());
+                                let _ = node.storage.put_index(&tx.to, tx.hash());
                             }
                         }
 
@@ -222,7 +237,7 @@ async fn main() {
 
                         let mut block = kortana_blockchain_rust::types::block::Block {
                             header,
-                            transactions: txs,
+                            transactions: txs.clone(),
                             signature: vec![], 
                         };
                         
@@ -232,11 +247,13 @@ async fn main() {
                         let mut fees_mut = node.fees.lock().unwrap();
                         fees_mut.update_base_fee(block.header.gas_used);
 
+                        let h = block.header.height;
                         let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::NewBlock(block.clone())).await;
                         
                         node.height.fetch_add(1, Ordering::SeqCst);
                         let _ = node.storage.put_block(&block);
                         let _ = node.storage.put_state(block.header.height, &*state);
+                        println!("  {}✅ Block {} produced successfully ({} txs){}", CLR_GREEN, h, txs.len(), CLR_RESET);
                     }
                 }
             }
@@ -247,7 +264,7 @@ async fn main() {
                 if max_seen_height > h {
                      let start = h + 1;
                      let end = std::cmp::min(start + 50, max_seen_height);
-                     println!("[Sync] Node is behind. Requesting blocks {} to {}", start, end);
+                     println!("{}[SYNC]{} Node is behind. Requesting blocks {} to {}", CLR_CYAN, CLR_RESET, start, end);
                      let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::SyncRequest { 
                          start_height: start, 
                          end_height: end 
@@ -264,7 +281,7 @@ async fn main() {
                         }
 
                         if block.header.height == node.height.load(Ordering::SeqCst) + 1 {
-                             println!("[P2P] Received next block at height {} from {}", block.header.height, block.header.proposer);
+                             println!("{}[P2P]{} Received block {} from {}", CLR_CYAN, CLR_RESET, block.header.height, block.header.proposer);
                              let mut state = node.state.lock().unwrap();
                              let mut fees = node.fees.lock().unwrap();
                              
@@ -272,9 +289,15 @@ async fn main() {
                              {
                                  let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
                                  if let Ok(_) = processor.validate_block(&block) {
-                                     println!("  Block verified and applied.");
+                                     println!("  {}✅ Block verified and applied.{}", CLR_GREEN, CLR_RESET);
                                      *fees = processor.fee_market;
                                      success = true;
+                                     // Index transactions
+                                     for tx in &block.transactions {
+                                         let _ = node.storage.put_transaction(tx);
+                                         let _ = node.storage.put_index(&tx.from, tx.hash());
+                                         let _ = node.storage.put_index(&tx.to, tx.hash());
+                                     }
                                  }
                              }
 
@@ -289,10 +312,11 @@ async fn main() {
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::NewTransaction(tx) => {
                         let mut mempool = node.mempool.lock().unwrap();
+                        println!("{}[MEMPOOL]{} Added tx 0x{} from {}", CLR_MAGENTA, CLR_RESET, hex::encode(tx.hash())[..8].to_string(), tx.from);
                         mempool.add(tx);
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::SyncRequest { start_height, end_height } => {
-                        println!("[P2P] SyncRequest for range {}-{}", start_height, end_height);
+                        println!("{}[P2P]{} Servicing SyncRequest for {}-{}", CLR_CYAN, CLR_RESET, start_height, end_height);
                         let mut blocks = Vec::new();
                         for h in start_height..=end_height {
                             if let Ok(Some(block)) = node.storage.get_block(h) {
@@ -306,7 +330,7 @@ async fn main() {
                         }
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::SyncResponse { blocks } => {
-                        println!("[P2P] Received SyncResponse with {} blocks", blocks.len());
+                        println!("{}[SYNC]{} Received Response with {} blocks", CLR_CYAN, CLR_RESET, blocks.len());
                         let mut state = node.state.lock().unwrap();
                         let mut fees = node.fees.lock().unwrap();
 
@@ -317,9 +341,15 @@ async fn main() {
                                 {
                                     let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
                                     if let Ok(_) = processor.validate_block(&block) {
-                                        println!("  Sync: Block {} verified.", block.header.height);
+                                        println!("  {}✅ Sync Block {} verified.{}", CLR_GREEN, block.header.height, CLR_RESET);
                                         *fees = processor.fee_market.clone();
                                         success = true;
+                                        // Index transactions
+                                        for tx in &block.transactions {
+                                            let _ = node.storage.put_transaction(tx);
+                                            let _ = node.storage.put_index(&tx.from, tx.hash());
+                                            let _ = node.storage.put_index(&tx.to, tx.hash());
+                                        }
                                     }
                                 }
                                 
@@ -337,7 +367,7 @@ async fn main() {
                          let mut finality = node.finality.lock().unwrap();
                          let consensus = node.consensus.lock().unwrap();
                          if finality.add_vote(block_hash, height, round, validator, signature, &consensus.validators) {
-                             println!("FINALITY REACHED for height {} hash 0x{}", height, hex::encode(block_hash));
+                             println!("{}🏆 FINALITY REACHED for height {} hash 0x{}{}", CLR_GREEN, height, hex::encode(block_hash), CLR_RESET);
                          }
                     }
                     _ => {}

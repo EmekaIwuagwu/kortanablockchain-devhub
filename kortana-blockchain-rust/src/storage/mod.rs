@@ -88,4 +88,22 @@ impl Storage {
         }
         Ok(None)
     }
+
+    pub fn put_index(&self, address: &crate::address::Address, tx_hash: [u8; 32]) -> Result<(), String> {
+        let key = format!("addr_txs:{}", address.to_hex());
+        let mut txs = self.get_address_history(address)?;
+        txs.push(tx_hash);
+        let val = serde_json::to_vec(&txs).map_err(|e| e.to_string())?;
+        self.db.insert(key, val).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_address_history(&self, address: &crate::address::Address) -> Result<Vec<[u8; 32]>, String> {
+        let key = format!("addr_txs:{}", address.to_hex());
+        let val = self.db.get(key).map_err(|e| e.to_string())?;
+        match val {
+            Some(data) => Ok(serde_json::from_slice(&data).map_err(|e| e.to_string())?),
+            None => Ok(Vec::new()),
+        }
+    }
 }

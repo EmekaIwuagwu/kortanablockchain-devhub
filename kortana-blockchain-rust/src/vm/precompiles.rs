@@ -26,8 +26,8 @@ fn ecrecover(input: &[u8]) -> Result<Vec<u8>, String> {
 
     let hash = &data[0..32];
     let v_raw = data[63]; // v is at 32-64, but usually only the last byte matters
-    let r = &data[64..96];
-    let s = &data[96..128];
+    let _r = &data[64..96];
+    let _s = &data[96..128];
     
     // Normalize V to 0 or 1
     let v = if v_raw >= 27 { v_raw - 27 } else { v_raw };

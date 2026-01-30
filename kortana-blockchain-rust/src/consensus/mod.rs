@@ -191,7 +191,7 @@ impl ConsensusEngine {
         }
     }
 
-    pub fn record_block_participation(&mut self, proposer: Address, active_at_slot: u64) {
+    pub fn record_block_participation(&mut self, proposer: Address, _active_at_slot: u64) {
         for v in self.validators.iter_mut() {
             if v.is_active {
                 if v.address == proposer {
