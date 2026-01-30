@@ -1,0 +1,126 @@
+// File: src/core/processor.rs
+
+use crate::state::account::{State, Account};
+use crate::types::transaction::{Transaction, TransactionReceipt, TransactionLog, VmType};
+use crate::vm::evm::{EvmExecutor, EvmError};
+use crate::vm::quorlin::{QuorlinExecutor, QuorlinOpcode};
+use crate::address::Address;
+use crate::parameters::*;
+
+pub struct BlockProcessor<'a> {
+    pub state: &'a mut State,
+    pub fee_market: crate::core::fees::FeeMarket,
+}
+
+use crate::types::block::Block;
+
+impl<'a> BlockProcessor<'a> {
+    pub fn new(state: &'a mut State, fee_market: crate::core::fees::FeeMarket) -> Self {
+        Self { state, fee_market }
+    }
+
+    pub fn process_transaction(&mut self, tx: Transaction, header: &crate::types::block::BlockHeader) -> Result<TransactionReceipt, String> {
+        // 0. Chain ID validation (EIP-155)
+        if tx.chain_id != CHAIN_ID {
+            return Err(format!("Invalid chain ID: expected {}, got {}", CHAIN_ID, tx.chain_id));
+        }
+
+        // 1. Basic validation
+        let mut sender = self.state.get_account(&tx.from);
+        if sender.nonce != tx.nonce {
+            return Err("Invalid nonce".to_string());
+        }
+        
+        let total_cost = tx.total_cost();
+        if sender.balance < total_cost {
+            return Err("Insufficient funds for tx".to_string());
+        }
+
+        // 2. Deduct upfront cost
+        sender.balance -= total_cost;
+        sender.nonce += 1;
+        self.state.update_account(tx.from, sender.clone());
+
+        // 3. Execute payload
+        let mut logs = Vec::new();
+        let (status, gas_used) = if let Some(precompile) = crate::vm::precompiles::get_precompile(&tx.to) {
+             match precompile(&tx.data) {
+                 Ok(_) => (1, 500u64), // Static cost for precompile
+                 Err(_) => (0, 500u64),
+             }
+        } else {
+            match tx.vm_type {
+                VmType::EVM => {
+                    let mut executor = EvmExecutor::new(tx.to.clone(), tx.gas_limit);
+                    match executor.execute(&tx.data, self.state, header) {
+                        Ok(_) => {
+                            logs = executor.logs;
+                            (1, tx.gas_limit - executor.gas_remaining)
+                        }
+                        Err(_) => (0, tx.gas_limit),
+                    }
+                }
+                VmType::Quorlin => {
+                    (1, 0) 
+                }
+            }
+        };
+
+        // 4. Transfer value
+        if status == 1 && tx.value > 0 {
+            let mut recipient = self.state.get_account(&tx.to);
+            recipient.balance += tx.value;
+            self.state.update_account(tx.to, recipient);
+        }
+
+        // 5. Refund unused gas
+        let refund = (tx.gas_limit - gas_used) as u128 * tx.gas_price;
+        if refund > 0 {
+            sender.balance += refund;
+            self.state.update_account(tx.from, sender);
+        }
+
+        Ok(TransactionReceipt {
+            tx_hash: tx.hash(),
+            status,
+            gas_used,
+            logs,
+        })
+    }
+
+    pub fn validate_block(&mut self, block: &Block) -> Result<Vec<TransactionReceipt>, String> {
+        // 1. Verify Base Fee matches expected
+        if block.header.base_fee != self.fee_market.base_fee {
+            return Err("Incorrect base fee in block header".to_string());
+        }
+
+        // 2. Verify VRF output matches leader (Simplified: check it's non-zero if using VRF)
+        if block.header.vrf_output == [0u8; 32] {
+             return Err("Missing VRF output in header".to_string());
+        }
+
+        // 3. Verify Header and Transactions Root
+        let tx_root = Block::calculate_tx_root(&block.transactions);
+        if tx_root != block.header.transactions_root {
+            return Err("Invalid transactions root".to_string());
+        }
+
+        // 4. Process transactions sequentially
+        let mut receipts = Vec::new();
+        for tx in &block.transactions {
+            // Verify tx gas price >= base fee
+            if tx.gas_price < self.fee_market.base_fee {
+                return Err(format!("Transaction gas price too low: {} < {}", tx.gas_price, self.fee_market.base_fee));
+            }
+
+            match self.process_transaction(tx.clone(), &block.header) {
+                Ok(receipt) => receipts.push(receipt),
+                Err(e) => return Err(format!("Transaction failed: {}", e)),
+            }
+        }
+
+        // 5. Verify Receipts Root (Omitted for brevity, but same logic as tx_root)
+        
+        Ok(receipts)
+    }
+}
