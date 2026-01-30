@@ -15,7 +15,7 @@ This is a unified, comprehensive document containing:
 - Economic models
 - Security analysis
 
-**Status: READY FOR PRODUCTION DEPLOYMENT**
+**Status: LIVE & SECURED (v1.0.0-Testnet)**
 
 ---
 
@@ -49,6 +49,32 @@ This is a unified, comprehensive document containing:
 ### 3. **THIS FILE** 📖 GETTING STARTED
 - **Content:** This README
 - **Purpose:** Quick start and guidance
+
+---
+
+## 🚀 PRODUCTION DEPLOYMENT & METAMASK
+
+### 🌐 Ubuntu Production Setup
+To deploy a high-performance node on Ubuntu or Azure:
+```bash
+cd kortana-blockchain-rust
+chmod +x scripts/deploy_ubuntu.sh
+sudo ./scripts/deploy_ubuntu.sh
+```
+**Monitor Logs:** `journalctl -u kortanad -f`
+
+### 🦊 MetaMask Connection (Testnet)
+Connect your wallet to the Kortana network using these settings:
+- **Network Name:** `Kortana Testnet`
+- **RPC URL:** `http://YOUR_SERVER_IP:8545`
+- **Chain ID:** `1337`
+- **Symbol:** `DNR`
+
+**Get Test Tokens:**
+```bash
+curl -X POST http://localhost:8545 -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_requestDNR","params":["kn:0xYOUR_ADDRESS"],"id":1}'
+```
 
 ---
 
@@ -446,8 +472,10 @@ BLOCKCHAIN_COMPLETE_UNIFIED_SPECIFICATION.md (Full spec)
 - [x] Connection tracking
 - [x] Message types
 - [x] P2P sync
-- [x] RPC server
-- [x] JSON-RPC 2.0
+- [x] RPC server (JSON-RPC 2.0)
+- [x] Transaction Indexing (History by Address)
+- [x] Built-in Token Faucet (eth_requestDNR)
+- [x] Self-Diagnostic Test Suite (--test)
 
 ---
 
@@ -540,4 +568,4 @@ This specification contains EVERYTHING needed to build Kortana Blockchain:
 
 ---
 
-**Status: READY FOR IMPLEMENTATION** 🚀
+**Status: READY FOR TESTNET & DAPP INTEGRATION** 🚀
