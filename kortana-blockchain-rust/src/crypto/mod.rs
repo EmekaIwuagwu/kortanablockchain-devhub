@@ -2,7 +2,7 @@ pub mod vrf;
 
 use k256::ecdsa::{SigningKey, Signature, VerifyingKey};
 use k256::ecdsa::signature::{Signer, Verifier};
-use bls12_381::{G1Projective, G2Projective, Scalar};
+use bls12_381::G1Projective;
 use rand::thread_rng;
 use sha3::{Digest, Sha3_256};
 

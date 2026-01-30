@@ -1,7 +1,6 @@
 // File: src/network/ibc.rs
 
 use serde::{Serialize, Deserialize};
-use crate::address::Address;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IbcPacket {

@@ -1,7 +1,6 @@
 // File: src/rpc/mod.rs
 
 use serde::{Serialize, Deserialize};
-use sha3::{Digest, Keccak256};
 use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,11 +26,9 @@ pub struct JsonRpcError {
 }
 
 use std::sync::{Arc, Mutex};
-use sha3::Sha3_256;
 use std::sync::atomic::{AtomicU64, Ordering};
 use crate::state::account::State;
 use crate::mempool::Mempool;
-use crate::types::transaction::Transaction;
 
 pub struct RpcHandler {
     pub chain_id: u64,
@@ -158,7 +155,7 @@ impl RpcHandler {
             "eth_estimateGas" => {
                 // If there is data, it's likely a contract call, return higher limit
                 let params: Result<Vec<Value>, _> = serde_json::from_value(request.params.clone());
-                let has_data = params.ok().and_then(|p| p.first().and_then(|v| v.get("data"))).is_some();
+                let has_data = params.as_ref().ok().and_then(|p| p.first().and_then(|v| v.get("data"))).is_some();
                 if has_data {
                     Some(serde_json::to_value("0x186a0").unwrap()) // 100,000
                 } else {

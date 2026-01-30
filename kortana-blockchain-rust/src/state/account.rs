@@ -3,7 +3,6 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use crate::address::Address;
-use sha3::Sha3_256;
 
 use crate::state::trie::MerklePatriciaTrie;
 

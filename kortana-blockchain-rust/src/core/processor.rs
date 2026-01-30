@@ -1,8 +1,8 @@
 // File: src/core/processor.rs
 
-use crate::state::account::{State, Account};
-use crate::types::transaction::{Transaction, TransactionReceipt, TransactionLog, VmType};
-use crate::vm::evm::{EvmExecutor, EvmError};
+use crate::state::account::State;
+use crate::types::transaction::{Transaction, TransactionReceipt, VmType};
+use crate::vm::evm::EvmExecutor;
 use crate::vm::quorlin::{QuorlinExecutor, QuorlinOpcode};
 use crate::address::Address;
 use crate::parameters::*;
