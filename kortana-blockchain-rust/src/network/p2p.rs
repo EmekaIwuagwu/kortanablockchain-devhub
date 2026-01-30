@@ -22,6 +22,7 @@ pub struct KortanaNetwork {
     tx_receiver: mpsc::Receiver<NetworkMessage>,
     node_tx: mpsc::Sender<NetworkMessage>,
     peer_reputation: std::collections::HashMap<PeerId, i32>,
+    pub bootnodes: Vec<libp2p::Multiaddr>,
 }
 
 impl KortanaNetwork {
@@ -76,11 +77,17 @@ impl KortanaNetwork {
             tx_receiver, 
             node_tx,
             peer_reputation: std::collections::HashMap::new(),
+            bootnodes: Vec::new(),
         })
     }
 
-    pub async fn run(mut self) {
-        self.swarm.listen_on("/ip4/0.0.0.0/tcp/30333".parse().unwrap()).unwrap();
+    pub fn add_bootnode(&mut self, addr: libp2p::Multiaddr) {
+        self.bootnodes.push(addr.clone());
+        let _ = self.swarm.dial(addr);
+    }
+
+    pub async fn run(mut self, listen_addr: String) {
+        self.swarm.listen_on(listen_addr.parse().unwrap()).unwrap();
 
         loop {
             tokio::select! {

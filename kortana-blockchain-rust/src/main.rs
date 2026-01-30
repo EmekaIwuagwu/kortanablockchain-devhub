@@ -1,5 +1,3 @@
-// File: src/main.rs
-
 use kortana_blockchain_rust::address::Address;
 use kortana_blockchain_rust::consensus::{ConsensusEngine, ValidatorInfo};
 use kortana_blockchain_rust::state::account::State;
@@ -10,6 +8,23 @@ use kortana_blockchain_rust::core::fees::FeeMarket;
 use kortana_blockchain_rust::consensus::bft::FinalityGadget;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// RPC server address
+    #[arg(short, long, default_value = "0.0.0.0:8545")]
+    rpc_addr: String,
+
+    /// P2P listen address (Multiaddr format)
+    #[arg(short, long, default_value = "/ip4/0.0.0.0/tcp/30333")]
+    p2p_addr: String,
+
+    /// Bootnodes to connect to (Multiaddr format)
+    #[arg(short, long)]
+    bootnodes: Vec<String>,
+}
 
 pub struct KortanaNode {
     pub consensus: Arc<Mutex<ConsensusEngine>>,
@@ -24,7 +39,10 @@ pub struct KortanaNode {
 
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
     println!("Starting Kortana Blockchain Node (Rust) - Production Grade...");
+    println!("RPC Addr: {}", args.rpc_addr);
+    println!("P2P Addr: {}", args.p2p_addr);
 
     // 1. Initialize Genesis State
     let state = kortana_blockchain_rust::core::genesis::create_genesis_state();
@@ -60,9 +78,19 @@ async fn main() {
     let (node_tx, mut node_rx) = tokio::sync::mpsc::channel(100);
 
     // 4. Start P2P Network
-    let network = kortana_blockchain_rust::network::p2p::KortanaNetwork::new(p2p_rx, node_tx).await.unwrap();
+    let mut network = kortana_blockchain_rust::network::p2p::KortanaNetwork::new(p2p_rx, node_tx).await.unwrap();
+    
+    // Add Bootnodes
+    for bootnode in args.bootnodes {
+        if let Ok(addr) = bootnode.parse() {
+            println!("Connecting to bootnode: {}", addr);
+            network.add_bootnode(addr);
+        }
+    }
+
+    let p2p_addr = args.p2p_addr.clone();
     tokio::spawn(async move {
-        network.run().await;
+        network.run(p2p_addr).await;
     });
 
     // 5. Start RPC Server
@@ -75,10 +103,11 @@ async fn main() {
     };
     
     let rpc_handler = Arc::new(rpc_handler);
+    let rpc_addr = args.rpc_addr.clone();
     tokio::spawn(async move {
         // INSECURE: Binding to 0.0.0.0 allows public access. Ensure Firewall rules restrict access to trusted IPs only!
-        let listener = tokio::net::TcpListener::bind("0.0.0.0:8545").await.unwrap();
-        println!("RPC Server listening on 0.0.0.0:8545");
+        let listener = tokio::net::TcpListener::bind(&rpc_addr).await.unwrap();
+        println!("RPC Server listening on {}", rpc_addr);
         loop {
             let (mut socket, _) = listener.accept().await.unwrap();
             let handler = rpc_handler.clone();
@@ -233,9 +262,40 @@ async fn main() {
                         let mut mempool = node.mempool.lock().unwrap();
                         mempool.add(tx);
                     }
-                    kortana_blockchain_rust::network::messages::NetworkMessage::PreCommit { block_hash, height, round, validator, signature: _ } => {
-                        // Log PreCommit (Simulating BFT phases)
-                        println!("[P2P] PreCommit: h={} r={} hash=0x{} val={}", height, round, hex::encode(block_hash), validator);
+                    kortana_blockchain_rust::network::messages::NetworkMessage::SyncRequest { start_height, end_height } => {
+                        println!("[P2P] SyncRequest for range {}-{}", start_height, end_height);
+                        let mut blocks = Vec::new();
+                        for h in start_height..=end_height {
+                            if let Ok(Some(block)) = node.storage.get_block(h) {
+                                blocks.push(block);
+                            } else {
+                                break;
+                            }
+                        }
+                        if !blocks.is_empty() {
+                            let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::SyncResponse { blocks }).await;
+                        }
+                    }
+                    kortana_blockchain_rust::network::messages::NetworkMessage::SyncResponse { blocks } => {
+                        println!("[P2P] Received SyncResponse with {} blocks", blocks.len());
+                        let mut state = node.state.lock().unwrap();
+                        let mut fees = node.fees.lock().unwrap();
+                        let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
+
+                        for block in blocks {
+                            // Basic height check to ensure sequential sync
+                            // In a production node this would be more robust
+                            match processor.validate_block(&block) {
+                                Ok(_) => {
+                                    println!("  Sync: Block {} verified.", block.header.height);
+                                    *fees = processor.fee_market.clone();
+                                }
+                                Err(e) => {
+                                    println!("  Sync: Block {} validation failed: {}", block.header.height, e);
+                                    break;
+                                }
+                            }
+                        }
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::Commit { block_hash, height, round, validator, signature } => {
                          let mut finality = node.finality.lock().unwrap();
