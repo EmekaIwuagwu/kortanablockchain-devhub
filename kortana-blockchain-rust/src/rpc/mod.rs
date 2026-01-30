@@ -5,11 +5,14 @@ use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JsonRpcRequest {
+    #[serde(default = "default_jsonrpc")]
     pub jsonrpc: String,
     pub method: String,
-    pub params: Value,
+    pub params: Option<Value>,
     pub id: Value,
 }
+
+fn default_jsonrpc() -> String { "2.0".to_string() }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JsonRpcResponse {
@@ -48,7 +51,8 @@ impl RpcHandler {
                 Some(serde_json::to_value(format!("0x{:x}", h)).unwrap())
             }
             "eth_getBlockByNumber" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(num_str) = p.first() {
                         let height = if num_str == "latest" { 
@@ -63,7 +67,8 @@ impl RpcHandler {
                 } else { Some(Value::Null) }
             }
             "eth_getTransactionByHash" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(hash_str) = p.first() {
                         let hash_hex = hash_str.strip_prefix("0x").unwrap_or(hash_str);
@@ -74,7 +79,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_getBalance" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(addr_str) = p.first() {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
@@ -86,7 +92,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_getTransactionCount" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(addr_str) = p.first() {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
@@ -98,7 +105,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_sendRawTransaction" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(raw_tx_hex) = p.first() {
                         let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
@@ -118,7 +126,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_call" => {
-                let params: Result<Vec<Value>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<Value>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(call_obj) = p.first() {
                         // Extract 'to' and 'data'
@@ -154,7 +163,8 @@ impl RpcHandler {
             }
             "eth_estimateGas" => {
                 // If there is data, it's likely a contract call, return higher limit
-                let params: Result<Vec<Value>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<Value>, _> = serde_json::from_value(params_val);
                 let has_data = params.as_ref().ok().and_then(|p| p.first().and_then(|v| v.get("data"))).is_some();
                 if has_data {
                     Some(serde_json::to_value("0x186a0").unwrap()) // 100,000
@@ -163,7 +173,8 @@ impl RpcHandler {
                 }
             }
             "eth_getCode" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                      if let Some(addr_str) = p.first() {
                          if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
@@ -181,7 +192,8 @@ impl RpcHandler {
                 Some(serde_json::to_value("0x3b9aca00").unwrap()) // 1 Gwei
             }
             "eth_getTransactionReceipt" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(hash_str) = p.first() {
                          let hash_hex = hash_str.strip_prefix("0x").unwrap_or(hash_str);
@@ -206,7 +218,8 @@ impl RpcHandler {
                 Some(serde_json::to_value(vals).unwrap())
             }
             "eth_stakingInfo" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(addr_str) = p.first() {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
@@ -243,7 +256,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_requestDNR" => {
-                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
                 if let Ok(p) = params {
                     if let Some(addr_str) = p.first() {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
