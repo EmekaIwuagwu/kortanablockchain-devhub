@@ -191,11 +191,13 @@ async fn main() {
     });
 
     let rpc_addr = args.rpc_addr.clone();
+    let rpc_node = node.clone();
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind(&rpc_addr).await.unwrap();
         loop {
             let (mut socket, _) = listener.accept().await.unwrap();
             let handler = rpc_handler.clone();
+            let task_node = rpc_node.clone();
             tokio::spawn(async move {
                 let mut buffer = [0u8; 8192];
                 if let Ok(n) = tokio::io::AsyncReadExt::read(&mut socket, &mut buffer).await {
@@ -209,7 +211,7 @@ async fn main() {
                             "node": "Kortana",
                             "version": "1.0.0",
                             "chain_id": CHAIN_ID,
-                            "height": node.height.load(Ordering::Relaxed)
+                            "height": task_node.height.load(Ordering::Relaxed)
                         }).to_string();
                         (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
                     } else if let Some(body_start) = req_str.find("\r\n\r\n") {
