@@ -204,7 +204,7 @@ async fn main() {
                     let req_str = String::from_utf8_lossy(&buffer[..n]);
                     
                     let (http_res, method_name) = if req_str.starts_with("OPTIONS") {
-                        (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
+                        (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
                     } else if req_str.starts_with("GET") {
                         let status_json = serde_json::json!({
                             "status": "online",
@@ -213,7 +213,7 @@ async fn main() {
                             "chain_id": CHAIN_ID,
                             "height": task_node.height.load(Ordering::Relaxed)
                         }).to_string();
-                        (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
+                        (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
                     } else if let Some(body_start) = req_str.find("\r\n\r\n") {
                         let body = req_str[body_start + 4..].trim_end_matches('\0').trim();
                         if body.is_empty() {
@@ -223,16 +223,16 @@ async fn main() {
                             let res = handler.handle(req).await;
                             let res_str = serde_json::to_string(&res).unwrap();
                             (format!(
-                                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}",
+                                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
                                 res_str.len(),
                                 res_str
                             ), m)
                         } else {
                             println!("{}[RPC-DEBUG]{} Failed to parse body: {}", CLR_RED, CLR_RESET, body);
-                            (format!("HTTP/1.1 400 Bad Request\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 0\r\n\r\n"), "BAD_JSON".to_string())
+                            (format!("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"), "BAD_JSON".to_string())
                         }
                     } else {
-                        (format!("HTTP/1.1 400 Bad Request\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 0\r\n\r\n"), "MALFORMED".to_string())
+                        (format!("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"), "MALFORMED".to_string())
                     };
 
                     if method_name != "OPTIONS" {
