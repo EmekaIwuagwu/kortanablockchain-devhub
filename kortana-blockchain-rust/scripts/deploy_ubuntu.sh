@@ -76,7 +76,7 @@ SERVICE_FILE="/etc/systemd/system/kortanad.service"
 P2P_LISTEN=${P2P_ADDR:-"/ip4/0.0.0.0/tcp/30333"}
 BOOT_NODES=${BOOTNODES:-""}
 
-EXEC_COMMAND="$BINARY_PATH --p2p-addr $P2P_LISTEN"
+EXEC_COMMAND="$BINARY_PATH --p2p-addr $P2P_LISTEN --rpc-addr 127.0.0.1:8545"
 if [ ! -z "$BOOT_NODES" ]; then
     EXEC_COMMAND="$EXEC_COMMAND --bootnodes $BOOT_NODES"
 fi
@@ -101,7 +101,7 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable kortanad
-sudo systemctl start kortanad
+sudo systemctl restart kortanad
 
 # 7. Configure Firewall
 print_step "7" "Configuring Network Firewall (UFW)"
