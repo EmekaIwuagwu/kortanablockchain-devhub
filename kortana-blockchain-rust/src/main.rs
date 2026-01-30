@@ -237,29 +237,35 @@ async fn main() {
                     (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
                 } else if req_body_str.starts_with("GET") {
                     let status_json = serde_json::json!({
-                        "status": "online",
-                        "node": "Kortana",
-                        "version": "1.0.0",
-                        "chain_id": CHAIN_ID,
-                        "height": task_node.height.load(Ordering::Relaxed)
+                        "status": "online", "node": "Kortana", "version": "1.0.0",
+                        "chain_id": CHAIN_ID, "height": task_node.height.load(Ordering::Relaxed)
                     }).to_string();
                     (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
                 } else if let Some(body_start) = req_body_str.find("\r\n\r\n") {
                     let body = req_body_str[body_start + 4..].trim_end_matches('\0').trim();
                     if body.is_empty() {
                         (format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\n\r\nKortana RPC is Live!"), "EMPTY_POST".to_string())
-                    } else if let Ok(req) = serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
-                        let m = req.method.clone();
-                        let res = handler.handle(req).await;
-                        let res_str = serde_json::to_string(&res).unwrap();
-                        (format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
-                            res_str.len(),
-                            res_str
-                        ), m)
                     } else {
-                        println!("{}[RPC-DEBUG]{} Failed to parse body. Length: {} bytes. Body preview: {}", CLR_RED, CLR_RESET, body.len(), if body.len() > 50 { &body[..50] } else { body });
-                        (format!("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"), "BAD_JSON".to_string())
+                        // Handle both single and batch requests
+                        let (res_json, m_name) = if body.starts_with('[') {
+                            match serde_json::from_str::<Vec<kortana_blockchain_rust::rpc::JsonRpcRequest>>(body) {
+                                Ok(reqs) => {
+                                    let mut results = Vec::new();
+                                    for req in reqs { results.push(handler.handle(req).await); }
+                                    (serde_json::to_string(&results).unwrap(), "BATCH".to_string())
+                                }
+                                Err(_) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, "Parse error")).unwrap(), "BAD_BATCH".to_string())
+                            }
+                        } else {
+                            match serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
+                                Ok(req) => {
+                                    let m = req.method.clone();
+                                    (serde_json::to_string(&handler.handle(req).await).unwrap(), m)
+                                }
+                                Err(_) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, "Parse error")).unwrap(), "BAD_JSON".to_string())
+                            }
+                        };
+                        (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", res_json.len(), res_json), m_name)
                     }
                 } else {
                     (format!("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"), "MALFORMED".to_string())

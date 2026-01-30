@@ -17,16 +17,24 @@ fn default_jsonrpc() -> String { "2.0".to_string() }
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JsonRpcResponse {
     pub jsonrpc: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
-    pub error: Option<JsonRpcError>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<Value>,
     pub id: Value,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct JsonRpcError {
-    pub code: i32,
-    pub message: String,
+impl JsonRpcResponse {
+    pub fn new_error(id: Value, code: i32, message: &str) -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            result: None,
+            error: Some(serde_json::json!({ "code": code, "message": message })),
+            id,
+        }
+    }
 }
+
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -288,15 +296,7 @@ impl RpcHandler {
                 id: request.id,
             }
         } else {
-            JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: None,
-                error: Some(JsonRpcError {
-                    code: -32601,
-                    message: "Method not found".to_string(),
-                }),
-                id: request.id,
-            }
+            JsonRpcResponse::new_error(request.id, -32601, "Method not found")
         }
     }
 }
