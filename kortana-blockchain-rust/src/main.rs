@@ -197,25 +197,34 @@ async fn main() {
             let (mut socket, _) = listener.accept().await.unwrap();
             let handler = rpc_handler.clone();
             tokio::spawn(async move {
-                let mut buffer = [0u8; 4096];
+                let mut buffer = [0u8; 8192];
                 if let Ok(n) = tokio::io::AsyncReadExt::read(&mut socket, &mut buffer).await {
                     let req_str = String::from_utf8_lossy(&buffer[..n]);
-                    if req_str.starts_with("OPTIONS") {
-                        let res = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n";
-                        let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, res.as_bytes()).await;
+                    
+                    let (http_res, method_name) = if req_str.starts_with("OPTIONS") {
+                        (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
                     } else if let Some(body_start) = req_str.find("\r\n\r\n") {
-                        let body = &req_str[body_start + 4..];
+                        let body = req_str[body_start + 4..].trim_end_matches('\0').trim();
                         if let Ok(req) = serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
+                            let m = req.method.clone();
                             let res = handler.handle(req).await;
                             let res_str = serde_json::to_string(&res).unwrap();
-                            let http_res = format!(
+                            (format!(
                                 "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}",
                                 res_str.len(),
                                 res_str
-                            );
-                            let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, http_res.as_bytes()).await;
+                            ), m)
+                        } else {
+                            (format!("HTTP/1.1 400 Bad Request\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 0\r\n\r\n"), "BAD_JSON".to_string())
                         }
+                    } else {
+                        (format!("HTTP/1.1 400 Bad Request\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 0\r\n\r\n"), "MALFORMED".to_string())
+                    };
+
+                    if method_name != "OPTIONS" {
+                        println!("{}[RPC]{} Method: {} -> {}", CLR_CYAN, CLR_RESET, method_name, if http_res.contains("200 OK") { "OK" } else { "ERR" });
                     }
+                    let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, http_res.as_bytes()).await;
                 }
             });
         }
