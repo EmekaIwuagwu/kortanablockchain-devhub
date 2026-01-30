@@ -8,14 +8,31 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}=== Kortana Blockchain Node Deployment Script ===${NC}"
 echo "Target OS: Ubuntu 20.04 - 24.04 LTS"
+echo ""
+
+# Check for root/sudo
+if [[ $EUID -ne 0 ]]; then
+   echo -e "${RED}Error: This script must be run with sudo or as root.${NC}"
+   exit 1
+fi
 
 # 1. System Update
-echo -e "${GREEN}[1/7] Updating System...${NC}"
-sudo DEBIAN_FRONTEND=noninteractive apt update && sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
+echo -e "${GREEN}[1/7] Updating and Upgrading System...${NC}"
+sudo DEBIAN_FRONTEND=noninteractive apt update
+sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
 
-# 2. Install Dependencies
-echo -e "${GREEN}[2/7] Installing Dependencies...${NC}"
-sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential curl git pkg-config libssl-dev ufw screen
+# 2. Install Dependencies & Peripherals
+echo -e "${GREEN}[2/7] Installing Dependencies & Production Peripherals...${NC}"
+# build-essential: needed for compiling C dependencies
+# curl/git: basic tools
+# pkg-config/libssl-dev: for networking and crypto crates
+# chrony: CRITICAL for blockchains to keep time in sync
+# libclang-dev: needed for many Rust 'bindgen' crates
+# jq: helper for RPC testing via CLI
+# ufw: for firewall management
+sudo DEBIAN_FRONTEND=noninteractive apt install -y \
+    build-essential curl git pkg-config libssl-dev libclang-dev \
+    chrony jq ufw screen zip unzip
 
 # 3. Install Rust
 echo -e "${GREEN}[3/7] Installing Rust (stable)...${NC}"
