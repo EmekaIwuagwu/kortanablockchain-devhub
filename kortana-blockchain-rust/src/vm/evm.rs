@@ -85,7 +85,7 @@ impl EvmExecutor {
         }
     }
 
-    pub fn execute(&mut self, bytecode: &[u8], state: &mut crate::state::account::State, header: &crate::types::block::BlockHeader) -> Result<(), EvmError> {
+    pub fn execute(&mut self, bytecode: &[u8], state: &mut crate::state::account::State, header: &crate::types::block::BlockHeader) -> Result<Vec<u8>, EvmError> {
         let mut pc = 0;
         let mut _return_data = Vec::new();
 
@@ -235,7 +235,7 @@ impl EvmExecutor {
                 _ => return Err(EvmError::InvalidOpcode),
             }
         }
-        Ok(())
+        Ok(_return_data)
     }
 
     fn consume_gas(&mut self, amount: u64) -> Result<(), EvmError> {

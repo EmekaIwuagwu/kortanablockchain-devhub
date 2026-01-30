@@ -229,6 +229,10 @@ The node exposes a standard JSON-RPC 2.0 interface on port `8545`.
 | `eth_getTransactionCount` | Returns nonce for an address. | `[address, block]` |
 | `eth_sendRawTransaction` | Submits a signed RLP transaction. | `[signedTxHex]` |
 | `eth_getTransactionByHash` | Returns transaction details. | `[txHash]` |
+| `eth_call` | Executes a read-only smart contract call. | `[{to, data}, block]` |
+| `eth_estimateGas` | Estimates gas for a transaction. | `[{to, data}]` |
+| `eth_getCode` | Returns contract bytecode. | `[address, block]` |
+| `eth_gasPrice` | Returns current gas price (1 Gwei). | `[]` |
 | `net_version` | Returns the network ID. | `[]` |
 | `web3_clientVersion` | Returns client version. | `[]` |
 

@@ -116,6 +116,63 @@ impl RpcHandler {
                     } else { None }
                 } else { None }
             }
+            "eth_call" => {
+                let params: Result<Vec<Value>, _> = serde_json::from_value(request.params.clone());
+                if let Ok(p) = params {
+                    if let Some(call_obj) = p.first() {
+                        // Extract 'to' and 'data'
+                        let to_str = call_obj.get("to").and_then(|v| v.as_str()).unwrap_or("");
+                        let data_str = call_obj.get("data").and_then(|v| v.as_str()).unwrap_or("");
+                        
+                        if let Ok(to) = crate::address::Address::from_hex(to_str) {
+                             let data = hex::decode(data_str.strip_prefix("0x").unwrap_or(data_str)).unwrap_or_default();
+                             
+                             // Clone state for read-only execution (Expensive but MV P)
+                             let mut temp_state = {
+                                 let state = self.state.lock().unwrap();
+                                 (*state).clone() 
+                             };
+                             
+                             // Get code
+                             let code = temp_state.get_code(&to.as_evm_address_u256()).unwrap_or_default();
+                             
+                             // Dummy Header
+                             let header = crate::types::block::BlockHeader {
+                                    version: 1, height: 0, slot: 0, timestamp: 0, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: crate::address::Address::ZERO, gas_used: 0, gas_limit: 30_000_000, base_fee: 0, vrf_output: [0u8; 32]
+                             };
+
+                             let mut executor = crate::vm::evm::EvmExecutor::new(to, 10_000_000);
+                             if let Ok(output) = executor.execute(&code, &mut temp_state, &header) {
+                                  Some(serde_json::to_value(format!("0x{}", hex::encode(output))).unwrap())
+                             } else {
+                                  Some(serde_json::to_value("0x").unwrap())
+                             }
+                        } else { None }
+                    } else { None }
+                } else { None }
+            }
+            "eth_estimateGas" => {
+                // Return static 21000 for standard txs, simple estimation
+                Some(serde_json::to_value("0x5208").unwrap()) 
+            }
+            "eth_getCode" => {
+                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                if let Ok(p) = params {
+                     if let Some(addr_str) = p.first() {
+                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
+                             let state = self.state.lock().unwrap();
+                             let code_res = state.get_code(&addr.as_evm_address_u256());
+                             match code_res {
+                                 Some(c) => Some(serde_json::to_value(format!("0x{}", hex::encode(c))).unwrap()),
+                                 None => Some(serde_json::to_value("0x").unwrap())
+                             }
+                         } else { None }
+                     } else { None }
+                } else { None }
+            }
+            "eth_gasPrice" => {
+                Some(serde_json::to_value("0x3b9aca00").unwrap()) // 1 Gwei
+            }
             "net_version" => Some(serde_json::to_value(self.chain_id.to_string()).unwrap()),
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
             _ => None,

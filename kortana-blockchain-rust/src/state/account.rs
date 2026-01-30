@@ -28,6 +28,7 @@ impl Account {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct State {
     pub accounts: HashMap<Address, Account>,
     pub storage: HashMap<Address, HashMap<[u8; 32], [u8; 32]>>,
