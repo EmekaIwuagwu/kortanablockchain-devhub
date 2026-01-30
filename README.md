@@ -214,6 +214,49 @@ QUORLIN:
 
 ---
 
+## 🌐 API REFERENCE (JSON-RPC)
+
+The node exposes a standard JSON-RPC 2.0 interface on port `8545`.
+
+### Supported Methods:
+
+| Method | Description | Parameters |
+|--------|-------------|------------|
+| `eth_chainId` | Returns the chain ID (Hex). | `[]` |
+| `eth_blockNumber` | Returns the current block height. | `[]` |
+| `eth_getBlockByNumber` | Returns block details by height. | `[blockNumber, fullTx]` |
+| `eth_getBalance` | Returns balance of an address. | `[address, block]` |
+| `eth_getTransactionCount` | Returns nonce for an address. | `[address, block]` |
+| `eth_sendRawTransaction` | Submits a signed RLP transaction. | `[signedTxHex]` |
+| `eth_getTransactionByHash` | Returns transaction details. | `[txHash]` |
+| `net_version` | Returns the network ID. | `[]` |
+| `web3_clientVersion` | Returns client version. | `[]` |
+
+**Example Request:**
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_getBalance","params":["kn:0x...","latest"],"id":1}' \
+  http://localhost:8545
+```
+
+---
+
+## 💻 CROSS-PLATFORM SUPPORT
+
+Kortana Blockchain is built in **Rust**, ensuring native performance on all major operating systems.
+
+### Linux (Ubuntu/Debian)
+- **Supported:** Ubuntu 20.04 - 24.04 LTS
+- **Deployment:** Use `scripts/deploy_ubuntu.sh`
+- **Features:** Systemd service, UFW firewall, Log rotation.
+
+### Windows (10/11/Server)
+- **Supported:** Windows 10, 11, Server 2019+
+- **Deployment:** Use `scripts/deploy_windows.ps1`
+- **Features:** Native `.exe` execution, PowerShell integration.
+
+---
+
 ## 🔐 SECURITY GUARANTEES
 
 ✅ **NO Placeholders** - Every line is complete  
