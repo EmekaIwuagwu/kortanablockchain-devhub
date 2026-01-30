@@ -275,6 +275,7 @@ impl RpcHandler {
             "net_listening" => Some(serde_json::to_value(true).unwrap()),
             "eth_syncing" => Some(serde_json::to_value(false).unwrap()),
             "eth_accounts" => Some(Value::Array(vec![])),
+            "eth_protocolVersion" => Some(serde_json::to_value("0x41").unwrap()),
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
             _ => None,
         };
