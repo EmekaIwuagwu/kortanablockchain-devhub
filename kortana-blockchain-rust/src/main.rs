@@ -86,6 +86,14 @@ async fn main() {
                 let mut buffer = [0; 4096];
                 if let Ok(n) = tokio::io::AsyncReadExt::read(&mut socket, &mut buffer).await {
                     if let Ok(req_str) = std::str::from_utf8(&buffer[..n]) {
+                        
+                        // Handler for OPTIONS (Preflight)
+                        if req_str.starts_with("OPTIONS") {
+                            let response = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nContent-Length: 0\r\n\r\n";
+                            let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, response.as_bytes()).await;
+                            return;
+                        }
+
                         // Very simplified HTTP parsing
                         if let Some(body_start) = req_str.find("\r\n\r\n") {
                             let body = &req_str[body_start+4..];
@@ -93,7 +101,7 @@ async fn main() {
                                 let response = handler.handle(request).await;
                                 let response_str = serde_json::to_string(&response).unwrap();
                                 let http_response = format!(
-                                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
+                                    "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}",
                                     response_str.len(),
                                     response_str
                                 );
