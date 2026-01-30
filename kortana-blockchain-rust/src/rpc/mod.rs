@@ -173,6 +173,25 @@ impl RpcHandler {
             "eth_gasPrice" => {
                 Some(serde_json::to_value("0x3b9aca00").unwrap()) // 1 Gwei
             }
+            "eth_getTransactionReceipt" => {
+                let params: Result<Vec<String>, _> = serde_json::from_value(request.params.clone());
+                if let Ok(p) = params {
+                    if let Some(hash_str) = p.first() {
+                         let hash_hex = hash_str.strip_prefix("0x").unwrap_or(hash_str);
+                         if let Ok(Some(receipt)) = self.storage.get_receipt(&format!("0x{}", hash_hex)) {
+                             // Enrich receipt with block info if possible (stubbed here)
+                             // Normally we'd look up which block the tx is in.
+                             // For now return raw receipt fields + dummy block info required by explorers
+                             let mut val = serde_json::to_value(receipt).unwrap();
+                             /* 
+                                Ideally inject: blockNumber, transactionIndex, etc.
+                                For MVP, just returning what we stored.
+                             */
+                             Some(val)
+                         } else { None }
+                    } else { None }
+                } else { None }
+            }
             "net_version" => Some(serde_json::to_value(self.chain_id.to_string()).unwrap()),
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
             _ => None,

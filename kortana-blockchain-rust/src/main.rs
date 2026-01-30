@@ -167,6 +167,11 @@ async fn main() {
                         header.receipts_root = receipt_root;
                         header.gas_used = receipts.iter().map(|r| r.gas_used).sum();
 
+                        // Save Receipts to Storage (For Explorer)
+                        for receipt in &receipts {
+                            let _ = node.storage.put_receipt(receipt);
+                        }
+
                         // Create Block
                         let mut block = kortana_blockchain_rust::types::block::Block {
                             header,

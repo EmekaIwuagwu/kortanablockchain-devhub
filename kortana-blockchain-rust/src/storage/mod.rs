@@ -49,4 +49,20 @@ impl Storage {
             None => Ok(None),
         }
     }
+
+    pub fn put_receipt(&self, receipt: &crate::types::transaction::TransactionReceipt) -> Result<(), String> {
+        let key = format!("receipt:0x{}", hex::encode(receipt.tx_hash));
+        let val = serde_json::to_vec(receipt).map_err(|e| e.to_string())?;
+        self.db.insert(key, val).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_receipt(&self, hash_hex: &str) -> Result<Option<crate::types::transaction::TransactionReceipt>, String> {
+        let key = format!("receipt:{}", hash_hex);
+        let val = self.db.get(key).map_err(|e| e.to_string())?;
+        match val {
+            Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
+            None => Ok(None),
+        }
+    }
 }
