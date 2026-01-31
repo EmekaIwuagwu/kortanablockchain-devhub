@@ -36,20 +36,24 @@ impl JsonRpcResponse {
 }
 
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
 use crate::state::account::State;
 use crate::mempool::Mempool;
+use crate::storage::Storage;
 use tokio::sync::mpsc;
 
 pub struct RpcHandler {
     pub state: Arc<Mutex<State>>,
     pub mempool: Arc<Mutex<Mempool>>,
-    pub network_tx: mpsc::UnboundedSender<crate::network::messages::NetworkMessage>,
+    pub storage: Arc<Storage>,
+    pub network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>,
+    pub height: Arc<AtomicU64>,
     pub chain_id: u64,
 }
 
 impl RpcHandler {
-    pub fn new(state: Arc<Mutex<State>>, mempool: Arc<Mutex<Mempool>>, network_tx: mpsc::UnboundedSender<crate::network::messages::NetworkMessage>, chain_id: u64) -> Self {
-        Self { state, mempool, network_tx, chain_id }
+    pub fn new(state: Arc<Mutex<State>>, mempool: Arc<Mutex<Mempool>>, storage: Arc<Storage>, network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>, height: Arc<AtomicU64>, chain_id: u64) -> Self {
+        Self { state, mempool, storage, network_tx, height, chain_id }
     }
 
     pub async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
@@ -58,7 +62,7 @@ impl RpcHandler {
         let result: Option<Value> = match request.method.as_str() {
             "eth_chainId" => Some(serde_json::to_value(format!("0x{:x}", self.chain_id)).unwrap()),
             "eth_blockNumber" => {
-                let height = 5471; // Mock or from shared state
+                let height = self.height.load(Ordering::Relaxed);
                 Some(serde_json::to_value(format!("0x{:x}", height)).unwrap())
             }
             "eth_getBalance" => {
@@ -98,9 +102,11 @@ impl RpcHandler {
                                 Ok(bytes) => {
                                     match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
                                         Ok(tx) => {
-                                            let mut mempool = self.mempool.lock().unwrap();
-                                            mempool.add(tx.clone());
-                                            let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
+                                            {
+                                                let mut mempool = self.mempool.lock().unwrap();
+                                                mempool.add(tx.clone());
+                                            } // Lock dropped here
+                                            let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone())).await;
                                             Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
                                         },
                                         Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32700, &format!("Parse error: {}", e))).unwrap())
@@ -139,7 +145,7 @@ impl RpcHandler {
         };
 
         if let Some(res) = result {
-            if res.is_object() && res.get("jsonrpc").is_some() {
+            if res.is_object() && res.as_object().unwrap().contains_key("jsonrpc") {
                 serde_json::from_value::<JsonRpcResponse>(res).unwrap()
             } else {
                 JsonRpcResponse {
