@@ -78,7 +78,7 @@ fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmTy
         gas_price: 1_000_000_000,
         data,
         vm_type,
-        chain_id: 1337,
+        chain_id: 21337,
         signature: None,
     };
 
