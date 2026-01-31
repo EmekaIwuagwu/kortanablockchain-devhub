@@ -58,7 +58,9 @@ impl RpcHandler {
 
     pub async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         let req_id = request.id.clone();
-        
+        let params = request.params.unwrap_or(Value::Array(vec![]));
+        let p = params.as_array();
+
         let result: Option<Value> = match request.method.as_str() {
             "eth_chainId" => Some(serde_json::to_value(format!("0x{:x}", self.chain_id)).unwrap()),
             "eth_blockNumber" => {
@@ -68,10 +70,8 @@ impl RpcHandler {
             "eth_gasPrice" => Some(serde_json::to_value("0x3b9aca00").unwrap()), // 1 Gwei
             "eth_estimateGas" => Some(serde_json::to_value("0x5208").unwrap()), // 21000
             "eth_getBalance" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(addr_str) = p.first() {
+                if let Some(arr) = p {
+                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let state = self.state.lock().unwrap();
                             let acc = state.get_account(&addr);
@@ -81,10 +81,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_getTransactionCount" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(addr_str) = p.first() {
+                if let Some(arr) = p {
+                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let state = self.state.lock().unwrap();
                             let acc = state.get_account(&addr);
@@ -94,10 +92,8 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_getCode" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(addr_str) = p.first() {
+                if let Some(arr) = p {
+                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                              let state = self.state.lock().unwrap();
                              let acc = state.get_account(&addr);
@@ -111,7 +107,6 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_call" => {
-                // Return dummy zero for generic read calls, satisfying MetaMask balance checks
                 Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap())
             }
             "eth_feeHistory" => {
@@ -123,32 +118,27 @@ impl RpcHandler {
                 }))
             }
             "eth_sendRawTransaction" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                match params {
-                    Ok(p) => {
-                        if let Some(raw_tx_hex) = p.first() {
-                            let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
-                            match hex::decode(hex_str) {
-                                Ok(bytes) => {
-                                    match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
-                                        Ok(tx) => {
-                                            {
-                                                let mut mempool = self.mempool.lock().unwrap();
-                                                mempool.add(tx.clone());
-                                            }
-                                            let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone())).await;
-                                            Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
-                                        },
-                                        Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32700, &format!("Parse error: {}", e))).unwrap())
-                                    }
-                                },
-                                Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32700, &format!("Hex error: {}", e))).unwrap())
-                            }
-                        } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Missing tx data")).unwrap()) }
-                    },
-                    Err(_) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Invalid params")).unwrap())
-                }
+                if let Some(arr) = p {
+                    if let Some(raw_tx_hex) = arr.get(0).and_then(|v| v.as_str()) {
+                        let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
+                        match hex::decode(hex_str) {
+                            Ok(bytes) => {
+                                match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
+                                    Ok(tx) => {
+                                        {
+                                            let mut mempool = self.mempool.lock().unwrap();
+                                            mempool.add(tx.clone());
+                                        }
+                                        let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone())).await;
+                                        Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
+                                    },
+                                    Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("RLP error: {}", e))).unwrap())
+                                }
+                            },
+                            Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("Hex error: {}", e))).unwrap())
+                        }
+                    } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Invalid tx hex")).unwrap()) }
+                } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Params must be an array")).unwrap()) }
             }
             "eth_getBlockByNumber" => {
                 let height = self.height.load(Ordering::Relaxed);
@@ -174,12 +164,11 @@ impl RpcHandler {
                 }))
             }
             "eth_requestDNR" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(addr_str) = p.first() {
+                if let Some(arr) = p {
+                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
-                            let amount_dnr: u128 = p.get(1).and_then(|s| s.parse().ok()).unwrap_or(10);
+                            let amount_str = arr.get(1).and_then(|v| v.as_str()).unwrap_or("10");
+                            let amount_dnr: u128 = amount_str.parse().unwrap_or(10);
                             let mut state = self.state.lock().unwrap();
                             let mut acc = state.get_account(&addr);
                             acc.balance += amount_dnr * 10u128.pow(18);
