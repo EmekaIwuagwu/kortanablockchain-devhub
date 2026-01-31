@@ -102,7 +102,6 @@ impl RpcHandler {
                              let state = self.state.lock().unwrap();
                              let acc = state.get_account(&addr);
                              if acc.is_contract {
-                                 // Return a dummy bytecode for detection
                                  Some(serde_json::to_value("0x608060405234801561001057600080fd5b5061012f").unwrap())
                              } else {
                                  Some(serde_json::to_value("0x").unwrap())
@@ -110,6 +109,18 @@ impl RpcHandler {
                         } else { None }
                     } else { None }
                 } else { None }
+            }
+            "eth_call" => {
+                // Return dummy zero for generic read calls, satisfying MetaMask balance checks
+                Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap())
+            }
+            "eth_feeHistory" => {
+                Some(serde_json::json!({
+                    "baseFeePerGas": ["0x3b9aca00", "0x3b9aca00", "0x3b9aca00", "0x3b9aca00", "0x3b9aca00"],
+                    "gasUsedRatio": [0.0, 0.0, 0.0, 0.0],
+                    "oldestBlock": "0x1",
+                    "reward": [["0x0"], ["0x0"], ["0x0"], ["0x0"]]
+                }))
             }
             "eth_sendRawTransaction" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
@@ -143,7 +154,7 @@ impl RpcHandler {
                 let height = self.height.load(Ordering::Relaxed);
                 Some(serde_json::json!({
                     "number": format!("0x{:x}", height),
-                    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "hash": format!("0x{}", hex::encode(vec![height as u8; 32])),
                     "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                     "nonce": "0x0000000000000000",
                     "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
