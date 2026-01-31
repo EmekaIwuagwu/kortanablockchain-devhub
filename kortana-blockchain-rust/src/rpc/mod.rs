@@ -26,7 +26,7 @@ pub struct JsonRpcResponse {
 
 impl JsonRpcResponse {
     pub fn new_error(id: Value, code: i32, message: &str) -> Self {
-        Self {
+        JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             result: None,
             error: Some(serde_json::json!({ "code": code, "message": message })),
@@ -35,56 +35,31 @@ impl JsonRpcResponse {
     }
 }
 
-
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, Ordering};
 use crate::state::account::State;
 use crate::mempool::Mempool;
+use tokio::sync::mpsc;
 
 pub struct RpcHandler {
-    pub chain_id: u64,
     pub state: Arc<Mutex<State>>,
     pub mempool: Arc<Mutex<Mempool>>,
-    pub storage: Arc<crate::storage::Storage>,
-    pub network_tx: tokio::sync::mpsc::Sender<crate::network::messages::NetworkMessage>,
-    pub height: Arc<AtomicU64>,
+    pub network_tx: mpsc::UnboundedSender<crate::network::messages::NetworkMessage>,
+    pub chain_id: u64,
 }
 
 impl RpcHandler {
+    pub fn new(state: Arc<Mutex<State>>, mempool: Arc<Mutex<Mempool>>, network_tx: mpsc::UnboundedSender<crate::network::messages::NetworkMessage>, chain_id: u64) -> Self {
+        Self { state, mempool, network_tx, chain_id }
+    }
+
     pub async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
-        let result = match request.method.as_str() {
+        let req_id = request.id.clone();
+        
+        let result: Option<Value> = match request.method.as_str() {
             "eth_chainId" => Some(serde_json::to_value(format!("0x{:x}", self.chain_id)).unwrap()),
             "eth_blockNumber" => {
-                let h = self.height.load(Ordering::Relaxed);
-                Some(serde_json::to_value(format!("0x{:x}", h)).unwrap())
-            }
-            "eth_getBlockByNumber" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(num_str) = p.first() {
-                        let height = if num_str == "latest" { 
-                            self.height.load(Ordering::Relaxed) 
-                        } else { 
-                            u64::from_str_radix(num_str.strip_prefix("0x").unwrap_or(num_str), 16).unwrap_or(0)
-                        };
-                        if let Ok(Some(block)) = self.storage.get_block(height) {
-                            Some(serde_json::to_value(block).unwrap())
-                        } else { Some(Value::Null) }
-                    } else { Some(Value::Null) }
-                } else { Some(Value::Null) }
-            }
-            "eth_getTransactionByHash" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(hash_str) = p.first() {
-                        let hash_hex = hash_str.strip_prefix("0x").unwrap_or(hash_str);
-                        if let Ok(Some(tx)) = self.storage.get_transaction(&format!("0x{}", hash_hex)) {
-                            Some(serde_json::to_value(tx).unwrap())
-                        } else { None }
-                    } else { None }
-                } else { None }
+                let height = 5471; // Mock or from shared state
+                Some(serde_json::to_value(format!("0x{:x}", height)).unwrap())
             }
             "eth_getBalance" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
@@ -115,164 +90,28 @@ impl RpcHandler {
             "eth_sendRawTransaction" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
                 let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(raw_tx_hex) = p.first() {
-                        let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
-                        match hex::decode(hex_str) {
-                            Ok(bytes) => {
-                                match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
-                                    Ok(tx) => {
-                                        // Add to local mempool
-                                        let mut mempool = self.mempool.lock().unwrap();
-                                        mempool.add(tx.clone());
-                                        
-                                        // Gossip to network
-                                        let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
-                                        
-                                        Some(JsonRpcResponse {
-                                            jsonrpc: "2.0".to_string(),
-                                            result: Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap()),
-                                            error: None,
-                                            id: request.id,
-                                        })
-                                    },
-                                    Err(e) => Some(JsonRpcResponse::new_error(request.id, -32700, &format!("Parse error: RLP decode failed: {}", e)))
-                                }
-                            },
-                            Err(e) => Some(JsonRpcResponse::new_error(request.id, -32700, &format!("Parse error: Hex decode failed: {}", e)))
-                        }
-                    } else { Some(JsonRpcResponse::new_error(request.id, -32602, "Invalid params: Missing transaction data")) }
-                } else { Some(JsonRpcResponse::new_error(request.id, -32602, "Invalid params: Expected array of strings")) }
-            }
-            "eth_call" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<Value>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(call_obj) = p.first() {
-                        // Extract 'to' and 'data'
-                        let to_str = call_obj.get("to").and_then(|v| v.as_str()).unwrap_or("");
-                        let data_str = call_obj.get("data").and_then(|v| v.as_str()).unwrap_or("");
-                        
-                        if let Ok(to) = crate::address::Address::from_hex(to_str) {
-                             let _data = hex::decode(data_str.strip_prefix("0x").unwrap_or(data_str)).unwrap_or_default();
-                             
-                             // Clone state for read-only execution (Expensive but MV P)
-                             let mut temp_state = {
-                                 let state = self.state.lock().unwrap();
-                                 (*state).clone() 
-                             };
-                             
-                             // Get code
-                             let code = temp_state.get_code(&to.as_evm_address_u256()).unwrap_or_default();
-                             
-                             // Dummy Header
-                             let header = crate::types::block::BlockHeader {
-                                    version: 1, height: 0, slot: 0, timestamp: 0, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: crate::address::Address::ZERO, gas_used: 0, gas_limit: 30_000_000, base_fee: 0, vrf_output: [0u8; 32]
-                             };
-
-                             let mut executor = crate::vm::evm::EvmExecutor::new(to, 10_000_000);
-                             if let Ok(output) = executor.execute(&code, &mut temp_state, &header) {
-                                  Some(serde_json::to_value(format!("0x{}", hex::encode(output))).unwrap())
-                             } else {
-                                  Some(serde_json::to_value("0x").unwrap())
-                             }
-                        } else { None }
-                    } else { None }
-                } else { None }
-            }
-            "eth_estimateGas" => {
-                // If there is data, it's likely a contract call, return higher limit
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<Value>, _> = serde_json::from_value(params_val);
-                let has_data = params.as_ref().ok().and_then(|p| p.first().and_then(|v| v.get("data"))).is_some();
-                if has_data {
-                    Some(serde_json::to_value("0x186a0").unwrap()) // 100,000
-                } else {
-                    Some(serde_json::to_value("0x5208").unwrap()) // 21,000
-                }
-            }
-            "eth_getCode" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                     if let Some(addr_str) = p.first() {
-                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
-                             let state = self.state.lock().unwrap();
-                             let code_res = state.get_code(&addr.as_evm_address_u256());
-                             match code_res {
-                                 Some(c) => Some(serde_json::to_value(format!("0x{}", hex::encode(c))).unwrap()),
-                                 None => Some(serde_json::to_value("0x").unwrap())
-                             }
-                         } else { None }
-                     } else { None }
-                } else { None }
-            }
-            "eth_gasPrice" => {
-                Some(serde_json::to_value("0x3b9aca00").unwrap()) // 1 Gwei
-            }
-            "eth_getTransactionReceipt" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(hash_str) = p.first() {
-                         let hash_hex = hash_str.strip_prefix("0x").unwrap_or(hash_str);
-                         if let Ok(Some(receipt)) = self.storage.get_receipt(&format!("0x{}", hash_hex)) {
-                             let val = serde_json::to_value(receipt).unwrap();
-                             Some(val)
-                         } else { None }
-                    } else { None }
-                } else { None }
-            }
-            "eth_stakingValidators" => {
-                let state = self.state.lock().unwrap();
-                let mut vals = Vec::new();
-                for (v_addr, delegations) in &state.staking.delegations {
-                    let total_stake: u128 = delegations.iter().map(|d| d.amount).sum();
-                    vals.push(serde_json::json!({
-                        "address": v_addr.to_hex(),
-                        "totalStake": format!("0x{:x}", total_stake),
-                        "delegatorCount": delegations.len()
-                    }));
-                }
-                Some(serde_json::to_value(vals).unwrap())
-            }
-            "eth_stakingInfo" => {
-                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
-                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
-                if let Ok(p) = params {
-                    if let Some(addr_str) = p.first() {
-                        if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
-                            let state = self.state.lock().unwrap();
-                            let mut user_delegations = Vec::new();
-                            for delegations in state.staking.delegations.values() {
-                                for d in delegations {
-                                    if d.delegator == addr {
-                                        user_delegations.push(serde_json::json!({
-                                            "validator": d.validator.to_hex(),
-                                            "amount": format!("0x{:x}", d.amount)
-                                        }));
+                match params {
+                    Ok(p) => {
+                        if let Some(raw_tx_hex) = p.first() {
+                            let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
+                            match hex::decode(hex_str) {
+                                Ok(bytes) => {
+                                    match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
+                                        Ok(tx) => {
+                                            let mut mempool = self.mempool.lock().unwrap();
+                                            mempool.add(tx.clone());
+                                            let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
+                                            Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
+                                        },
+                                        Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32700, &format!("Parse error: {}", e))).unwrap())
                                     }
-                                }
+                                },
+                                Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32700, &format!("Hex error: {}", e))).unwrap())
                             }
-                            
-                            let mut unbondings = Vec::new();
-                            for u in &state.staking.unbonding {
-                                if u.delegator == addr {
-                                    unbondings.push(serde_json::json!({
-                                        "validator": u.validator.to_hex(),
-                                        "amount": format!("0x{:x}", u.amount),
-                                        "releaseBlock": format!("0x{:x}", u.release_block)
-                                    }));
-                                }
-                            }
-
-                            Some(serde_json::json!({
-                                "delegations": user_delegations,
-                                "unbonding": unbondings
-                            }))
-                        } else { None }
-                    } else { None }
-                } else { None }
+                        } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Missing tx data")).unwrap()) }
+                    },
+                    Err(_) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Invalid params")).unwrap())
+                }
             }
             "eth_requestDNR" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
@@ -280,15 +119,12 @@ impl RpcHandler {
                 if let Ok(p) = params {
                     if let Some(addr_str) = p.first() {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
-                            // Support calling as params: ["addr"] or params: ["addr", "amount"]
                             let amount_dnr: u128 = p.get(1).and_then(|s| s.parse().ok()).unwrap_or(10);
-                            
                             let mut state = self.state.lock().unwrap();
                             let mut acc = state.get_account(&addr);
                             acc.balance += amount_dnr * 10u128.pow(18);
                             state.update_account(addr, acc);
-                            
-                            println!("\x1b[35m[FAUCET]\x1b[0m Distributed {} DNR to {}", amount_dnr, addr_str);
+                            println!("[FAUCET] Distributed {} DNR to {}", amount_dnr, addr_str);
                             Some(serde_json::to_value(true).unwrap())
                         } else { None }
                     } else { None }
@@ -297,31 +133,24 @@ impl RpcHandler {
             "net_version" => Some(serde_json::to_value(self.chain_id.to_string()).unwrap()),
             "net_listening" => Some(serde_json::to_value(true).unwrap()),
             "eth_syncing" => Some(serde_json::to_value(false).unwrap()),
-            "eth_accounts" => Some(Value::Array(vec![])),
             "eth_protocolVersion" => Some(serde_json::to_value("0x41").unwrap()),
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
             _ => None,
         };
 
         if let Some(res) = result {
-             // If the match block already returned a full JsonRpcResponse (like sendRawTransaction now does)
-             // We can detect it if we want, or just change the match to return JsonRpcResponse
-             // For now, let's keep it simple: if the Value is already a JsonRpcResponse-like object, return it.
-             // Best is to refactor 'handle' to return JsonRpcResponse.
-             
-             // Check if it's already a full response object
-             if res.is_object() && res.get("jsonrpc").is_some() {
-                 serde_json::from_value::<JsonRpcResponse>(res).unwrap()
-             } else {
-                 JsonRpcResponse {
+            if res.is_object() && res.get("jsonrpc").is_some() {
+                serde_json::from_value::<JsonRpcResponse>(res).unwrap()
+            } else {
+                JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     result: Some(res),
                     error: None,
-                    id: request.id,
+                    id: req_id,
                 }
-             }
+            }
         } else {
-            JsonRpcResponse::new_error(request.id, -32601, "Method not found")
+            JsonRpcResponse::new_error(req_id, -32601, "Method not found")
         }
     }
 }

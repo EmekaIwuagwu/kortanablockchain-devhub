@@ -3,8 +3,6 @@ use kortana_blockchain_rust::types::transaction::{Transaction, VmType};
 use kortana_blockchain_rust::address::Address;
 use kortana_blockchain_rust::crypto::sign_message;
 use std::process::Command;
-use std::time::Duration;
-use std::thread::sleep;
 use serde_json::json;
 
 const RPC_URL: &str = "https://poseidon-rpc.kortana.name.ng";
@@ -27,7 +25,14 @@ fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
         .expect("Failed to execute curl");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let v: serde_json::Value = serde_json::from_str(&stdout).unwrap_or(json!(null));
+    let v: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_else(|_| {
+        println!("FAIL: Could not parse RPC response: {}", stdout);
+        json!({"error": {"message": "Invalid JSON"}})
+    });
+    
+    if let Some(err) = v.get("error") {
+        println!("   RPC ERROR: {}", err);
+    }
     v["result"].clone()
 }
 
@@ -61,7 +66,8 @@ fn main() {
 
 fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmType) {
     let nonce_hex = rpc_call("eth_getTransactionCount", json!([from.to_hex(), "latest"]));
-    let nonce = u64::from_str_radix(nonce_hex.as_str().unwrap_or("0x0").trim_start_matches("0x"), 16).unwrap_or(0);
+    let nonce_str = nonce_hex.as_str().unwrap_or("0x0").trim_start_matches("0x");
+    let nonce = u64::from_str_radix(nonce_str, 16).unwrap_or(0);
     
     let mut tx = Transaction {
         nonce,
@@ -72,7 +78,7 @@ fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmTy
         gas_price: 1_000_000_000,
         data,
         vm_type,
-        chain_id: 1,
+        chain_id: 1337,
         signature: None,
     };
 
@@ -83,4 +89,5 @@ fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmTy
     let tx_encoded = rlp::encode(&tx);
     let res = rpc_call("eth_sendRawTransaction", json!([format!("0x{}", hex::encode(tx_encoded))]));
     println!("   > Deployment Tx Hash: {:?}", res);
+    println!("   > Gas Provided: 1,000,000 units");
 }
