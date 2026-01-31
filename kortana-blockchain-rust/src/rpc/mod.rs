@@ -271,9 +271,9 @@ impl RpcHandler {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let mut state = self.state.lock().unwrap();
                             let mut acc = state.get_account(&addr);
-                            acc.balance += 10 * 10u128.pow(18); // 10 DNR
+                            acc.balance += 1500 * 10u128.pow(18); // 1500 DNR
                             state.update_account(addr, acc);
-                            println!("\x1b[35m[FAUCET]\x1b[0m Distributed 10 DNR to {}", addr_str);
+                            println!("\x1b[35m[FAUCET]\x1b[0m Distributed 1500 DNR to {}", addr_str);
                             Some(serde_json::to_value(true).unwrap())
                         } else { None }
                     } else { None }
