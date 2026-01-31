@@ -118,20 +118,31 @@ impl RpcHandler {
                 if let Ok(p) = params {
                     if let Some(raw_tx_hex) = p.first() {
                         let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
-                        if let Ok(bytes) = hex::decode(hex_str) {
-                            if let Ok(tx) = rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
-                                // Add to local mempool
-                                let mut mempool = self.mempool.lock().unwrap();
-                                mempool.add(tx.clone());
-                                
-                                // Gossip to network
-                                let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
-                                
-                                Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
-                            } else { None }
-                        } else { None }
-                    } else { None }
-                } else { None }
+                        match hex::decode(hex_str) {
+                            Ok(bytes) => {
+                                match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
+                                    Ok(tx) => {
+                                        // Add to local mempool
+                                        let mut mempool = self.mempool.lock().unwrap();
+                                        mempool.add(tx.clone());
+                                        
+                                        // Gossip to network
+                                        let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
+                                        
+                                        Some(JsonRpcResponse {
+                                            jsonrpc: "2.0".to_string(),
+                                            result: Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap()),
+                                            error: None,
+                                            id: request.id,
+                                        })
+                                    },
+                                    Err(e) => Some(JsonRpcResponse::new_error(request.id, -32700, &format!("Parse error: RLP decode failed: {}", e)))
+                                }
+                            },
+                            Err(e) => Some(JsonRpcResponse::new_error(request.id, -32700, &format!("Parse error: Hex decode failed: {}", e)))
+                        }
+                    } else { Some(JsonRpcResponse::new_error(request.id, -32602, "Invalid params: Missing transaction data")) }
+                } else { Some(JsonRpcResponse::new_error(request.id, -32602, "Invalid params: Expected array of strings")) }
             }
             "eth_call" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
@@ -293,12 +304,22 @@ impl RpcHandler {
         };
 
         if let Some(res) = result {
-            JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                result: Some(res),
-                error: None,
-                id: request.id,
-            }
+             // If the match block already returned a full JsonRpcResponse (like sendRawTransaction now does)
+             // We can detect it if we want, or just change the match to return JsonRpcResponse
+             // For now, let's keep it simple: if the Value is already a JsonRpcResponse-like object, return it.
+             // Best is to refactor 'handle' to return JsonRpcResponse.
+             
+             // Check if it's already a full response object
+             if res.is_object() && res.get("jsonrpc").is_some() {
+                 serde_json::from_value::<JsonRpcResponse>(res).unwrap()
+             } else {
+                 JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    result: Some(res),
+                    error: None,
+                    id: request.id,
+                }
+             }
         } else {
             JsonRpcResponse::new_error(request.id, -32601, "Method not found")
         }
