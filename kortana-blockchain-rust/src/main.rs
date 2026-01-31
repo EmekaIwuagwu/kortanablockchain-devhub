@@ -245,28 +245,43 @@ async fn main() {
                         "chain_id": CHAIN_ID, "height": task_node.height.load(Ordering::Relaxed)
                     }).to_string();
                     (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
-                } else if let Some(body_start) = req_body_str.find("\r\n\r\n") {
-                    let body = req_body_str[body_start + 4..].trim_end_matches('\0').trim();
+                } else if let Some(header_end) = req_body_str.find("\r\n\r\n") {
+                    let body_start = header_end + 4;
+                    let mut cl_val = 0;
+                    let req_lower = req_body_str.to_lowercase();
+                    if let Some(cl_start) = req_lower.find("content-length: ") {
+                        let cl_rest = &req_body_str[cl_start + 16..];
+                        if let Some(cl_end) = cl_rest.find("\r\n") {
+                            cl_val = cl_rest[..cl_end].trim().parse::<usize>().unwrap_or(0);
+                        }
+                    }
+
+                    let body = if cl_val > 0 {
+                        let end = std::cmp::min(body_start + cl_val, buffer.len());
+                        String::from_utf8_lossy(&buffer[body_start..end]).to_string()
+                    } else {
+                        req_body_str[body_start..].trim_end_matches('\0').trim().to_string()
+                    };
+
                     if body.is_empty() {
                         (format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\n\r\nKortana RPC is Live!"), "EMPTY_POST".to_string())
                     } else {
-                        // Handle both single and batch requests
                         let (res_json, m_name) = if body.starts_with('[') {
-                            match serde_json::from_str::<Vec<kortana_blockchain_rust::rpc::JsonRpcRequest>>(body) {
+                            match serde_json::from_str::<Vec<kortana_blockchain_rust::rpc::JsonRpcRequest>>(&body) {
                                 Ok(reqs) => {
                                     let mut results = Vec::new();
                                     for req in reqs { results.push(handler.handle(req).await); }
                                     (serde_json::to_string(&results).unwrap(), "BATCH".to_string())
                                 }
-                                Err(_) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, "Parse error")).unwrap(), "BAD_BATCH".to_string())
+                                Err(e) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, &format!("Parse error: {}", e))).unwrap(), "BAD_BATCH".to_string())
                             }
                         } else {
-                            match serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
+                            match serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(&body) {
                                 Ok(req) => {
                                     let m = req.method.clone();
                                     (serde_json::to_string(&handler.handle(req).await).unwrap(), m)
                                 }
-                                Err(_) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, "Parse error")).unwrap(), "BAD_JSON".to_string())
+                                Err(e) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, &format!("Parse error: {}", e))).unwrap(), "BAD_JSON".to_string())
                             }
                         };
                         (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", res_json.len(), res_json), m_name)
