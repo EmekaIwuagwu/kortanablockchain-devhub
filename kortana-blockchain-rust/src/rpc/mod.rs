@@ -107,9 +107,24 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_call" => {
-                // Mock balance: 1,000,000 tokens (decoded as uint256 = 10^24)
-                // 10^24 in hex is d3c21bcecceda1000000. Padded to 64 chars:
-                Some(serde_json::to_value("0x00000000000000000000000000000000000000000000d3c21bcecceda1000000").unwrap())
+                if let Some(arr) = p {
+                    if let Some(call_obj) = arr.get(0).and_then(|v| v.as_object()) {
+                        if let Some(data) = call_obj.get("data").and_then(|v| v.as_str()) {
+                            let data = data.strip_prefix("0x").unwrap_or(data);
+                            if data.starts_with("06fdde03") { // name()
+                                Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d42616e74756d6920546f6b656e00000000000000000000000000000000000000").unwrap())
+                            } else if data.starts_with("95d89b41") { // symbol()
+                                Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000442414e5400000000000000000000000000000000000000000000000000000000").unwrap())
+                            } else if data.starts_with("313ce567") { // decimals()
+                                Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000012").unwrap())
+                            } else if data.starts_with("70a08231") { // balanceOf(address)
+                                Some(serde_json::to_value("0x00000000000000000000000000000000000000000000d3c21bcecceda1000000").unwrap())
+                            } else {
+                                Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap())
+                            }
+                        } else { None }
+                    } else { None }
+                } else { None }
             }
             "eth_feeHistory" => {
                 Some(serde_json::json!({
