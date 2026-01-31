@@ -107,7 +107,9 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_call" => {
-                Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap())
+                // Mock balance: 1,000,000 tokens (decoded as uint256 = 10^24)
+                // 10^24 in hex is d3c21bcecceda1000000. Padded to 64 chars:
+                Some(serde_json::to_value("0x00000000000000000000000000000000000000000000d3c21bcecceda1000000").unwrap())
             }
             "eth_feeHistory" => {
                 Some(serde_json::json!({
