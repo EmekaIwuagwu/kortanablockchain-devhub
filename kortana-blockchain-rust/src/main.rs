@@ -210,17 +210,21 @@ async fn main() {
                         buffer.extend_from_slice(&temp_buf[..n]);
                         
                         let req_str = String::from_utf8_lossy(&buffer);
-                        if req_str.contains("\r\n\r\n") {
+                        let req_lower = req_str.to_lowercase();
+                        if let Some(header_end) = req_str.find("\r\n\r\n") {
                             // If we have a Content-Length, ensure we have the full body
-                            if let Some(cl_start) = req_str.find("Content-Length: ") {
-                                let cl_end = req_str[cl_start..].find("\r\n").unwrap_or(0);
+                            if let Some(cl_start) = req_lower.find("content-length: ") {
+                                let cl_end = req_lower[cl_start..].find("\r\n").unwrap_or(0);
                                 if cl_end > 0 {
-                                    let cl_val: usize = req_str[cl_start + 16..cl_start + cl_end].trim().parse().unwrap_or(0);
-                                    let body_start = req_str.find("\r\n\r\n").unwrap() + 4;
-                                    if buffer.len() >= body_start + cl_val { break; }
+                                    let cl_val_str = req_str[cl_start + 16..cl_start + cl_end].trim();
+                                    if let Ok(cl_val) = cl_val_str.parse::<usize>() {
+                                        let body_start = header_end + 4;
+                                        if buffer.len() >= body_start + cl_val { break; }
+                                    } else { break; } // Parse error in header, just break
                                 }
                             } else {
-                                // No content length, assume we have enough for simple requests
+                                // For GET/OPTIONS or POST without Content-Length
+                                // (If it's a POST without CL, we might need a different strategy, but most send it)
                                 break;
                             }
                         }
