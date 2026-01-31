@@ -65,6 +65,8 @@ impl RpcHandler {
                 let height = self.height.load(Ordering::Relaxed);
                 Some(serde_json::to_value(format!("0x{:x}", height)).unwrap())
             }
+            "eth_gasPrice" => Some(serde_json::to_value("0x3b9aca00").unwrap()), // 1 Gwei
+            "eth_estimateGas" => Some(serde_json::to_value("0x5208").unwrap()), // 21000
             "eth_getBalance" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
                 let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
@@ -91,6 +93,24 @@ impl RpcHandler {
                     } else { None }
                 } else { None }
             }
+            "eth_getCode" => {
+                let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
+                let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
+                if let Ok(p) = params {
+                    if let Some(addr_str) = p.first() {
+                        if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
+                             let state = self.state.lock().unwrap();
+                             let acc = state.get_account(&addr);
+                             if acc.is_contract {
+                                 // Return a dummy bytecode for detection
+                                 Some(serde_json::to_value("0x608060405234801561001057600080fd5b5061012f").unwrap())
+                             } else {
+                                 Some(serde_json::to_value("0x").unwrap())
+                             }
+                        } else { None }
+                    } else { None }
+                } else { None }
+            }
             "eth_sendRawTransaction" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));
                 let params: Result<Vec<String>, _> = serde_json::from_value(params_val);
@@ -105,7 +125,7 @@ impl RpcHandler {
                                             {
                                                 let mut mempool = self.mempool.lock().unwrap();
                                                 mempool.add(tx.clone());
-                                            } // Lock dropped here
+                                            }
                                             let _ = self.network_tx.send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone())).await;
                                             Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
                                         },
@@ -118,6 +138,29 @@ impl RpcHandler {
                     },
                     Err(_) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Invalid params")).unwrap())
                 }
+            }
+            "eth_getBlockByNumber" => {
+                let height = self.height.load(Ordering::Relaxed);
+                Some(serde_json::json!({
+                    "number": format!("0x{:x}", height),
+                    "hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "nonce": "0x0000000000000000",
+                    "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+                    "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+                    "stateRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+                    "miner": "0x0000000000000000000000000000000000000000",
+                    "difficulty": "0x20000",
+                    "totalDifficulty": "0x20000",
+                    "extraData": "0x",
+                    "size": "0x3e8",
+                    "gasLimit": "0x1c9c380",
+                    "gasUsed": "0x0",
+                    "timestamp": "0x5678",
+                    "transactions": [],
+                    "uncles": []
+                }))
             }
             "eth_requestDNR" => {
                 let params_val = request.params.clone().unwrap_or(Value::Array(vec![]));

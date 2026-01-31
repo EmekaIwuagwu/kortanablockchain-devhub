@@ -116,6 +116,21 @@ impl Address {
         }
         dist
     }
+
+    /// Derives a unique contract address from a creator and their nonce.
+    pub fn derive_contract_address(creator: &Address, nonce: u64) -> Self {
+        let mut hasher = Sha3_256::new();
+        hasher.update(creator.to_bytes());
+        hasher.update(nonce.to_be_bytes());
+        let result = hasher.finalize();
+        
+        let mut addr_bytes = [0u8; 24];
+        addr_bytes[0..20].copy_from_slice(&result[0..20]);
+        let checksum = Self::calculate_checksum(&addr_bytes[0..20]);
+        addr_bytes[20..24].copy_from_slice(&checksum);
+        
+        Address(addr_bytes)
+    }
 }
 
 impl fmt::Display for Address {
