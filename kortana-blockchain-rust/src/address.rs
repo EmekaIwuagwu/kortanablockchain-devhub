@@ -28,6 +28,11 @@ impl Address {
     }
 
     pub fn from_bytes(bytes: [u8; 24]) -> Result<Self, &'static str> {
+        // Special case: All-zero address is valid (used for contract deployment)
+        if bytes == [0u8; 24] {
+            return Ok(Address(bytes));
+        }
+        
         let checksum = Self::calculate_checksum(&bytes[0..20]);
         if bytes[20..24] != checksum {
             return Err("Invalid checksum");
