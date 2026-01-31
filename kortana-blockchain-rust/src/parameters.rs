@@ -1,6 +1,6 @@
 // File: src/parameters.rs
 
-pub const CHAIN_ID: u64 = 21337;
+pub const CHAIN_ID: u64 = 72511;
 pub const TESTNET_CHAIN_ID: u64 = 11155111;
 
 pub const STAKING_CONTRACT_ADDRESS: &str = "kn:0000000000000000000000000000000000000001";
