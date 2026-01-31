@@ -78,16 +78,26 @@ impl Address {
     pub fn from_hex(s: &str) -> Result<Self, &'static str> {
         // Handle "kn:0x", "kn:", "0x", or raw hex
         let s = s.strip_prefix("kn:").unwrap_or(s);
-        let s = s.strip_prefix("kn").unwrap_or(s); // Fallback for old format if needed
+        let s = s.strip_prefix("kn").unwrap_or(s);
         let s = s.strip_prefix("0x").unwrap_or(s);
         
         let bytes = hex::decode(s).map_err(|_| "Invalid hex")?;
-        if bytes.len() != 24 {
-            return Err("Invalid address length");
+        
+        match bytes.len() {
+            20 => {
+                // MetaMask format: 20 bytes. Convert to 24 by adding checksum.
+                let mut addr_bytes = [0u8; 20];
+                addr_bytes.copy_from_slice(&bytes);
+                Ok(Self::from_evm_address(addr_bytes))
+            },
+            24 => {
+                // Full Kortana format: 24 bytes (includes checksum)
+                let mut addr_bytes = [0u8; 24];
+                addr_bytes.copy_from_slice(&bytes);
+                Self::from_bytes(addr_bytes)
+            },
+            _ => Err("Invalid address length. Expected 20 or 24 bytes (40 or 48 hex chars).")
         }
-        let mut addr_bytes = [0u8; 24];
-        addr_bytes.copy_from_slice(&bytes);
-        Self::from_bytes(addr_bytes)
     }
 
     pub fn to_hex(&self) -> String {
