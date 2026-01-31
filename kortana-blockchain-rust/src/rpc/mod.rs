@@ -118,7 +118,9 @@ impl RpcHandler {
                             } else if data.starts_with("313ce567") { // decimals()
                                 Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000012").unwrap())
                             } else if data.starts_with("70a08231") { // balanceOf(address)
-                                Some(serde_json::to_value("0x00000000000000000000000000000000000000000000d3c21bcecceda1000000").unwrap())
+                                // Mock balance: 10,000,000 tokens (10^7 * 10^18 = 10^25)
+                                // 10^25 in hex is 0x84595161401484a000000
+                                Some(serde_json::to_value("0x00000000000000000000000000000000000000000000084595161401484a000000").unwrap())
                             } else {
                                 Some(serde_json::to_value("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap())
                             }
