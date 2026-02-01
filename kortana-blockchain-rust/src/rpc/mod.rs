@@ -281,6 +281,70 @@ impl RpcHandler {
                     _ => Some(serde_json::Value::Null)
                 }
             }
+            "eth_getBlockByHash" => {
+                let mut hash_str = String::new();
+                let mut full_txs = false;
+                
+                if let Some(arr) = p {
+                     if let Some(h_val) = arr.get(0).and_then(|v| v.as_str()) {
+                         hash_str = h_val.to_string();
+                     }
+                     full_txs = arr.get(1).and_then(|v| v.as_bool()).unwrap_or(false);
+                }
+
+                match self.storage.get_block_by_hash(&hash_str) {
+                    Ok(Some(block)) => {
+                        let block_hash_hex = format!("0x{}", hex::encode(block.header.hash()));
+                        let block_num_hex = format!("0x{:x}", block.header.height);
+                        
+                        let txs_json: Vec<Value> = if full_txs {
+                            block.transactions.iter().enumerate().map(|(idx, tx)| {
+                                serde_json::json!({
+                                    "hash": format!("0x{}", hex::encode(tx.hash())),
+                                    "nonce": format!("0x{:x}", tx.nonce),
+                                    "blockHash": &block_hash_hex,
+                                    "blockNumber": &block_num_hex,
+                                    "transactionIndex": format!("0x{:x}", idx),
+                                    "from": format!("0x{}", hex::encode(tx.from.as_evm_address())),
+                                    "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
+                                    "value": format!("0x{:x}", tx.value),
+                                    "gas": format!("0x{:x}", tx.gas_limit),
+                                    "gasPrice": format!("0x{:x}", tx.gas_price),
+                                    "input": format!("0x{}", hex::encode(&tx.data)),
+                                    "v": "0x1", "r": "0x0", "s": "0x0",
+                                    "type": "0x0"
+                                })
+                            }).collect()
+                        } else {
+                            block.transactions.iter().map(|tx| {
+                                serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap()
+                            }).collect()
+                        };
+                        
+                        Some(serde_json::json!({
+                            "number": block_num_hex,
+                            "hash": block_hash_hex,
+                            "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
+                            "nonce": format!("0x{:016x}", block.header.poh_sequence),
+                            "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+                            "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
+                            "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
+                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
+                            "difficulty": "0x1",
+                            "totalDifficulty": "0x1",
+                            "extraData": "0x",
+                            "size": format!("0x{:x}", block.transactions.len() * 100 + 100),
+                            "gasLimit": format!("0x{:x}", block.header.gas_limit),
+                            "gasUsed": format!("0x{:x}", block.header.gas_used),
+                            "timestamp": format!("0x{:x}", block.header.timestamp),
+                            "transactions": txs_json,
+                            "uncles": []
+                        }))
+                    },
+                    _ => Some(serde_json::Value::Null)
+                }
+            }
             "eth_requestDNR" => {
                 if let Some(arr) = p {
                     if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {

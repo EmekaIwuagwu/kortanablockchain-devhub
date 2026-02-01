@@ -13,14 +13,28 @@ impl Storage {
     }
 
     pub fn put_block(&self, block: &Block) -> Result<(), String> {
-        let key = format!("block:{}", block.header.height);
         let val = serde_json::to_vec(block).map_err(|e| e.to_string())?;
-        self.db.insert(key, val).map_err(|e| e.to_string())?;
+        // Index by height
+        let height_key = format!("block:{}", block.header.height);
+        self.db.insert(height_key, val.clone()).map_err(|e| e.to_string())?;
+        // Index by hash
+        let hash_key = format!("blockhash:{}", hex::encode(block.header.hash()));
+        self.db.insert(hash_key, val).map_err(|e| e.to_string())?;
         Ok(())
     }
 
     pub fn get_block(&self, height: u64) -> Result<Option<Block>, String> {
         let key = format!("block:{}", height);
+        let val = self.db.get(key).map_err(|e| e.to_string())?;
+        match val {
+            Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
+            None => Ok(None),
+        }
+    }
+
+    pub fn get_block_by_hash(&self, hash_hex: &str) -> Result<Option<Block>, String> {
+        let hash = hash_hex.strip_prefix("0x").unwrap_or(hash_hex);
+        let key = format!("blockhash:{}", hash);
         let val = self.db.get(key).map_err(|e| e.to_string())?;
         match val {
             Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
