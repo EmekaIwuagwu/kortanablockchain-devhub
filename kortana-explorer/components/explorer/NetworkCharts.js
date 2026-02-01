@@ -24,6 +24,16 @@ const data = [
 ];
 
 const NetworkCharts = () => {
+    const [isMounted, setIsMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    if (!isMounted) {
+        return <div style={{ height: '350px', marginTop: '2rem' }}></div>;
+    }
+
     return (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
             <div className="glass-card" style={{ height: '350px' }}>
