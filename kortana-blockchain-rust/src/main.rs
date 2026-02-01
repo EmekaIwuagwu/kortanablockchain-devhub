@@ -362,6 +362,7 @@ async fn main() {
                                 let _ = node.storage.put_transaction(tx);
                                 let _ = node.storage.put_index(&tx.from, tx.hash());
                                 let _ = node.storage.put_index(&tx.to, tx.hash());
+                                let _ = node.storage.put_global_transaction(tx.hash());
                             }
                         }
 

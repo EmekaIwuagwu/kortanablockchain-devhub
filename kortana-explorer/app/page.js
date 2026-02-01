@@ -6,7 +6,7 @@ import StatsOverview from '@/components/explorer/StatsOverview';
 import BlockList from '@/components/explorer/BlockList';
 import TransactionList from '@/components/explorer/TransactionList';
 import NetworkCharts from '@/components/explorer/NetworkCharts';
-import { getLatestBlocks, provider, getNetworkStats } from '@/lib/rpc';
+import { getLatestBlocks, provider, getNetworkStats, getGlobalTransactions } from '@/lib/rpc';
 import { ethers } from 'ethers';
 
 export default function Home() {
@@ -35,34 +35,12 @@ export default function Home() {
           // Update latest block in stats if networkStats didn't already
           setStats(prev => ({ ...prev, latestBlock: latestBlocks[0].number.toString() }));
 
-          // Try to find transactions in recent blocks (look back further for txs)
-          const allTxs = [];
-          const txBlocks = await getLatestBlocks(30);
-          for (const b of txBlocks) {
-            if (b.transactions && b.transactions.length > 0) {
-              for (const t of b.transactions) {
-                try {
-                  let tx = t;
-                  // If it's just a hash, fetch the full transaction
-                  if (typeof t === 'string') {
-                    tx = await provider.getTransaction(t);
-                  }
-
-                  if (tx && tx.hash) {
-                    allTxs.push({
-                      ...tx,
-                      value_formatted: ethers.formatEther(tx.value || 0)
-                    });
-                  }
-                } catch (e) {
-                  console.warn("Error processing transaction:", e);
-                }
-                if (allTxs.length >= 10) break;
-              }
-            }
-            if (allTxs.length >= 10) break;
-          }
-          setTransactions(allTxs);
+          // Fetch global transactions instead of scanning blocks manually
+          const allTxs = await getGlobalTransactions();
+          setTransactions(allTxs.slice(0, 10).map(tx => ({
+            ...tx,
+            value_formatted: ethers.formatEther(tx.value || 0)
+          })));
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);

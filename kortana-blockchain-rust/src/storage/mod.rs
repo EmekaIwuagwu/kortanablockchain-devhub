@@ -148,4 +148,20 @@ impl Storage {
             None => Ok(Vec::new()),
         }
     }
+
+    pub fn put_global_transaction(&self, tx_hash: [u8; 32]) -> Result<(), String> {
+        let mut txs = self.get_global_transactions()?;
+        txs.push(tx_hash);
+        let val = serde_json::to_vec(&txs).map_err(|e| e.to_string())?;
+        self.db.insert("global_txs", val).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_global_transactions(&self) -> Result<Vec<[u8; 32]>, String> {
+        let val = self.db.get("global_txs").map_err(|e| e.to_string())?;
+        match val {
+            Some(data) => Ok(serde_json::from_slice(&data).map_err(|e| e.to_string())?),
+            None => Ok(Vec::new()),
+        }
+    }
 }

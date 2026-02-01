@@ -212,6 +212,42 @@ impl RpcHandler {
                     } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Invalid tx hex")).unwrap()) }
                 } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Params must be an array")).unwrap()) }
             }
+            "eth_getRecentTransactions" => {
+                match self.storage.get_global_transactions() {
+                    Ok(tx_hashes) => {
+                        let mut result = Vec::new();
+                        // Return last 100 transactions
+                        let start = if tx_hashes.len() > 100 { tx_hashes.len() - 100 } else { 0 };
+                        for hash in tx_hashes[start..].iter().rev() {
+                            let hash_hex = format!("0x{}", hex::encode(hash));
+                            if let Ok(Some(tx)) = self.storage.get_transaction(&hash_hex.strip_prefix("0x").unwrap()) {
+                                let (block_height, block_hash, tx_index) = self.storage.get_transaction_location(&hash_hex.strip_prefix("0x").unwrap())
+                                    .ok()
+                                    .flatten()
+                                    .map(|(h, hash, idx)| (format!("0x{:x}", h), format!("0x{}", hash), format!("0x{:x}", idx)))
+                                    .unwrap_or((format!("0x{:x}", 0), "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(), "0x0".to_string()));
+
+                                result.push(serde_json::json!({
+                                    "hash": hash_hex,
+                                    "from": format!("0x{}", hex::encode(tx.from.as_evm_address())),
+                                    "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
+                                    "value": format!("0x{:x}", tx.value),
+                                    "nonce": format!("0x{:x}", tx.nonce),
+                                    "blockNumber": block_height,
+                                    "blockHash": block_hash,
+                                    "transactionIndex": tx_index,
+                                    "gas": format!("0x{:x}", tx.gas_limit),
+                                    "gasPrice": format!("0x{:x}", tx.gas_price),
+                                    "input": format!("0x{}", hex::encode(&tx.data)),
+                                    "timestamp": "0x0" // We'd need to fetch block for actual timestamp
+                                }));
+                            }
+                        }
+                        Some(serde_json::Value::Array(result))
+                    },
+                    _ => Some(serde_json::Value::Array(vec![]))
+                }
+            }
             "eth_getBlockByNumber" => {
                 let mut requested_height = current_height;
                 let mut full_txs = false;

@@ -184,32 +184,19 @@ export async function getNetworkStats() {
     }
 }
 
-// Transaction History Fallback (Since RPCs don't index by address easily)
-// Transaction History Fallback (Since RPCs don't index by address easily)
-export async function getRecentTransactions(address, maxBlocks = 50) {
+export async function getGlobalTransactions() {
     try {
-        const latestBlock = await provider.getBlockNumber();
-        const startBlock = Math.max(0, latestBlock - maxBlocks);
-        const txs = [];
-
-        // Optimized: only look at last 50 blocks to prevent hanging
-        for (let i = latestBlock; i >= startBlock; i--) {
-            try {
-                const block = await provider.getBlock(i, true);
-                if (block && block.prefetchedTransactions) {
-                    const filtered = block.prefetchedTransactions.filter(
-                        tx => tx.from?.toLowerCase() === address.toLowerCase() || tx.to?.toLowerCase() === address.toLowerCase()
-                    );
-                    txs.push(...filtered);
-                }
-            } catch (e) {
-                console.warn(`Skip block ${i}`, e);
-            }
-            if (txs.length >= 20) break;
-        }
-        return txs;
+        const txs = await provider.send("eth_getRecentTransactions", []);
+        return txs.map(tx => ({
+            ...tx,
+            value: BigInt(tx.value || 0),
+            gasPrice: BigInt(tx.gasPrice || 0),
+            gasLimit: BigInt(tx.gas || 0),
+            nonce: parseInt(tx.nonce, 16),
+            blockNumber: parseInt(tx.blockNumber, 16)
+        }));
     } catch (error) {
-        console.error('Error searching transactions:', error);
+        console.error("Error fetching global transactions:", error);
         return [];
     }
 }

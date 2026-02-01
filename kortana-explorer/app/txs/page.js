@@ -3,13 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FileText, Clock, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { getLatestBlocks, provider } from '@/lib/rpc';
+import { getGlobalTransactions, provider } from '@/lib/rpc';
 import { ethers } from 'ethers';
 
 const TransactionsPage = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [blockLookback, setBlockLookback] = useState(50);
     const [page, setPage] = useState(0);
     const txsPerPage = 25;
 
@@ -17,39 +16,14 @@ const TransactionsPage = () => {
         const fetchTransactions = async () => {
             setLoading(true);
             try {
-                // Fetch blocks to find transactions
-                const blocks = await getLatestBlocks(blockLookback);
-                const allTxs = [];
-
-                for (const block of blocks) {
-                    if (block.transactions && block.transactions.length > 0) {
-                        for (const rawTx of block.transactions) {
-                            let tx = rawTx;
-                            if (typeof rawTx === 'string') {
-                                try {
-                                    tx = await provider.getTransaction(rawTx);
-                                } catch (e) {
-                                    continue;
-                                }
-                            }
-
-                            if (tx && tx.hash) {
-                                allTxs.push({
-                                    ...tx,
-                                    blockNumber: block.number,
-                                    timestamp: block.timestamp,
-                                    value_formatted: ethers.formatEther(tx.value || 0)
-                                });
-                            }
-                        }
-                    }
-                    if (allTxs.length >= (page + 1) * txsPerPage + 50) break;
-                }
-
-                allTxs.sort((a, b) => b.blockNumber - a.blockNumber);
+                // Fetch global transactions instead of scanning blocks
+                const allTxs = await getGlobalTransactions();
 
                 const paginatedTxs = allTxs.slice(page * txsPerPage, (page + 1) * txsPerPage);
-                setTransactions(paginatedTxs);
+                setTransactions(paginatedTxs.map(tx => ({
+                    ...tx,
+                    value_formatted: ethers.formatEther(tx.value || 0)
+                })));
             } catch (err) {
                 console.error("Error fetching transactions:", err);
             } finally {
@@ -57,7 +31,7 @@ const TransactionsPage = () => {
             }
         };
         fetchTransactions();
-    }, [page, blockLookback]);
+    }, [page]);
 
     return (
         <div className="container" style={{ padding: '4rem 2rem' }}>
@@ -149,15 +123,7 @@ const TransactionsPage = () => {
                 )}
             </div>
 
-            <div className="mt-6 flex justify-center">
-                <button
-                    className="text-dim text-small btn-link"
-                    onClick={() => setBlockLookback(prev => prev + 50)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                    Load more history (Current lookback: {blockLookback} blocks)
-                </button>
-            </div>
+            {/* Removed dynamic scanner button as we now use a global index */}
         </div>
     );
 };
