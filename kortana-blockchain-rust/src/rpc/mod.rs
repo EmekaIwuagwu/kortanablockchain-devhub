@@ -213,40 +213,61 @@ impl RpcHandler {
                 } else { Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, "Params must be an array")).unwrap()) }
             }
             "eth_getBlockByNumber" => {
-                // Return actual block from storage
-                let requested_height = if let Some(arr) = p {
+                let mut requested_height = current_height;
+                let mut full_txs = false;
+                
+                if let Some(arr) = p {
                      if let Some(h_val) = arr.get(0) {
                          if h_val.as_str() == Some("latest") {
-                             current_height
+                             requested_height = current_height;
                          } else if let Some(h_str) = h_val.as_str() {
                              let clean = h_str.strip_prefix("0x").unwrap_or(h_str);
-                             u64::from_str_radix(clean, 16).unwrap_or(current_height)
-                         } else {
-                             current_height
+                             requested_height = u64::from_str_radix(clean, 16).unwrap_or(current_height);
                          }
-                     } else { current_height }
-                } else { current_height };
+                     }
+                     full_txs = arr.get(1).and_then(|v| v.as_bool()).unwrap_or(false);
+                }
 
                 match self.storage.get_block(requested_height) {
                     Ok(Some(block)) => {
-                        let txs_json: Vec<Value> = block.transactions.iter().map(|tx| {
-                             // Assuming full tx objects requested for simplicity, or just hashes
-                             // Standard defaults to objects if 2nd param is true
-                             serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap()
-                        }).collect();
+                        let block_hash_hex = format!("0x{}", hex::encode(block.header.hash()));
+                        let block_num_hex = format!("0x{:x}", block.header.height);
+                        
+                        let txs_json: Vec<Value> = if full_txs {
+                            block.transactions.iter().enumerate().map(|(idx, tx)| {
+                                serde_json::json!({
+                                    "hash": format!("0x{}", hex::encode(tx.hash())),
+                                    "nonce": format!("0x{:x}", tx.nonce),
+                                    "blockHash": &block_hash_hex,
+                                    "blockNumber": &block_num_hex,
+                                    "transactionIndex": format!("0x{:x}", idx),
+                                    "from": format!("0x{}", hex::encode(tx.from.as_evm_address())),
+                                    "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
+                                    "value": format!("0x{:x}", tx.value),
+                                    "gas": format!("0x{:x}", tx.gas_limit),
+                                    "gasPrice": format!("0x{:x}", tx.gas_price),
+                                    "input": format!("0x{}", hex::encode(&tx.data)),
+                                    "v": "0x1", "r": "0x0", "s": "0x0"
+                                })
+                            }).collect()
+                        } else {
+                            block.transactions.iter().map(|tx| {
+                                serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap()
+                            }).collect()
+                        };
                         
                         Some(serde_json::json!({
-                            "number": format!("0x{:x}", block.header.height),
-                            "hash": format!("0x{}", hex::encode(block.header.hash())),
+                            "number": block_num_hex,
+                            "hash": block_hash_hex,
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
-                            "nonce": format!("0x{:016x}", block.header.poh_sequence), // Mapping PoH seq to 8-byte nonce
+                            "nonce": format!("0x{:016x}", block.header.poh_sequence),
                             "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
                             "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
-                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), // Send 20-byte EVM part for compatibility
-                            "difficulty": "0x0",
-                            "totalDifficulty": "0x0",
+                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
+                            "difficulty": "0x1",
+                            "totalDifficulty": "0x1",
                             "extraData": "0x",
                             "size": format!("0x{:x}", block.transactions.len() * 100 + 100),
                             "gasLimit": format!("0x{:x}", block.header.gas_limit),
@@ -323,13 +344,13 @@ impl RpcHandler {
                     serde_json::json!({
                         "hash": format!("0x{}", hex::encode(tx.hash())),
                         "nonce": format!("0x{:x}", tx.nonce),
-                        "from": tx.from.to_hex(), 
-                        "to": tx.to.to_hex(),
+                        "from": format!("0x{}", hex::encode(tx.from.as_evm_address())), 
+                        "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
                         "value": format!("0x{:x}", tx.value),
                         "gas": format!("0x{:x}", tx.gas_limit),
                         "gasPrice": format!("0x{:x}", tx.gas_price),
-                        "input": format!("0x{}", hex::encode(tx.data)),
-                        "chainId": format!("0x{:x}", tx.chain_id),
+                        "input": format!("0x{}", hex::encode(&tx.data)),
+                        "v": "0x1", "r": "0x0", "s": "0x0"
                     })
                 }).collect();
                 Some(serde_json::to_value(formatted_txs).unwrap())
@@ -351,12 +372,12 @@ impl RpcHandler {
                                     txs.push(serde_json::json!({
                                         "hash": format!("0x{}", hex::encode(tx.hash())),
                                         "nonce": format!("0x{:x}", tx.nonce),
-                                        "from": tx.from.to_hex(), 
-                                        "to": tx.to.to_hex(),
+                                        "from": format!("0x{}", hex::encode(tx.from.as_evm_address())), 
+                                        "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
                                         "value": format!("0x{:x}", tx.value),
                                         "gas": format!("0x{:x}", tx.gas_limit),
                                         "gasPrice": format!("0x{:x}", tx.gas_price),
-                                        "input": format!("0x{}", hex::encode(tx.data)),
+                                        "input": format!("0x{}", hex::encode(&tx.data)),
                                         "chainId": format!("0x{:x}", tx.chain_id),
                                     }));
                                 }
@@ -390,19 +411,25 @@ impl RpcHandler {
 
                          match res_tx {
                              Some(tx) => {
+                                 let (block_number, block_hash, tx_index) = self.storage.get_transaction_location(hash_str)
+                                     .ok()
+                                     .flatten()
+                                     .map(|(h, hash, idx)| (format!("0x{:x}", h), format!("0x{}", hash), format!("0x{:x}", idx)))
+                                     .unwrap_or((format!("0x{:x}", 0), "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(), "0x0".to_string()));
+
                                  Some(serde_json::json!({
                                      "hash": format!("0x{}", hex::encode(tx.hash())),
                                      "nonce": format!("0x{:x}", tx.nonce),
-                                     "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000", // TODO: Link to actual block
-                                     "blockNumber": format!("0x{:x}", 1), // TODO: Link to actual height
-                                     "transactionIndex": "0x0",
-                                     "from": tx.from.to_hex(),
-                                     "to": tx.to.to_hex(),
+                                     "blockHash": block_hash,
+                                     "blockNumber": block_number,
+                                     "transactionIndex": tx_index,
+                                     "from": format!("0x{}", hex::encode(tx.from.as_evm_address())),
+                                     "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
                                      "value": format!("0x{:x}", tx.value),
                                      "gas": format!("0x{:x}", tx.gas_limit),
                                      "gasPrice": format!("0x{:x}", tx.gas_price),
-                                     "input": format!("0x{}", hex::encode(tx.data)),
-                                     "v": "0x1", "r": "0x0", "s": "0x0" // Simple placeholders for Ethers
+                                     "input": format!("0x{}", hex::encode(&tx.data)),
+                                     "v": "0x1", "r": "0x0", "s": "0x0" 
                                  }))
                              },
                              None => Some(serde_json::Value::Null)
@@ -441,16 +468,20 @@ impl RpcHandler {
                                      })
                                  }).collect();
 
+                                 let tx = self.storage.get_transaction(hash_str).ok().flatten();
+                                 let from = tx.as_ref().map(|t| format!("0x{}", hex::encode(t.from.as_evm_address()))).unwrap_or("0x0000000000000000000000000000000000000000".to_string());
+                                 let to = tx.as_ref().map(|t| format!("0x{}", hex::encode(t.to.as_evm_address()))).unwrap_or("0x0000000000000000000000000000000000000000".to_string());
+
                                  Some(serde_json::json!({
                                      "transactionHash": tx_hash_raw,
                                      "transactionIndex": &tx_index,
                                      "blockHash": &block_hash,
                                      "blockNumber": &block_number,
-                                     "from": "0x0000000000000000000000000000000000000000",
-                                     "to": "0x0000000000000000000000000000000000000000",
+                                     "from": from,
+                                     "to": to,
                                      "cumulativeGasUsed": format!("0x{:x}", receipt.gas_used),
                                      "gasUsed": format!("0x{:x}", receipt.gas_used),
-                                     "effectiveGasPrice": "0x0",
+                                     "effectiveGasPrice": "0x3b9aca00", // 1 Gwei placeholder
                                      "logs": logs,
                                      "status": format!("0x{:x}", receipt.status),
                                      "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
