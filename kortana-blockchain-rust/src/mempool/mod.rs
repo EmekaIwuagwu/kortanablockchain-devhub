@@ -83,4 +83,8 @@ impl Mempool {
     pub fn size(&self) -> usize {
         self.heap.len()
     }
+
+    pub fn get_all(&self) -> Vec<Transaction> {
+        self.heap.iter().map(|mt| mt.tx.clone()).collect()
+    }
 }

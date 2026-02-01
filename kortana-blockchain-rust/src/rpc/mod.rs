@@ -42,18 +42,21 @@ use crate::mempool::Mempool;
 use crate::storage::Storage;
 use tokio::sync::mpsc;
 
+use crate::consensus::ConsensusEngine;
+
 pub struct RpcHandler {
     pub state: Arc<Mutex<State>>,
     pub mempool: Arc<Mutex<Mempool>>,
     pub storage: Arc<Storage>,
+    pub consensus: Arc<Mutex<ConsensusEngine>>,
     pub network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>,
     pub height: Arc<AtomicU64>,
     pub chain_id: u64,
 }
 
 impl RpcHandler {
-    pub fn new(state: Arc<Mutex<State>>, mempool: Arc<Mutex<Mempool>>, storage: Arc<Storage>, network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>, height: Arc<AtomicU64>, chain_id: u64) -> Self {
-        Self { state, mempool, storage, network_tx, height, chain_id }
+    pub fn new(state: Arc<Mutex<State>>, mempool: Arc<Mutex<Mempool>>, storage: Arc<Storage>, consensus: Arc<Mutex<ConsensusEngine>>, network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>, height: Arc<AtomicU64>, chain_id: u64) -> Self {
+        Self { state, mempool, storage, consensus, network_tx, height, chain_id }
     }
 
     pub async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
@@ -272,6 +275,44 @@ impl RpcHandler {
                         } else { None }
                     } else { None }
                 } else { None }
+            }
+            "eth_getValidators" => {
+                let consensus = self.consensus.lock().unwrap();
+                let validators: Vec<serde_json::Value> = consensus.validators.iter().enumerate().map(|(i, v)| {
+                     let uptime_pct = if v.missed_blocks > 0 {
+                         100.0 - (v.missed_blocks as f64 / 100.0)
+                     } else { 100.0 };
+
+                     serde_json::json!({
+                         "id": i + 1,
+                         "address": v.address.to_hex(),
+                         "stake": format!("{}", v.stake), // u128 safe string
+                         "isActive": v.is_active,
+                         "commission": format!("{:.2}", v.commission as f64 / 100.0),
+                         "missedBlocks": v.missed_blocks,
+                         "uptime": format!("{:.2}", uptime_pct),
+                         "status": if v.is_active { "Active" } else { "Inactive" }
+                     })
+                }).collect();
+                Some(serde_json::to_value(validators).unwrap())
+            }
+            "eth_pendingTransactions" => {
+                let mempool = self.mempool.lock().unwrap();
+                let txs = mempool.get_all();
+                let formatted_txs: Vec<serde_json::Value> = txs.into_iter().map(|tx| {
+                    serde_json::json!({
+                        "hash": format!("0x{}", hex::encode(tx.hash())),
+                        "nonce": format!("0x{:x}", tx.nonce),
+                        "from": tx.from.to_hex(), 
+                        "to": tx.to.to_hex(),
+                        "value": format!("0x{:x}", tx.value),
+                        "gas": format!("0x{:x}", tx.gas_limit),
+                        "gasPrice": format!("0x{:x}", tx.gas_price),
+                        "input": format!("0x{}", hex::encode(tx.data)),
+                        "chainId": format!("0x{:x}", tx.chain_id),
+                    })
+                }).collect();
+                Some(serde_json::to_value(formatted_txs).unwrap())
             }
             "net_version" => Some(serde_json::to_value(self.chain_id.to_string()).unwrap()),
             "net_listening" => Some(serde_json::to_value(true).unwrap()),

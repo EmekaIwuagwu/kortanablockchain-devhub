@@ -181,14 +181,15 @@ async fn main() {
 
     // 5. Start RPC Server
     print!("{}[5/5] Launching JSON-RPC... {}", CLR_YELLOW, CLR_RESET);
-    let rpc_handler = Arc::new(kortana_blockchain_rust::rpc::RpcHandler {
-        chain_id: CHAIN_ID,
-        state: node.state.clone(),
-        mempool: node.mempool.clone(),
-        storage: node.storage.clone(),
-        network_tx: p2p_tx.clone(),
-        height: node.height.clone(),
-    });
+    let rpc_handler = Arc::new(kortana_blockchain_rust::rpc::RpcHandler::new(
+        node.state.clone(),
+        node.mempool.clone(),
+        node.storage.clone(),
+        node.consensus.clone(),
+        p2p_tx.clone(),
+        node.height.clone(),
+        CHAIN_ID,
+    ));
 
     let rpc_addr = args.rpc_addr.clone();
     let rpc_node = node.clone();
