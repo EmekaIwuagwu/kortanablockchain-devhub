@@ -14,12 +14,17 @@ const BlockDetail = () => {
     useEffect(() => {
         const fetchBlock = async () => {
             try {
-                // If id is a number, parse it, otherwise it's a hash
-                const blockId = isNaN(id) ? id : parseInt(id);
+                // If id is a hex string (0x...), use it directly as a hash
+                // Otherwise try to parse as number
+                let blockId = id;
+                if (typeof id === 'string' && !id.startsWith('0x') && !isNaN(id)) {
+                    blockId = parseInt(id);
+                }
+
                 const blockData = await getBlock(blockId);
                 setBlock(blockData);
             } catch (err) {
-                console.error(err);
+                console.error("Error fetching block:", err);
             } finally {
                 setLoading(false);
             }

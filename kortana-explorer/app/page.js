@@ -35,9 +35,10 @@ export default function Home() {
           // Update latest block in stats if networkStats didn't already
           setStats(prev => ({ ...prev, latestBlock: latestBlocks[0].number.toString() }));
 
-          // Try to find transactions in recent blocks
+          // Try to find transactions in recent blocks (look back further for txs)
           const allTxs = [];
-          for (const b of latestBlocks) {
+          const txBlocks = await getLatestBlocks(30);
+          for (const b of txBlocks) {
             if (b.transactions && b.transactions.length > 0) {
               for (const t of b.transactions) {
                 try {

@@ -12,6 +12,28 @@ const ERC20_ABI = [
     "function balanceOf(address) view returns (uint256)"
 ];
 
+const formatBlock = (block) => {
+    if (!block) return null;
+    return {
+        ...block,
+        number: parseInt(block.number, 16),
+        timestamp: parseInt(block.timestamp, 16),
+        gasUsed: BigInt(block.gasUsed || 0),
+        gasLimit: BigInt(block.gasLimit || 0),
+        baseFeePerGas: block.baseFeePerGas ? BigInt(block.baseFeePerGas) : null,
+        transactions: block.transactions.map(tx => {
+            if (typeof tx === 'string') return tx;
+            return {
+                ...tx,
+                value: BigInt(tx.value || 0),
+                gasPrice: BigInt(tx.gasPrice || 0),
+                gasLimit: BigInt(tx.gas || 0),
+                nonce: parseInt(tx.nonce, 16)
+            };
+        })
+    };
+};
+
 export async function getLatestBlocks(count = 10) {
     try {
         const latestBlockNumber = await provider.getBlockNumber();
@@ -19,8 +41,8 @@ export async function getLatestBlocks(count = 10) {
         const start = Math.max(0, latestBlockNumber - count + 1);
 
         for (let i = latestBlockNumber; i >= start; i--) {
-            const block = await provider.getBlock(i, true);
-            if (block) blocks.push(block);
+            const block = await provider.send("eth_getBlockByNumber", ["0x" + i.toString(16), true]);
+            if (block) blocks.push(formatBlock(block));
         }
         return blocks;
     } catch (error) {
@@ -31,7 +53,15 @@ export async function getLatestBlocks(count = 10) {
 
 export async function getBlock(hashOrNumber) {
     try {
-        return await provider.getBlock(hashOrNumber);
+        let block;
+        if (typeof hashOrNumber === 'string' && hashOrNumber.startsWith('0x')) {
+            block = await provider.send("eth_getBlockByHash", [hashOrNumber, true]);
+        } else {
+            const hexNum = typeof hashOrNumber === 'number' ?
+                "0x" + hashOrNumber.toString(16) : hashOrNumber;
+            block = await provider.send("eth_getBlockByNumber", [hexNum, true]);
+        }
+        return formatBlock(block);
     } catch (error) {
         console.error('Error fetching block:', error);
         return null;
