@@ -60,7 +60,12 @@ const BlockDetail = () => {
 
             <div className="glass-card mb-8">
                 <DetailRow label="Block Height" value={block.number} highlight={true} />
-                <DetailRow label="Timestamp" value={new Date(block.timestamp * 1000).toLocaleString()} />
+                <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', padding: '1.25rem 0', borderBottom: '1px solid var(--border)' }}>
+                    <div className="text-dim">Timestamp:</div>
+                    <div style={{ color: 'white' }} suppressHydrationWarning>
+                        {new Date(block.timestamp * 1000).toLocaleString()}
+                    </div>
+                </div>
                 <DetailRow label="Transactions" value={`${block.transactions.length} transactions`} />
                 <DetailRow label="Validated By" value={block.miner} link={`/address/${block.miner}`} />
                 <DetailRow label="Gas Used" value={block.gasUsed.toString()} />
