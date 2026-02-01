@@ -247,7 +247,8 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
-                                    "v": "0x1", "r": "0x0", "s": "0x0"
+                                    "v": "0x1", "r": "0x0", "s": "0x0",
+                                    "type": "0x0"
                                 })
                             }).collect()
                         } else {
@@ -347,11 +348,12 @@ impl RpcHandler {
                         "from": format!("0x{}", hex::encode(tx.from.as_evm_address())), 
                         "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
                         "value": format!("0x{:x}", tx.value),
-                        "gas": format!("0x{:x}", tx.gas_limit),
-                        "gasPrice": format!("0x{:x}", tx.gas_price),
-                        "input": format!("0x{}", hex::encode(&tx.data)),
-                        "v": "0x1", "r": "0x0", "s": "0x0"
-                    })
+                         "gas": format!("0x{:x}", tx.gas_limit),
+                         "gasPrice": format!("0x{:x}", tx.gas_price),
+                         "input": format!("0x{}", hex::encode(&tx.data)),
+                         "v": "0x1", "r": "0x0", "s": "0x0",
+                         "type": "0x0"
+                     })
                 }).collect();
                 Some(serde_json::to_value(formatted_txs).unwrap())
             }
@@ -429,7 +431,8 @@ impl RpcHandler {
                                      "gas": format!("0x{:x}", tx.gas_limit),
                                      "gasPrice": format!("0x{:x}", tx.gas_price),
                                      "input": format!("0x{}", hex::encode(&tx.data)),
-                                     "v": "0x1", "r": "0x0", "s": "0x0" 
+                                     "v": "0x1", "r": "0x0", "s": "0x0",
+                                     "type": "0x0"
                                  }))
                              },
                              None => Some(serde_json::Value::Null)

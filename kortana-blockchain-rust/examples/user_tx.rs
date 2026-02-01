@@ -66,8 +66,8 @@ fn main() {
     let nonce = u64::from_str_radix(nonce_str, 16).unwrap_or(0);
     println!("Nonce: {}", nonce);
 
-    // 2. Construct Transaction (Transfer 300 DNR)
-    let amount_dnr: u128 = 300;
+    // 2. Construct Transaction (Transfer 400 DNR)
+    let amount_dnr: u128 = 400;
     let value = amount_dnr * 10u128.pow(18);
 
     let mut tx = Transaction {
@@ -91,7 +91,7 @@ fn main() {
     let tx_hex = format!("0x{}", hex::encode(tx_encoded));
 
     // 3. Send Transaction
-    println!("\n[2/3] Sending 300 DNR transaction...");
+    println!("\n[2/3] Sending 400 DNR transaction...");
     let res = rpc_call("eth_sendRawTransaction", json!([tx_hex]));
     
     if let Some(err) = res.get("error") {
