@@ -38,13 +38,14 @@ export default function Home() {
           // Try to find transactions in recent blocks
           const allTxs = [];
           for (const b of latestBlocks) {
+            // ethers.js getBlock(id, true) puts full objects in b.transactions
             if (b.transactions && b.transactions.length > 0) {
-              for (const txHash of b.transactions.slice(0, 5)) {
-                const tx = await provider.getTransaction(txHash);
-                if (tx) allTxs.push({
+              for (const tx of b.transactions) {
+                allTxs.push({
                   ...tx,
                   value_formatted: ethers.formatEther(tx.value)
                 });
+                if (allTxs.length >= 10) break;
               }
             }
             if (allTxs.length >= 10) break;

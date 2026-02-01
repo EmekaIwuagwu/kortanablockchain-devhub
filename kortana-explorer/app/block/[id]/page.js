@@ -76,12 +76,12 @@ const BlockDetail = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {block.transactions.map((txHash, i) => (
+                        {block.transactions.map((tx, i) => (
                             <tr key={i}>
-                                <td><Link href={`/tx/${txHash}`} className="text-accent">{txHash.substring(0, 20)}...</Link></td>
-                                <td><Link href={`/address/0x...`} className="text-dim">Sender...</Link></td>
-                                <td><Link href={`/address/0x...`} className="text-dim">Receiver...</Link></td>
-                                <td>0 DNR</td>
+                                <td><Link href={`/tx/${tx.hash || tx}`} className="text-accent">{(tx.hash || tx).substring(0, 20)}...</Link></td>
+                                <td><Link href={`/address/${tx.from}`} className="text-accent">{tx.from ? tx.from.substring(0, 16) + '...' : '0x...'}</Link></td>
+                                <td><Link href={`/address/${tx.to}`} className="text-accent">{tx.to ? tx.to.substring(0, 16) + '...' : (tx.from ? 'Contract' : '0x...')}</Link></td>
+                                <td>{tx.value ? ethers.formatEther(tx.value) : '0'} DNR</td>
                             </tr>
                         ))}
                     </tbody>

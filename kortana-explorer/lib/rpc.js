@@ -19,7 +19,7 @@ export async function getLatestBlocks(count = 10) {
         const start = Math.max(0, latestBlockNumber - count + 1);
 
         for (let i = latestBlockNumber; i >= start; i--) {
-            const block = await provider.getBlock(i);
+            const block = await provider.getBlock(i, true);
             if (block) blocks.push(block);
         }
         return blocks;
