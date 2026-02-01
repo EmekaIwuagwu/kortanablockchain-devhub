@@ -6,7 +6,7 @@ use std::process::Command;
 use serde_json::json;
 
 // Use the public RPC URL seen in the codebase
-const RPC_URL: &str = "http://127.0.0.1:8545";
+const RPC_URL: &str = "https://poseidon-rpc.kortana.name.ng";
 
 fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
     let json_body = json!({
@@ -18,6 +18,7 @@ fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
 
     // Use curl.exe for Windows compatibility in this environment
     let output = Command::new("curl.exe")
+        .arg("-k")
         .arg("-s")
         .arg("-X").arg("POST")
         .arg("-H").arg("Content-Type: application/json")
@@ -65,8 +66,8 @@ fn main() {
     let nonce = u64::from_str_radix(nonce_str, 16).unwrap_or(0);
     println!("Nonce: {}", nonce);
 
-    // 2. Construct Transaction (Transfer 100 DNR)
-    let amount_dnr: u128 = 100;
+    // 2. Construct Transaction (Transfer 500 DNR)
+    let amount_dnr: u128 = 500;
     let value = amount_dnr * 10u128.pow(18);
 
     let mut tx = Transaction {
@@ -90,7 +91,7 @@ fn main() {
     let tx_hex = format!("0x{}", hex::encode(tx_encoded));
 
     // 3. Send Transaction
-    println!("\n[2/3] Sending 100 DNR transaction...");
+    println!("\n[2/3] Sending 500 DNR transaction...");
     let res = rpc_call("eth_sendRawTransaction", json!([tx_hex]));
     
     if let Some(err) = res.get("error") {
