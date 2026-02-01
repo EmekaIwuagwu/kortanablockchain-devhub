@@ -149,7 +149,8 @@ impl RpcHandler {
                             let acc = state_clone.get_account(&to_addr);
                             if acc.is_contract {
                                 if let Some(code) = state_clone.get_code(&acc.code_hash) {
-                                    let mut executor = crate::vm::evm::EvmExecutor::new(to_addr, 10_000_000); // 10M gas limit for calls
+                                    let mut executor = crate::vm::evm::EvmExecutor::new(to_addr, 10_000_000)
+                                        .with_calldata(data); // Inject calldata
                                     // Inject calldata into memory/stack or handle via executor logic?
                                     // The simple EvmExecutor in this codebase pulls from memory.
                                     // We need to implement calldata injection. 
@@ -258,7 +259,7 @@ impl RpcHandler {
                     _ => Some(serde_json::Value::Null)
                 }
             }
-            \"eth_requestDNR\" => {
+            "eth_requestDNR" => {
                 if let Some(arr) = p {
                     if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
@@ -281,8 +282,9 @@ impl RpcHandler {
                                 gas_limit: 21000,
                                 gas_price: 1,
                                 data: vec![],
+                                vm_type: crate::types::transaction::VmType::EVM,
                                 chain_id: self.chain_id,
-                                signature: vec![0u8; 65], 
+                                signature: Some(vec![0u8; 65]), 
                             };
 
                             let _ = self.storage.put_transaction(&faucet_tx);
@@ -376,7 +378,7 @@ impl RpcHandler {
                              res_tx = Some(tx);
                          } 
                          // 2. Check Mempool if not found in storage
-                         else if let Ok(mut h) = hex::decode(hash_str) {
+                         else if let Ok(h) = hex::decode(hash_str) {
                              if h.len() == 32 {
                                  let mut hash_bytes = [0u8; 32];
                                  hash_bytes.copy_from_slice(&h);

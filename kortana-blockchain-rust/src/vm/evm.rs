@@ -72,6 +72,7 @@ pub struct EvmExecutor {
     pub memory: EvmMemory,
     pub gas_remaining: u64,
     pub address: crate::address::Address,
+    pub calldata: Vec<u8>,
     pub logs: Vec<crate::types::transaction::TransactionLog>,
 }
 
@@ -82,8 +83,14 @@ impl EvmExecutor {
             memory: EvmMemory::new(),
             gas_remaining: gas_limit,
             address,
+            calldata: Vec::new(),
             logs: Vec::new(),
         }
+    }
+
+    pub fn with_calldata(mut self, data: Vec<u8>) -> Self {
+        self.calldata = data;
+        self
     }
 
     pub fn execute(&mut self, bytecode: &[u8], state: &mut crate::state::account::State, header: &crate::types::block::BlockHeader) -> Result<Vec<u8>, EvmError> {
@@ -150,10 +157,18 @@ impl EvmExecutor {
                 0x33 => { self.stack.push(crate::address::Address::ZERO.as_evm_address_u256())?; } // CALLER
                 0x35 => { // CALLDATALOAD
                     self.consume_gas(3)?;
-                    self.stack.pop()?;
-                    self.stack.push([0u8; 32])?;
+                    let offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let mut data = [0u8; 32];
+                    if offset < self.calldata.len() {
+                        let end = std::cmp::min(offset + 32, self.calldata.len());
+                        data[..end - offset].copy_from_slice(&self.calldata[offset..end]);
+                    }
+                    self.stack.push(data)?;
                 }
-                0x36 => { self.consume_gas(2)?; self.stack.push([0u8; 32])?; } // CALLDATASIZE
+                0x36 => { // CALLDATASIZE
+                    self.consume_gas(2)?;
+                    self.stack.push(Self::u128_to_u256(self.calldata.len() as u128))?;
+                }
 
                 // Block
                 0x41 => { self.stack.push(Self::u128_to_u256(header.proposer.as_evm_address_u256()[31] as u128))?; } // COINBASE partial
