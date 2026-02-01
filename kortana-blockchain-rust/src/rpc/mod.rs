@@ -238,16 +238,16 @@ impl RpcHandler {
                             "number": format!("0x{:x}", block.header.height),
                             "hash": format!("0x{}", hex::encode(block.header.hash())),
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
-                            "nonce": format!("0x{:x}", block.header.poh_sequence), // Mapping PoH seq to nonce
-                            "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347", // Empty uncle hash (constant for non-uncle chains)
-                            "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000", // Not implemented yet
+                            "nonce": format!("0x{:016x}", block.header.poh_sequence), // Mapping PoH seq to 8-byte nonce
+                            "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+                            "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
-                            "miner": format!("0x{}", block.header.proposer.to_hex()),
+                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), // Send 20-byte EVM part for compatibility
                             "difficulty": "0x0",
                             "totalDifficulty": "0x0",
                             "extraData": "0x",
-                            "size": format!("0x{:x}", block.transactions.len() * 100 + 100), // Estimate
+                            "size": format!("0x{:x}", block.transactions.len() * 100 + 100),
                             "gasLimit": format!("0x{:x}", block.header.gas_limit),
                             "gasUsed": format!("0x{:x}", block.header.gas_used),
                             "timestamp": format!("0x{:x}", block.header.timestamp),
