@@ -41,6 +41,34 @@ impl Storage {
         Ok(())
     }
 
+    // Store mapping of transaction hash to block height and hash
+    pub fn put_transaction_location(&self, tx_hash: &[u8; 32], block_height: u64, block_hash: &[u8; 32], tx_index: usize) -> Result<(), String> {
+        let key = format!("txloc:{}", hex::encode(tx_hash));
+        let location = serde_json::json!({
+            "block_height": block_height,
+            "block_hash": hex::encode(block_hash),
+            "tx_index": tx_index
+        });
+        let val = serde_json::to_vec(&location).map_err(|e| e.to_string())?;
+        self.db.insert(key, val).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn get_transaction_location(&self, tx_hash: &str) -> Result<Option<(u64, String, usize)>, String> {
+        let key = format!("txloc:{}", tx_hash.strip_prefix("0x").unwrap_or(tx_hash));
+        let val = self.db.get(key).map_err(|e| e.to_string())?;
+        match val {
+            Some(data) => {
+                let location: serde_json::Value = serde_json::from_slice(&data).map_err(|e| e.to_string())?;
+                let height = location["block_height"].as_u64().unwrap_or(0);
+                let hash = location["block_hash"].as_str().unwrap_or("").to_string();
+                let index = location["tx_index"].as_u64().unwrap_or(0) as usize;
+                Ok(Some((height, hash, index)))
+            },
+            None => Ok(None),
+        }
+    }
+
     pub fn get_transaction(&self, hash_hex: &str) -> Result<Option<crate::types::transaction::Transaction>, String> {
         let key = format!("tx:{}", hash_hex);
         let val = self.db.get(key).map_err(|e| e.to_string())?;

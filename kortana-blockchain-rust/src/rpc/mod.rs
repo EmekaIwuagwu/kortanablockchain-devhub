@@ -394,15 +394,26 @@ impl RpcHandler {
                          let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
                          match self.storage.get_receipt(hash_str) {
                              Ok(Some(receipt)) => {
+                                  // Get block information from storage
+                                  let (block_hash, block_number, tx_index) = self.storage.get_transaction_location(hash_str)
+                                      .ok()
+                                      .flatten()
+                                      .map(|(height, hash_str, idx)| (format!("0x{}", hash_str), format!("0x{:x}", height), format!("0x{:x}", idx)))
+                                      .unwrap_or_else(|| (
+                                          "0x0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+                                          "0x0".to_string(),
+                                          "0x0".to_string()
+                                      ));
+
                                  let logs: Vec<serde_json::Value> = receipt.logs.iter().enumerate().map(|(i, log)| {
                                      serde_json::json!({
                                          "address": log.address.to_hex(),
                                          "topics": log.topics.iter().map(|t| format!("0x{}", hex::encode(t))).collect::<Vec<_>>(),
                                          "data": format!("0x{}", hex::encode(&log.data)),
-                                         "blockNumber": "0x1",
+                                         "blockNumber": &block_number,
                                          "transactionHash": tx_hash_raw,
-                                         "transactionIndex": "0x0",
-                                         "blockHash": "0x0",
+                                         "transactionIndex": &tx_index,
+                                         "blockHash": &block_hash,
                                          "logIndex": format!("0x{:x}", i),
                                          "removed": false
                                      })
@@ -410,9 +421,9 @@ impl RpcHandler {
 
                                  Some(serde_json::json!({
                                      "transactionHash": tx_hash_raw,
-                                     "transactionIndex": "0x0",
-                                     "blockHash": "0x0",
-                                     "blockNumber": "0x1",
+                                     "transactionIndex": &tx_index,
+                                     "blockHash": &block_hash,
+                                     "blockNumber": &block_number,
                                      "from": "0x0000000000000000000000000000000000000000",
                                      "to": "0x0000000000000000000000000000000000000000",
                                      "cumulativeGasUsed": format!("0x{:x}", receipt.gas_used),

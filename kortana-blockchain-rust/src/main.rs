@@ -376,6 +376,13 @@ async fn main() {
                         
                         block.sign(&leader_priv);
                         
+                        // Store transaction locations with block metadata
+                        let block_hash = block.header.hash();
+                        for (tx_index, tx) in txs.iter().enumerate() {
+                            let tx_hash = tx.hash();
+                            let _ = node.storage.put_transaction_location(&tx_hash, block.header.height, &block_hash, tx_index);
+                        }
+                        
                         drop(fees);
                         let mut fees_mut = node.fees.lock().unwrap();
                         fees_mut.update_base_fee(block.header.gas_used);
@@ -478,10 +485,13 @@ async fn main() {
                                         *fees = processor.fee_market.clone();
                                         success = true;
                                         // Index transactions
-                                        for tx in &block.transactions {
+                                        let block_hash = block.header.hash();
+                                        for (tx_index, tx) in block.transactions.iter().enumerate() {
                                             let _ = node.storage.put_transaction(tx);
                                             let _ = node.storage.put_index(&tx.from, tx.hash());
                                             let _ = node.storage.put_index(&tx.to, tx.hash());
+                                            let tx_hash = tx.hash();
+                                            let _ = node.storage.put_transaction_location(&tx_hash, block.header.height, &block_hash, tx_index);
                                         }
                                     }
                                 }
