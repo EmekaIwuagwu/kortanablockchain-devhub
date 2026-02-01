@@ -258,17 +258,37 @@ impl RpcHandler {
                     _ => Some(serde_json::Value::Null)
                 }
             }
-            "eth_requestDNR" => {
+            \"eth_requestDNR\" => {
                 if let Some(arr) = p {
                     if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let amount_str = arr.get(1).and_then(|v| v.as_str()).unwrap_or("10");
                             let amount_dnr: u128 = amount_str.parse().unwrap_or(10);
+                            let amount_wei = amount_dnr * 10u128.pow(18);
+                            
                             let mut state = self.state.lock().unwrap();
                             let mut acc = state.get_account(&addr);
-                            acc.balance += amount_dnr * 10u128.pow(18);
-                            state.update_account(addr, acc);
-                            println!("[FAUCET] Distributed {} DNR to {}", amount_dnr, addr_str);
+                            acc.balance += amount_wei;
+                            state.update_account(addr.clone(), acc);
+
+                            // --- CRITICAL FIX: Create a real transaction record for the explorer ---
+                            let faucet_addr = crate::address::Address::ZERO; 
+                            let faucet_tx = crate::types::transaction::Transaction {
+                                from: faucet_addr,
+                                to: addr.clone(),
+                                value: amount_wei,
+                                nonce: (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 10000) as u64,
+                                gas_limit: 21000,
+                                gas_price: 1,
+                                data: vec![],
+                                chain_id: self.chain_id,
+                                signature: vec![0u8; 65], 
+                            };
+
+                            let _ = self.storage.put_transaction(&faucet_tx);
+                            let _ = self.storage.put_index(&addr, faucet_tx.hash());
+                            
+                            println!("[FAUCET] Distributed {} DNR to {} (Tx Indexed)", amount_dnr, addr_str);
                             Some(serde_json::to_value(true).unwrap())
                         } else { None }
                     } else { None }
