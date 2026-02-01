@@ -535,10 +535,21 @@ impl RpcHandler {
                                      })
                                  }).collect();
 
-                                 let tx = self.storage.get_transaction(hash_str).ok().flatten();
-                                 let from = tx.as_ref().map(|t| format!("0x{}", hex::encode(t.from.as_evm_address()))).unwrap_or("0x0000000000000000000000000000000000000000".to_string());
-                                 let to = tx.as_ref().map(|t| format!("0x{}", hex::encode(t.to.as_evm_address()))).unwrap_or("0x0000000000000000000000000000000000000000".to_string());
-
+                                  let tx = self.storage.get_transaction(hash_str).ok().flatten();
+                                  let (from, to, gas_price) = if let Some(t) = &tx {
+                                     (
+                                         format!("0x{}", hex::encode(t.from.as_evm_address())),
+                                         format!("0x{}", hex::encode(t.to.as_evm_address())),
+                                         format!("0x{:x}", t.gas_price)
+                                     )
+                                 } else {
+                                     (
+                                         "0x0000000000000000000000000000000000000000".to_string(),
+                                         "0x0000000000000000000000000000000000000000".to_string(),
+                                         "0x3b9aca00".to_string()
+                                     )
+                                 };
+ 
                                  Some(serde_json::json!({
                                      "transactionHash": tx_hash_raw,
                                      "transactionIndex": &tx_index,
@@ -548,7 +559,7 @@ impl RpcHandler {
                                      "to": to,
                                      "cumulativeGasUsed": format!("0x{:x}", receipt.gas_used),
                                      "gasUsed": format!("0x{:x}", receipt.gas_used),
-                                     "effectiveGasPrice": "0x3b9aca00", // 1 Gwei placeholder
+                                     "effectiveGasPrice": gas_price,
                                      "logs": logs,
                                      "status": format!("0x{:x}", receipt.status),
                                      "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"

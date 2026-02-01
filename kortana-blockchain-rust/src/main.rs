@@ -147,8 +147,15 @@ async fn main() {
         missed_blocks: 0,
     };
 
+    let mut consensus = ConsensusEngine::new(vec![genesis_validator.clone()]);
+    if h_init > 0 {
+        if let Ok(Some(block)) = storage.get_block(h_init) {
+            consensus.finalized_hash = block.header.hash();
+        }
+    }
+
     let node = Arc::new(KortanaNode {
-        consensus: Arc::new(Mutex::new(ConsensusEngine::new(vec![genesis_validator.clone()]))),
+        consensus: Arc::new(Mutex::new(consensus)),
         state: Arc::new(Mutex::new(state)),
         mempool: Arc::new(Mutex::new(Mempool::new(MEMPOOL_MAX_SIZE))),
         fees: Arc::new(Mutex::new(FeeMarket::new())),
@@ -393,6 +400,10 @@ async fn main() {
                         node.height.fetch_add(1, Ordering::SeqCst);
                         let _ = node.storage.put_block(&block);
                         let _ = node.storage.put_state(block.header.height, &*state);
+                        
+                        // Update consensus for next block to have correct parent hash
+                        consensus.finalized_hash = block_hash;
+                        
                         println!("  {}✅ Block {} produced successfully ({} txs){}", CLR_GREEN, h, txs.len(), CLR_RESET);
                     }
                 }
