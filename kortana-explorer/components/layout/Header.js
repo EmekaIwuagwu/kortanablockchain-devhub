@@ -12,6 +12,8 @@ const Header = () => {
         {
             label: 'Blockchain',
             items: [
+                { label: 'View Blocks', href: '/blocks' },
+                { label: 'View Transactions', href: '/txs' },
                 { label: 'View Pending Txns', href: '/pending' },
                 { label: 'Validators List', href: '/validators' },
             ]
