@@ -87,4 +87,8 @@ impl Mempool {
     pub fn get_all(&self) -> Vec<Transaction> {
         self.heap.iter().map(|mt| mt.tx.clone()).collect()
     }
+
+    pub fn get_transaction(&self, hash: &[u8; 32]) -> Option<Transaction> {
+        self.heap.iter().find(|mt| &mt.tx.hash() == hash).map(|mt| mt.tx.clone())
+    }
 }

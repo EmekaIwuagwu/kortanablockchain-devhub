@@ -347,22 +347,82 @@ impl RpcHandler {
             }
             "eth_getTransactionByHash" => {
                 if let Some(arr) = p {
-                    if let Some(tx_hash) = arr.get(0).and_then(|v| v.as_str()) {
-                         let hash_str = tx_hash.strip_prefix("0x").unwrap_or(tx_hash);
-                         match self.storage.get_transaction(hash_str) {
-                             Ok(Some(tx)) => Some(serde_json::to_value(tx).unwrap()),
-                             Ok(None) => Some(serde_json::Value::Null),
-                             Err(_) => None
+                    if let Some(tx_hash_raw) = arr.get(0).and_then(|v| v.as_str()) {
+                         let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
+                         let mut res_tx = None;
+                         
+                         // 1. Check Storage
+                         if let Ok(Some(tx)) = self.storage.get_transaction(hash_str) {
+                             res_tx = Some(tx);
+                         } 
+                         // 2. Check Mempool if not found in storage
+                         else if let Ok(mut h) = hex::decode(hash_str) {
+                             if h.len() == 32 {
+                                 let mut hash_bytes = [0u8; 32];
+                                 hash_bytes.copy_from_slice(&h);
+                                 if let Some(tx) = self.mempool.lock().unwrap().get_transaction(&hash_bytes) {
+                                     res_tx = Some(tx);
+                                 }
+                             }
+                         }
+
+                         match res_tx {
+                             Some(tx) => {
+                                 Some(serde_json::json!({
+                                     "hash": format!("0x{}", hex::encode(tx.hash())),
+                                     "nonce": format!("0x{:x}", tx.nonce),
+                                     "blockHash": "0x0000000000000000000000000000000000000000000000000000000000000000", // TODO: Link to actual block
+                                     "blockNumber": format!("0x{:x}", 1), // TODO: Link to actual height
+                                     "transactionIndex": "0x0",
+                                     "from": tx.from.to_hex(),
+                                     "to": tx.to.to_hex(),
+                                     "value": format!("0x{:x}", tx.value),
+                                     "gas": format!("0x{:x}", tx.gas_limit),
+                                     "gasPrice": format!("0x{:x}", tx.gas_price),
+                                     "input": format!("0x{}", hex::encode(tx.data)),
+                                     "v": "0x1", "r": "0x0", "s": "0x0" // Simple placeholders for Ethers
+                                 }))
+                             },
+                             None => Some(serde_json::Value::Null)
                          }
                     } else { None }
                 } else { None }
             }
             "eth_getTransactionReceipt" => {
                 if let Some(arr) = p {
-                    if let Some(tx_hash) = arr.get(0).and_then(|v| v.as_str()) {
-                         let hash_str = tx_hash.strip_prefix("0x").unwrap_or(tx_hash);
+                    if let Some(tx_hash_raw) = arr.get(0).and_then(|v| v.as_str()) {
+                         let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
                          match self.storage.get_receipt(hash_str) {
-                             Ok(Some(receipt)) => Some(serde_json::to_value(receipt).unwrap()),
+                             Ok(Some(receipt)) => {
+                                 let logs: Vec<serde_json::Value> = receipt.logs.iter().enumerate().map(|(i, log)| {
+                                     serde_json::json!({
+                                         "address": log.address.to_hex(),
+                                         "topics": log.topics.iter().map(|t| format!("0x{}", hex::encode(t))).collect::<Vec<_>>(),
+                                         "data": format!("0x{}", hex::encode(&log.data)),
+                                         "blockNumber": "0x1",
+                                         "transactionHash": tx_hash_raw,
+                                         "transactionIndex": "0x0",
+                                         "blockHash": "0x0",
+                                         "logIndex": format!("0x{:x}", i),
+                                         "removed": false
+                                     })
+                                 }).collect();
+
+                                 Some(serde_json::json!({
+                                     "transactionHash": tx_hash_raw,
+                                     "transactionIndex": "0x0",
+                                     "blockHash": "0x0",
+                                     "blockNumber": "0x1",
+                                     "from": "0x0000000000000000000000000000000000000000",
+                                     "to": "0x0000000000000000000000000000000000000000",
+                                     "cumulativeGasUsed": format!("0x{:x}", receipt.gas_used),
+                                     "gasUsed": format!("0x{:x}", receipt.gas_used),
+                                     "effectiveGasPrice": "0x0",
+                                     "logs": logs,
+                                     "status": format!("0x{:x}", receipt.status),
+                                     "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                                 }))
+                             },
                              Ok(None) => Some(serde_json::Value::Null),
                              Err(_) => None
                          }

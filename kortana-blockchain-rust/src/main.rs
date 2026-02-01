@@ -239,13 +239,13 @@ async fn main() {
                 let req_body_str = String::from_utf8_lossy(&buffer);
                 
                 let (http_res, method_name) = if req_body_str.starts_with("OPTIONS") {
-                    (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
+                    (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
                 } else if req_body_str.starts_with("GET") {
                     let status_json = serde_json::json!({
                         "status": "online", "node": "Kortana", "version": "1.0.0",
                         "chain_id": CHAIN_ID, "height": task_node.height.load(Ordering::Relaxed)
                     }).to_string();
-                    (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
+                    (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
                 } else if let Some(header_end) = req_body_str.find("\r\n\r\n") {
                     let body_start = header_end + 4;
                     let mut cl_val = 0;
@@ -285,7 +285,7 @@ async fn main() {
                                 Err(e) => (serde_json::to_string(&kortana_blockchain_rust::rpc::JsonRpcResponse::new_error(serde_json::Value::Null, -32700, &format!("Parse error: {}", e))).unwrap(), "BAD_JSON".to_string())
                             }
                         };
-                        (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", res_json.len(), res_json), m_name)
+                        (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", res_json.len(), res_json), m_name)
                     }
                 } else {
                     (format!("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"), "MALFORMED".to_string())
