@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 
-const RPC_URL = 'https://poseidon-rpc.kortana.name.ng';
+const RPC_URL = 'http://localhost:8545';
 
 export const provider = new ethers.JsonRpcProvider(RPC_URL);
 
