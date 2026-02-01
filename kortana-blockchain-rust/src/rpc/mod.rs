@@ -66,10 +66,8 @@ impl RpcHandler {
 
         // Helper to get latest block header for VM context
         let current_height = self.height.load(Ordering::Relaxed);
-        let latest_header = self.storage.get_block(current_height)
-            .ok()
-            .flatten()
-            .map(|b| b.header);
+        let latest_block = self.storage.get_block(current_height).ok().flatten();
+        let latest_header = latest_block.map(|b| b.header);
 
         let result: Option<Value> = match request.method.as_str() {
             "eth_chainId" => Some(serde_json::to_value(format!("0x{:x}", self.chain_id)).unwrap()),
