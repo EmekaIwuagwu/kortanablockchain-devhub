@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getBlock } from '@/lib/rpc';
 import Link from 'next/link';
+import { ethers } from 'ethers';
 import { Box, Clock, User, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const BlockDetail = () => {
