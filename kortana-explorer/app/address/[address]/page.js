@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getAddressBalance, getTokenMetadata, getRecentTransactions, provider } from '@/lib/rpc';
+import { getAddressBalance, getTokenMetadata, getAddressHistory, provider } from '@/lib/rpc';
 import { Wallet, Copy, ExternalLink, Activity, Box, Database, Clock, ArrowRight } from 'lucide-react';
+import { ethers } from 'ethers';
 import Link from 'next/link';
 
 const AddressDetail = () => {
@@ -26,8 +27,8 @@ const AddressDetail = () => {
                     setTokens([tokenData]);
                 }
 
-                // Fetch recent transactions
-                const txs = await getRecentTransactions(address);
+                // Fetch full history from the index
+                const txs = await getAddressHistory(address);
                 setTransactions(txs);
             } catch (err) {
                 console.error(err);
@@ -40,7 +41,6 @@ const AddressDetail = () => {
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(address);
-        // Simple visual feedback could be added here
     };
 
     if (loading) return (
@@ -126,7 +126,7 @@ const AddressDetail = () => {
                                 <thead>
                                     <tr>
                                         <th>Txn Hash</th>
-                                        <th>Block</th>
+                                        <th>Nonce</th>
                                         <th>Age</th>
                                         <th>From</th>
                                         <th>To</th>
@@ -147,11 +147,11 @@ const AddressDetail = () => {
                                                 </div>
                                             </td>
                                             <td>
-                                                <Link href={`/block/${tx.blockNumber}`} className="text-primary-light text-small">
-                                                    {tx.blockNumber}
-                                                </Link>
+                                                <span className="text-primary-light text-small">
+                                                    {parseInt(tx.nonce, 16)}
+                                                </span>
                                             </td>
-                                            <td className="text-dim text-small">Recently</td>
+                                            <td className="text-dim text-small">Mined</td>
                                             <td>
                                                 <div className="flex items-center gap-2">
                                                     <Link href={`/address/${tx.from}`} className={tx.from.toLowerCase() === address.toLowerCase() ? 'text-white' : 'text-accent text-small'}>
@@ -168,7 +168,7 @@ const AddressDetail = () => {
                                             </td>
                                             <td>
                                                 <span className="font-mono text-small">
-                                                    {(Number(tx.value) / 1e18).toFixed(4)} DNR
+                                                    {ethers.formatEther(tx.value)} DNR
                                                 </span>
                                             </td>
                                         </tr>

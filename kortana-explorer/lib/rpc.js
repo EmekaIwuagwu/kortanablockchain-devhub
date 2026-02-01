@@ -66,6 +66,16 @@ export async function getAddressBalance(address) {
     }
 }
 
+export async function getAddressHistory(address) {
+    try {
+        const txs = await provider.send("eth_getAddressHistory", [address]);
+        return txs;
+    } catch (error) {
+        console.error("Error fetching address history:", error);
+        return [];
+    }
+}
+
 export async function getCode(address) {
     try {
         return await provider.getCode(address);

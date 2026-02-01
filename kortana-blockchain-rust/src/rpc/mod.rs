@@ -317,6 +317,34 @@ impl RpcHandler {
             "eth_syncing" => Some(serde_json::to_value(false).unwrap()),
             "eth_protocolVersion" => Some(serde_json::to_value("0x41").unwrap()),
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
+            "eth_getAddressHistory" => {
+                if let Some(arr) = p {
+                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
+                        if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
+                            let hashes = self.storage.get_address_history(&addr).unwrap_or_default();
+                            let mut txs = Vec::new();
+                            for hash in hashes {
+                                // storage.get_transaction expects hex WITHOUT 0x now
+                                if let Ok(Some(tx)) = self.storage.get_transaction(&hex::encode(hash)) {
+                                    txs.push(serde_json::json!({
+                                        "hash": format!("0x{}", hex::encode(tx.hash())),
+                                        "nonce": format!("0x{:x}", tx.nonce),
+                                        "from": tx.from.to_hex(), 
+                                        "to": tx.to.to_hex(),
+                                        "value": format!("0x{:x}", tx.value),
+                                        "gas": format!("0x{:x}", tx.gas_limit),
+                                        "gasPrice": format!("0x{:x}", tx.gas_price),
+                                        "input": format!("0x{}", hex::encode(tx.data)),
+                                        "chainId": format!("0x{:x}", tx.chain_id),
+                                    }));
+                                }
+                            }
+                            txs.reverse(); // Latest first
+                            Some(serde_json::to_value(txs).unwrap())
+                        } else { None }
+                    } else { None }
+                } else { None }
+            }
             "eth_getTransactionByHash" => {
                 if let Some(arr) = p {
                     if let Some(tx_hash) = arr.get(0).and_then(|v| v.as_str()) {

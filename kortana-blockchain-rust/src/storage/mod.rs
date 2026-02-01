@@ -35,7 +35,7 @@ impl Storage {
     }
 
     pub fn put_transaction(&self, tx: &crate::types::transaction::Transaction) -> Result<(), String> {
-        let key = format!("tx:0x{}", hex::encode(tx.hash()));
+        let key = format!("tx:{}", hex::encode(tx.hash()));
         let val = serde_json::to_vec(tx).map_err(|e| e.to_string())?;
         self.db.insert(key, val).map_err(|e| e.to_string())?;
         Ok(())
