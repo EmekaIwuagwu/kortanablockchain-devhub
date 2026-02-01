@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getAddressBalance, getTokenMetadata, getAddressHistory, provider } from '@/lib/rpc';
-import { Wallet, Copy, ExternalLink, Activity, Box, Database, Clock, ArrowRight } from 'lucide-react';
+import { getAddressBalance, getTokenMetadata, getAddressHistory, getTransactionCount, provider } from '@/lib/rpc';
+import { Wallet, Copy, ExternalLink, Activity, Box, Database, Clock, ArrowRight, Ban } from 'lucide-react';
 import { ethers } from 'ethers';
 import Link from 'next/link';
 
 const AddressDetail = () => {
     const { address } = useParams();
     const [balance, setBalance] = useState('0');
+    const [nonce, setNonce] = useState(0);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('transactions');
     const [tokens, setTokens] = useState([]);
@@ -18,18 +19,21 @@ const AddressDetail = () => {
     useEffect(() => {
         const fetchAddress = async () => {
             try {
-                const bal = await getAddressBalance(address);
+                const [bal, count, history] = await Promise.all([
+                    getAddressBalance(address),
+                    getTransactionCount(address),
+                    getAddressHistory(address)
+                ]);
+
                 setBalance(bal);
+                setNonce(count);
+                setTransactions(history);
 
                 // Try to see if this address is a token contract
                 const tokenData = await getTokenMetadata(address);
                 if (tokenData) {
                     setTokens([tokenData]);
                 }
-
-                // Fetch full history from the index
-                const txs = await getAddressHistory(address);
-                setTransactions(txs);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -105,7 +109,7 @@ const AddressDetail = () => {
                         <span className="text-dim text-small font-heading">NONCE</span>
                         <Box size={18} className="text-warning" />
                     </div>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: '700', lineHeight: '1' }}>0</h1>
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: '700', lineHeight: '1' }}>{nonce}</h1>
                     <div className="text-dim text-small mt-2">Last confirmed txn index</div>
                 </div>
             </div>
@@ -120,62 +124,70 @@ const AddressDetail = () => {
                 </div>
 
                 <div className="glass-card" style={{ padding: '0', minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {activeTab === 'transactions' && transactions.length > 0 ? (
-                        <div style={{ width: '100%' }}>
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Txn Hash</th>
-                                        <th>Nonce</th>
-                                        <th>Age</th>
-                                        <th>From</th>
-                                        <th>To</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {transactions.map((tx) => (
-                                        <tr key={tx.hash}>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <div style={{ padding: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
-                                                        <ArrowRight size={14} className="text-dim" />
-                                                    </div>
-                                                    <Link href={`/tx/${tx.hash}`} className="text-accent text-small">
-                                                        {tx.hash.substring(0, 14)}...
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span className="text-primary-light text-small">
-                                                    {parseInt(tx.nonce, 16)}
-                                                </span>
-                                            </td>
-                                            <td className="text-dim text-small">Mined</td>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <Link href={`/address/${tx.from}`} className={tx.from.toLowerCase() === address.toLowerCase() ? 'text-white' : 'text-accent text-small'}>
-                                                        {tx.from.toLowerCase() === address.toLowerCase() ? 'Me' : tx.from.substring(0, 8) + '...'}
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <Link href={`/address/${tx.to}`} className={tx.to?.toLowerCase() === address.toLowerCase() ? 'text-white' : 'text-accent text-small'}>
-                                                        {tx.to?.toLowerCase() === address.toLowerCase() ? 'Me' : (tx.to ? tx.to.substring(0, 8) + '...' : 'Contract Creation')}
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span className="font-mono text-small">
-                                                    {ethers.formatEther(tx.value)} DNR
-                                                </span>
-                                            </td>
+                    {activeTab === 'transactions' ? (
+                        transactions.length > 0 ? (
+                            <div style={{ width: '100%' }}>
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Txn Hash</th>
+                                            <th>Nonce</th>
+                                            <th>Age</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                            <th>Value</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {transactions.map((tx) => (
+                                            <tr key={tx.hash}>
+                                                <td>
+                                                    <div className="flex items-center gap-2">
+                                                        <div style={{ padding: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                                                            <ArrowRight size={14} className="text-dim" />
+                                                        </div>
+                                                        <Link href={`/tx/${tx.hash}`} className="text-accent text-small">
+                                                            {tx.hash.substring(0, 14)}...
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="text-primary-light text-small">
+                                                        {parseInt(tx.nonce, 16)}
+                                                    </span>
+                                                </td>
+                                                <td className="text-dim text-small">Mined</td>
+                                                <td>
+                                                    <div className="flex items-center gap-2">
+                                                        <Link href={`/address/${tx.from}`} className={tx.from.toLowerCase() === address.toLowerCase() ? 'text-white' : 'text-accent text-small'}>
+                                                            {tx.from.toLowerCase() === address.toLowerCase() ? 'Me' : tx.from.substring(0, 8) + '...'}
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="flex items-center gap-2">
+                                                        <Link href={`/address/${tx.to}`} className={tx.to?.toLowerCase() === address.toLowerCase() ? 'text-white' : 'text-accent text-small'}>
+                                                            {tx.to?.toLowerCase() === address.toLowerCase() ? 'Me' : (tx.to ? tx.to.substring(0, 8) + '...' : 'Contract Creation')}
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="font-mono text-small">
+                                                        {ethers.formatEther(tx.value)} DNR
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="empty-state text-center py-20">
+                                <Ban size={48} className="text-dim mb-4" style={{ margin: '0 auto' }} />
+                                <h3 className="font-heading text-dim">No transactions found</h3>
+                                <p className="text-dim text-small mt-2">This address has not initiated any transactions on the Kortana network.</p>
+                            </div>
+                        )
                     ) : (activeTab === 'tokens' && tokens.length > 0 ? (
                         <div style={{ width: '100%', padding: '1rem' }}>
                             <table className="data-table">
@@ -205,15 +217,11 @@ const AddressDetail = () => {
                                 <Clock size={32} />
                             </div>
                             <div>
-                                <h3 className="font-heading mb-2">History Under Synchronization</h3>
+                                <h3 className="font-heading mb-2">Data not available</h3>
                                 <p className="text-dim text-small" style={{ maxWidth: '400px', margin: '0 auto' }}>
-                                    The Kortana Archive Node is currently indexing the historical transaction data for this address.
-                                    Real-time balance updates are active.
+                                    Historical internal transactions and token transfers for this address have not been indexed yet.
                                 </p>
                             </div>
-                            <button className="btn btn-primary btn-small mt-2" onClick={() => window.location.reload()}>
-                                Refresh Data
-                            </button>
                         </div>
                     ))}
                 </div>

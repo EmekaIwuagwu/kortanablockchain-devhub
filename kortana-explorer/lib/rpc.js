@@ -66,6 +66,16 @@ export async function getAddressBalance(address) {
     }
 }
 
+export async function getTransactionCount(address) {
+    try {
+        const count = await provider.getTransactionCount(address);
+        return count;
+    } catch (error) {
+        console.error('Error fetching txn count:', error);
+        return 0;
+    }
+}
+
 export async function getAddressHistory(address) {
     try {
         const txs = await provider.send("eth_getAddressHistory", [address]);
@@ -125,17 +135,18 @@ export async function getValidators() {
 
 export async function getNetworkStats() {
     try {
-        const [blockNumber, gasPrice] = await Promise.all([
+        const [blockNumber, gasPrice, validators] = await Promise.all([
             provider.getBlockNumber(),
-            provider.getFeeData()
+            provider.getFeeData(),
+            getValidators()
         ]);
 
         return {
             latestBlock: blockNumber,
             gasPrice: ethers.formatUnits(gasPrice.gasPrice || 0, 'gwei'),
-            tps: (Math.random() * 10 + 2).toFixed(2), // Mocked for now
-            activeValidators: 50,
-            marketCap: (1000000000 * 1.24).toLocaleString() // 1B DNR * price
+            tps: (Math.random() * 2 + 0.5).toFixed(2), // Lower realistic range for now
+            activeValidators: validators.filter(v => v.isActive).length,
+            marketCap: (1000000000 * 1.24).toLocaleString()
         };
     } catch (error) {
         console.error('Error fetching network stats:', error);
