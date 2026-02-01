@@ -260,7 +260,12 @@ The node exposes a standard JSON-RPC 2.0 interface on port `8545`.
 | `eth_estimateGas` | Estimates gas for a transaction. | `[{to, data}]` |
 | `eth_getCode` | Returns contract bytecode. | `[address, block]` |
 | `eth_gasPrice` | Returns current gas price (1 Gwei). | `[]` |
+| `eth_feeHistory` | Returns historical gas fee data. | `[blockCount, newestBlock, rewardPercentiles]` |
+| `eth_requestDNR` | **Faucet**: Requests testnet DNR tokens. | `[address]` |
 | `net_version` | Returns the network ID. | `[]` |
+| `net_listening` | Returns true if client is listening for network connections. | `[]` |
+| `eth_syncing` | Returns an object with data about the sync status or false. | `[]` |
+| `eth_protocolVersion` | Returns the Ethereum protocol version. | `[]` |
 | `web3_clientVersion` | Returns client version. | `[]` |
 
 **Example Request:**
