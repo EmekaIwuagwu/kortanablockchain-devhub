@@ -19,12 +19,13 @@ const BlockList = ({ blocks = [] }) => {
                                     <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)' }}>
                                         <Box size={20} className="text-accent" />
                                     </div>
-                                    <div>
-                                        <Link href={`/block/${block.number}`} className="font-heading" style={{ color: 'white' }}>
-                                            {block.number}
+                                    <div style={{ minWidth: '150px' }}>
+                                        <Link href={`/block/${block.hash || block.number}`} className="font-heading" style={{ color: 'white', display: 'block', fontSize: '0.95rem' }}>
+                                            {block.hash ? `${block.hash.substring(0, 14)}...` : `Block #${block.number}`}
                                         </Link>
                                         <div className="text-dim text-small flex items-center gap-1">
-                                            <Clock size={12} /> {block.timestamp_human || '5s ago'}
+                                            <span className="text-accent">#{block.number}</span>
+                                            <Clock size={12} style={{ marginLeft: '4px' }} /> {block.timestamp_human || '5s ago'}
                                         </div>
                                     </div>
                                 </div>

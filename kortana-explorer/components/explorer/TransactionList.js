@@ -12,7 +12,7 @@ const TransactionList = ({ transactions = [] }) => {
 
             <table className="data-table">
                 <tbody>
-                    {transactions.map((tx) => (
+                    {transactions.length > 0 ? transactions.map((tx) => (
                         <tr key={tx.hash}>
                             <td>
                                 <div className="flex items-center gap-3">
@@ -23,7 +23,7 @@ const TransactionList = ({ transactions = [] }) => {
                                         <Link href={`/tx/${tx.hash}`} className="text-accent text-small" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {tx.hash?.substring(0, 18)}...
                                         </Link>
-                                        <div className="text-dim text-small">5s ago</div>
+                                        <div className="text-dim text-small">Confirmed</div>
                                     </div>
                                 </div>
                             </td>
@@ -50,7 +50,13 @@ const TransactionList = ({ transactions = [] }) => {
                                 </div>
                             </td>
                         </tr>
-                    ))}
+                    )) : (
+                        <tr>
+                            <td colSpan="3" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-dim)' }}>
+                                No transactions found in recent blocks.
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>

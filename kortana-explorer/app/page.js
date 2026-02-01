@@ -38,13 +38,24 @@ export default function Home() {
           // Try to find transactions in recent blocks
           const allTxs = [];
           for (const b of latestBlocks) {
-            // ethers.js getBlock(id, true) puts full objects in b.transactions
             if (b.transactions && b.transactions.length > 0) {
-              for (const tx of b.transactions) {
-                allTxs.push({
-                  ...tx,
-                  value_formatted: ethers.formatEther(tx.value)
-                });
+              for (const t of b.transactions) {
+                try {
+                  let tx = t;
+                  // If it's just a hash, fetch the full transaction
+                  if (typeof t === 'string') {
+                    tx = await provider.getTransaction(t);
+                  }
+
+                  if (tx && tx.hash) {
+                    allTxs.push({
+                      ...tx,
+                      value_formatted: ethers.formatEther(tx.value || 0)
+                    });
+                  }
+                } catch (e) {
+                  console.warn("Error processing transaction:", e);
+                }
                 if (allTxs.length >= 10) break;
               }
             }
