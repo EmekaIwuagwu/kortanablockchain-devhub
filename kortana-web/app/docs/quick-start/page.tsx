@@ -58,7 +58,7 @@ export default function QuickStartPage() {
   solidity: "0.8.19",
   networks: {
     kortana: {
-      url: "https://poseidon-rpc.kortana.name.ng",
+      url: "https://poseidon-rpc.kortana.worchsester.xyz",
       accounts: [YOUR_PRIVATE_KEY],
       chainId: 72511
     }
@@ -132,3 +132,4 @@ function CodeBlock({ commands }: { commands: string[] }) {
         </div>
     )
 }
+

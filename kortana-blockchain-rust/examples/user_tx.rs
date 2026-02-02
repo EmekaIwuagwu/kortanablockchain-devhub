@@ -6,7 +6,7 @@ use std::process::Command;
 use serde_json::json;
 
 // Use the public RPC URL seen in the codebase
-const RPC_URL: &str = "https://poseidon-rpc.kortana.name.ng";
+const RPC_URL: &str = "https://poseidon-rpc.kortana.worchsester.xyz";
 
 fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
     let json_body = json!({
@@ -66,8 +66,8 @@ fn main() {
     let nonce = u64::from_str_radix(nonce_str, 16).unwrap_or(0);
     println!("Nonce: {}", nonce);
 
-    // 2. Construct Transaction (Transfer 450,000 DNR)
-    let amount_dnr: u128 = 450_000;
+    // 2. Construct Transaction (Transfer 200,000 DNR)
+    let amount_dnr: u128 = 200_000;
     let value = amount_dnr * 10u128.pow(18);
 
     let mut tx = Transaction {
@@ -91,7 +91,7 @@ fn main() {
     let tx_hex = format!("0x{}", hex::encode(tx_encoded));
 
     // 3. Send Transaction
-    println!("\n[2/3] Sending 450,000 DNR transaction...");
+    println!("\n[2/3] Sending 200,000 DNR transaction...");
     let res = rpc_call("eth_sendRawTransaction", json!([tx_hex]));
     
     if let Some(err) = res.get("error") {
@@ -102,3 +102,4 @@ fn main() {
         println!("Address: {}", dest_addr_str);
     }
 }
+

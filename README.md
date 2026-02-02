@@ -66,8 +66,8 @@ sudo ./scripts/deploy_ubuntu.sh
 ### 🦊 MetaMask Connection (Testnet)
 Connect your wallet to the Kortana network using these settings:
 - **Network Name:** `Kortana Testnet`
-- **RPC URL:** `http://YOUR_SERVER_IP:8545`
-- **Chain ID:** `1337`
+- **RPC URL:** `https://poseidon-rpc.kortana.worchsester.xyz`
+- **Chain ID:** `72511`
 - **Symbol:** `DNR`
 
 **Get Test Tokens:**

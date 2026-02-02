@@ -10,12 +10,12 @@ Since you are running your own blockchain, you need to add it as a **"Custom Net
 | Field | Value |
 |-------|-------|
 | **Network Name** | `Kortana Testnet` |
-| **RPC URL** | `http://127.0.0.1:8545` |
-| **Chain ID** | `1337` |
+| **RPC URL** | `https://poseidon-rpc.kortana.worchsester.xyz` |
+| **Chain ID** | `72511` |
 | **Currency Symbol** | `DNR` |
 | **Block Explorer** | (Leave empty or use `http://localhost:3000` if you built one) |
 
-> **Note:** We are using Chain ID `1337` for our Testnet/Local environment. This is a standard ID for development and ensures no conflicts with other major networks in your MetaMask wallet.
+> **Note:** We are using Chain ID `72511` for our Testnet environment. This ensures no conflicts with other major networks.
 
 ## 📝 Step-by-Step Instructions
 
@@ -24,8 +24,8 @@ Since you are running your own blockchain, you need to add it as a **"Custom Net
 3.  Scroll down and click **"Add a network manually"**.
 4.  **Fill in the details** from the table above:
     *   **Network Name:** `Kortana Testnet`
-    *   **New RPC URL:** `http://127.0.0.1:8545`
-    *   **Chain ID:** `1337`
+    *   **New RPC URL:** `https://poseidon-rpc.kortana.worchsester.xyz`
+    *   **Chain ID:** `72511`
     *   **Currency Symbol:** `DNR`
 5.  Click **Save**.
 

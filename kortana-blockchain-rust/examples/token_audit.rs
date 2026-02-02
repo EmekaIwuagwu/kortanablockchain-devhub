@@ -3,7 +3,7 @@ use kortana_blockchain_rust::address::Address;
 use std::process::Command;
 use serde_json::json;
 
-const RPC_URL: &str = "https://poseidon-rpc.kortana.name.ng";
+const RPC_URL: &str = "https://poseidon-rpc.kortana.worchsester.xyz";
 
 fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
     let json_body = json!({
@@ -71,3 +71,4 @@ fn main() {
     
     println!("\nSTATUS: Token identities verified via Nonce-Derivation (SHA3).");
 }
+

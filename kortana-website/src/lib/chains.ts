@@ -10,11 +10,11 @@ export const kortanaTestnet = defineChain({
         decimals: 18
     },
     rpcUrls: {
-        default: { http: ['https://poseidon-rpc.kortana.name.ng'] },
-        public: { http: ['https://poseidon-rpc.kortana.name.ng'] },
+        default: { http: ['https://poseidon-rpc.kortana.worchsester.xyz'] },
+        public: { http: ['https://poseidon-rpc.kortana.worchsester.xyz'] },
     },
     blockExplorers: {
-        default: { name: 'Kortana Explorer', url: 'https://explorer.kortana.name.ng' },
+        default: { name: 'Kortana Explorer', url: 'https://explorer.kortana.worchsester.xyz' },
     },
     testnet: true,
 })

@@ -46,7 +46,7 @@ export default function DevelopersPage() {
 
                         <div className="space-y-6">
                             <EndpointItem label="Network ID" value="Kortana Poseidon" />
-                            <EndpointItem label="RPC Gateway" value="https://poseidon-rpc.kortana.name.ng" copyable />
+                            <EndpointItem label="RPC Gateway" value="https://poseidon-rpc.kortana.worchsester.xyz" copyable />
                             <EndpointItem label="Chain Index" value="72511" />
                             <EndpointItem label="Asset Symbol" value="DNR" />
                         </div>
@@ -109,3 +109,4 @@ function ToolCard({ title, desc, cmd, color }: { title: string, desc: string, cm
         </div>
     )
 }
+

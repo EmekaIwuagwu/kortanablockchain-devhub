@@ -3,7 +3,7 @@ import json
 import time
 
 # Kortana RPC Endpoint
-RPC_URL = "https://poseidon-rpc.kortana.name.ng"
+RPC_URL = "https://poseidon-rpc.kortana.worchsester.xyz"
 
 def rpc_call(method, params):
     payload = {

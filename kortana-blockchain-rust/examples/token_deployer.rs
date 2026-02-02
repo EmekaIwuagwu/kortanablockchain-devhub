@@ -5,7 +5,7 @@ use kortana_blockchain_rust::crypto::sign_message;
 use std::process::Command;
 use serde_json::json;
 
-const RPC_URL: &str = "https://poseidon-rpc.kortana.name.ng";
+const RPC_URL: &str = "https://poseidon-rpc.kortana.worchsester.xyz";
 
 fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
     let json_body = json!({
@@ -91,3 +91,4 @@ fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmTy
     println!("   > Deployment Tx Hash: {:?}", res);
     println!("   > Gas Provided: 1,000,000 units");
 }
+

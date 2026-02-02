@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 
-const RPC_URL = 'https://poseidon-rpc.kortana.name.ng';
+const RPC_URL = 'https://poseidon-rpc.kortana.worchsester.xyz';
 
 export const provider = new ethers.JsonRpcProvider(RPC_URL);
 
@@ -211,3 +211,4 @@ export async function getPendingTransactions() {
         return [];
     }
 }
+

@@ -1,6 +1,6 @@
 export async function getBlockHeight() {
     try {
-        const response = await fetch('https://poseidon-rpc.kortana.name.ng/', {
+        const response = await fetch('https://poseidon-rpc.kortana.worchsester.xyz/', {
             method: 'POST',
             cache: 'no-store',
             headers: {
@@ -23,3 +23,4 @@ export async function getBlockHeight() {
         return "N/A";
     }
 }
+

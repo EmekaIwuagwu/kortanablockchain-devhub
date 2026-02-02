@@ -8,7 +8,7 @@ import { HeroVisual } from '@/components/home/HeroVisual'
 
 export function Hero() {
     const [copied, setCopied] = useState(false)
-    const rpcUrl = "https://poseidon-rpc.kortana.name.ng"
+    const rpcUrl = "https://poseidon-rpc.kortana.worchsester.xyz"
 
     const handleCopy = () => {
         navigator.clipboard.writeText(rpcUrl)
