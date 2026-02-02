@@ -48,7 +48,7 @@ export default function NetworkPage() {
                                     <ConfigRow label="RPC Endpoint" value="https://poseidon-rpc.kortana.worchsester.xyz" isCopy />
                                     <ConfigRow label="Chain ID" value="72511" />
                                     <ConfigRow label="Currency" value="DNR" />
-                                    <ConfigRow label="Block Explorer" value="https://explorer.testnet.kortana.org" isCopy />
+                                    <ConfigRow label="Block Explorer" value="https://explorer.kortana.worchsester.xyz" isCopy />
                                 </tbody>
                             </table>
                         </div>
