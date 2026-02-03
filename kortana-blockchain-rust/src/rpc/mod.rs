@@ -204,7 +204,20 @@ impl RpcHandler {
                                         let _ = self.network_tx.try_send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
                                         Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
                                     },
-                                    Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("RLP error: {}", e))).unwrap())
+                                    Err(e) => {
+                                        // Fallback for Standard Ethereum Transactions (MetaMask)
+                                        match crate::types::transaction::Transaction::decode_ethereum(&bytes) {
+                                            Ok(tx) => {
+                                                {
+                                                    let mut mempool = self.mempool.lock().unwrap();
+                                                    mempool.add(tx.clone());
+                                                }
+                                                let _ = self.network_tx.try_send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
+                                                Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
+                                            },
+                                            Err(e2) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("RLP error: {}; Eth error: {}", e, e2))).unwrap())
+                                        }
+                                    }
                                 }
                             },
                             Err(e) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("Hex error: {}", e))).unwrap())
