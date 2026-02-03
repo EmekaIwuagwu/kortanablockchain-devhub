@@ -37,12 +37,23 @@ impl JsonRpcResponse {
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::collections::HashMap;
 use crate::state::account::State;
 use crate::mempool::Mempool;
 use crate::storage::Storage;
 use tokio::sync::mpsc;
 
 use crate::consensus::ConsensusEngine;
+
+// Filter tracking for MetaMask compatibility
+#[derive(Debug, Clone)]
+struct BlockFilter {
+    id: String,
+    created_at_block: u64,
+    last_poll_block: u64,
+}
+
+type FilterMap = Arc<Mutex<HashMap<String, BlockFilter>>>;
 
 pub struct RpcHandler {
     pub state: Arc<Mutex<State>>,
@@ -52,11 +63,21 @@ pub struct RpcHandler {
     pub network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>,
     pub height: Arc<AtomicU64>,
     pub chain_id: u64,
+    pub filters: FilterMap,
 }
 
 impl RpcHandler {
     pub fn new(state: Arc<Mutex<State>>, mempool: Arc<Mutex<Mempool>>, storage: Arc<Storage>, consensus: Arc<Mutex<ConsensusEngine>>, network_tx: mpsc::Sender<crate::network::messages::NetworkMessage>, height: Arc<AtomicU64>, chain_id: u64) -> Self {
-        Self { state, mempool, storage, consensus, network_tx, height, chain_id }
+        Self { 
+            state, 
+            mempool, 
+            storage, 
+            consensus, 
+            network_tx, 
+            height, 
+            chain_id,
+            filters: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     pub async fn handle(&self, request: JsonRpcRequest) -> JsonRpcResponse {
@@ -609,11 +630,64 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_newBlockFilter" => {
-                Some(serde_json::to_value("0x1").unwrap())
+                // Create a new filter with unique ID
+                let filter_id = format!("0x{:x}", std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos() % 0xFFFFFFFF);
+                
+                let current_block = current_height;
+                let filter = BlockFilter {
+                    id: filter_id.clone(),
+                    created_at_block: current_block,
+                    last_poll_block: current_block,
+                };
+                
+                let mut filters = self.filters.lock().unwrap();
+                filters.insert(filter_id.clone(), filter);
+                
+                println!("[FILTER] Created new block filter {} at height {}", filter_id, current_block);
+                Some(serde_json::to_value(filter_id).unwrap())
             }
             "eth_getFilterChanges" | "eth_getFilterLogs" => {
-                let block_hash = latest_block.map(|b| format!("0x{}", hex::encode(b.header.hash()))).unwrap_or_else(|| "0x0".to_string());
-                Some(serde_json::json!([block_hash]))
+                if let Some(arr) = p {
+                    if let Some(filter_id) = arr.first().and_then(|v| v.as_str()) {
+                        let mut filters = self.filters.lock().unwrap();
+                        
+                        if let Some(filter) = filters.get_mut(filter_id) {
+                            let last_poll = filter.last_poll_block;
+                            let current_block = current_height;
+                            
+                            // Update last poll block
+                            filter.last_poll_block = current_block;
+                            
+                            // Return all new block hashes since last poll
+                            let mut new_blocks = Vec::new();
+                            for height in (last_poll + 1)..=current_block {
+                                if let Ok(Some(block)) = self.storage.get_block(height) {
+                                    new_blocks.push(serde_json::to_value(
+                                        format!("0x{}", hex::encode(block.header.hash()))
+                                    ).unwrap());
+                                }
+                            }
+                            
+                            if !new_blocks.is_empty() {
+                                println!("[FILTER] {} returned {} new blocks (from {} to {})", 
+                                    filter_id, new_blocks.len(), last_poll + 1, current_block);
+                            }
+                            
+                            Some(serde_json::Value::Array(new_blocks))
+                        } else {
+                            // Filter not found - return error
+                            println!("[FILTER] Filter {} not found", filter_id);
+                            Some(serde_json::json!([]))
+                        }
+                    } else {
+                        Some(serde_json::json!([]))
+                    }
+                } else {
+                    Some(serde_json::json!([]))
+                }
             }
             "eth_getLogs" => {
                 // Return empty logs instead of method not found to satisfy scanners
