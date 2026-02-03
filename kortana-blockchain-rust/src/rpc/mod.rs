@@ -232,10 +232,8 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
-                                    "timestamp": "0x0",
-                                    "v": "0x1b", 
-                                    "r": "0x0",
-                                    "s": "0x0",
+                                    "chainId": format!("0x{:x}", self.chain_id),
+                                    "v": "0x1b", "r": "0x0", "s": "0x0",
                                     "type": "0x0"
                                 }));
                             }
@@ -280,6 +278,7 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
+                                    "chainId": format!("0x{:x}", self.chain_id),
                                     "v": "0x1b", "r": "0x0", "s": "0x0",
                                     "type": "0x0"
                                 })
@@ -344,6 +343,7 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
+                                    "chainId": format!("0x{:x}", self.chain_id),
                                     "v": "0x1b", "r": "0x0", "s": "0x0",
                                     "type": "0x0"
                                 })
@@ -360,7 +360,7 @@ impl RpcHandler {
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
                             "nonce": format!("0x{:016x}", block.header.poh_sequence),
                             "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                            "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
                             "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
@@ -396,7 +396,7 @@ impl RpcHandler {
                                 from: faucet_addr,
                                 to: addr,
                                 value: amount_wei,
-                                nonce: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 10000,
+                                nonce: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1000000,
                                 gas_limit: 21000,
                                 gas_price: 1,
                                 data: vec![],
@@ -407,8 +407,10 @@ impl RpcHandler {
 
                             let _ = self.storage.put_transaction(&faucet_tx);
                             let _ = self.storage.put_index(&addr, faucet_tx.hash());
+                            let _ = self.storage.put_index(&faucet_addr, faucet_tx.hash());
+                            let _ = self.storage.put_global_transaction(faucet_tx.hash());
                             
-                            println!("[FAUCET] Distributed {} DNR to {} (Tx Indexed)", amount_dnr, addr_str);
+                            println!("[FAUCET] Distributed {} DNR to {} (Verified & Indexed)", amount_dnr, addr_str);
                             Some(serde_json::to_value(true).unwrap())
                         } else { None }
                     } else { None }
@@ -447,6 +449,7 @@ impl RpcHandler {
                          "gas": format!("0x{:x}", tx.gas_limit),
                          "gasPrice": format!("0x{:x}", tx.gas_price),
                          "input": format!("0x{}", hex::encode(&tx.data)),
+                         "chainId": format!("0x{:x}", self.chain_id),
                          "v": "0x1b", "r": "0x0", "s": "0x0",
                          "type": "0x0"
                      })
@@ -475,7 +478,7 @@ impl RpcHandler {
                                         "gas": format!("0x{:x}", tx.gas_limit),
                                         "gasPrice": format!("0x{:x}", tx.gas_price),
                                         "input": format!("0x{}", hex::encode(&tx.data)),
-                                        "chainId": format!("0x{:x}", tx.chain_id),
+                                        "chainId": format!("0x{:x}", self.chain_id),
                                         "v": "0x1b", "r": "0x0", "s": "0x0",
                                         "type": "0x0"
                                     }));
@@ -526,6 +529,7 @@ impl RpcHandler {
                                      "gas": format!("0x{:x}", tx.gas_limit),
                                      "gasPrice": format!("0x{:x}", tx.gas_price),
                                      "input": format!("0x{}", hex::encode(&tx.data)),
+                                     "chainId": format!("0x{:x}", self.chain_id),
                                      "v": "0x1b", "r": "0x0", "s": "0x0",
                                      "type": "0x0"
                                  }))
@@ -566,16 +570,18 @@ impl RpcHandler {
                                  }).collect();
 
                                   let tx = self.storage.get_transaction(hash_str).ok().flatten();
-                                  let (from, to, gas_price) = if let Some(t) = &tx {
+                                  let (from, to, value, gas_price) = if let Some(t) = &tx {
                                      (
                                          format!("0x{}", hex::encode(t.from.as_evm_address())),
                                          format!("0x{}", hex::encode(t.to.as_evm_address())),
+                                         format!("0x{:x}", t.value),
                                          format!("0x{:x}", t.gas_price)
                                      )
                                  } else {
                                      (
                                          "0x0000000000000000000000000000000000000000".to_string(),
                                          "0x0000000000000000000000000000000000000000".to_string(),
+                                         "0x0".to_string(),
                                          "0x3b9aca00".to_string()
                                      )
                                  };
@@ -603,13 +609,15 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_newBlockFilter" => {
-                // Return a stable filter ID
                 Some(serde_json::to_value("0x1").unwrap())
             }
             "eth_getFilterChanges" | "eth_getFilterLogs" => {
-                // If MetaMask asks for changes, return the latest block hash to keep it synced
                 let block_hash = latest_block.map(|b| format!("0x{}", hex::encode(b.header.hash()))).unwrap_or_else(|| "0x0".to_string());
                 Some(serde_json::json!([block_hash]))
+            }
+            "eth_getLogs" => {
+                // Return empty logs instead of method not found to satisfy scanners
+                Some(serde_json::json!([]))
             }
             "eth_getTransactionByBlockNumberAndIndex" | "eth_getTransactionByBlockHashAndIndex" => {
                  if let Some(arr) = p {
@@ -640,6 +648,7 @@ impl RpcHandler {
                                  "gas": format!("0x{:x}", tx.gas_limit),
                                  "gasPrice": format!("0x{:x}", tx.gas_price),
                                  "input": format!("0x{}", hex::encode(&tx.data)),
+                                 "chainId": format!("0x{:x}", self.chain_id),
                                  "v": "0x1b", "r": "0x0", "s": "0x0",
                                  "type": "0x0"
                              }))
