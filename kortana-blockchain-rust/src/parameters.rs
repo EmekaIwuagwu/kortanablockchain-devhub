@@ -117,6 +117,7 @@ mod tests {
         for block in 0..BLOCKS_PER_YEAR {
             total = total.saturating_add(calculate_block_reward(block));
         }
-        assert!(total < 100_000_000_000_000_000_000_000);  // Less than 100M DNR
+        assert!(total < 50_000_000_000_000_000_000_000_000);  // Less than 50M DNR
+        assert!(total > 30_000_000_000_000_000_000_000_000);  // More than 30M DNR
     }
 }

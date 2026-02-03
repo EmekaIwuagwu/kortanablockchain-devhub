@@ -12,7 +12,7 @@ mod tests {
     #[test]
     fn test_quorlin_contract_deployment() {
         let mut state = kortana_blockchain_rust::core::genesis::create_genesis_state();
-        let faucet_addr = Address::from_hex("kn:0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
+        let faucet_addr = Address::from_hex("kn:0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade").unwrap();
         
         // 1. Prepare Quorlin Contract (JSON serialized opcodes)
         let instructions = vec![
@@ -29,7 +29,7 @@ mod tests {
             to: Address::ZERO, // Deploy
             value: 0,
             gas_limit: 100000,
-            gas_price: 1000000000,
+            gas_price: 1,
             data,
             vm_type: VmType::Quorlin,
             chain_id: CHAIN_ID,
@@ -38,7 +38,7 @@ mod tests {
 
         let mut processor = BlockProcessor::new(&mut state, FeeMarket::new());
         let header = kortana_blockchain_rust::types::block::BlockHeader {
-            version: 1, height: 1, slot: 1, timestamp: 123456789, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: Address::ZERO, gas_used: 0, gas_limit: 30000000, base_fee: 1000000000, vrf_output: [0u8; 32]
+            version: 1, height: 1, slot: 1, timestamp: 123456789, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: Address::ZERO, gas_used: 0, gas_limit: 30000000, base_fee: 1, vrf_output: [0u8; 32]
         };
 
         let receipt = processor.process_transaction(tx, &header).unwrap();
@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn test_solidity_evm_deployment() {
         let mut state = kortana_blockchain_rust::core::genesis::create_genesis_state();
-        let faucet_addr = Address::from_hex("kn:0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
+        let faucet_addr = Address::from_hex("kn:0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade").unwrap();
         
         // 1. Prepare EVM Contract (PUSH 42, RETURN)
         // 602a60005260206000f3
@@ -61,7 +61,7 @@ mod tests {
             to: Address::ZERO, // Deploy
             value: 0,
             gas_limit: 100000,
-            gas_price: 1000000000,
+            gas_price: 1,
             data,
             vm_type: VmType::EVM,
             chain_id: CHAIN_ID,
@@ -70,7 +70,7 @@ mod tests {
 
         let mut processor = BlockProcessor::new(&mut state, FeeMarket::new());
         let header = kortana_blockchain_rust::types::block::BlockHeader {
-            version: 1, height: 1, slot: 1, timestamp: 123456789, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: Address::ZERO, gas_used: 0, gas_limit: 30000000, base_fee: 1000000000, vrf_output: [0u8; 32]
+            version: 1, height: 1, slot: 1, timestamp: 123456789, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: Address::ZERO, gas_used: 0, gas_limit: 30000000, base_fee: 1, vrf_output: [0u8; 32]
         };
 
         let receipt = processor.process_transaction(tx, &header).unwrap();

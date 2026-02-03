@@ -25,7 +25,7 @@ fn test_full_transaction_flow() {
         gas_price: 1,
         data: vec![],
         vm_type: VmType::EVM,
-        chain_id: 1,
+        chain_id: kortana_blockchain_rust::parameters::CHAIN_ID,
         signature: None,
     };
 
