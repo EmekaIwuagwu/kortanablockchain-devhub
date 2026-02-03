@@ -109,33 +109,42 @@ impl Transaction {
     pub fn decode_ethereum(bytes: &[u8]) -> Result<Self, String> {
         if bytes.is_empty() { return Err("Empty bytes".into()); }
         
-        let (chain_id, nonce, gas_price, gas_limit, to, value, data, v, r, s, msg_hash) = if bytes[0] == 0x02 {
-             // EIP-1559
+        let (chain_id, nonce, gas_price, gas_limit, to, value, data, v, r, s, signing_hash) = if bytes[0] == 0x02 {
+             // EIP-1559: 0x02 || rlp([chain_id, nonce, max_priority_fee, max_fee, gas_limit, to, value, data, access_list])
              let rlp = Rlp::new(&bytes[1..]);
              let chain_id: u64 = rlp.val_at(0).map_err(|e| format!("EIP1559 chain_id: {}", e))?;
              let nonce: u64 = rlp.val_at(1).map_err(|e| format!("EIP1559 nonce: {}", e))?;
+             let max_priority_fee: u128 = rlp.val_at(2).map_err(|e| format!("EIP1559 max_prio: {}", e))?;
              let max_fee: u128 = rlp.val_at(3).map_err(|e| format!("EIP1559 max_fee: {}", e))?;
              let gas_limit: u64 = rlp.val_at(4).map_err(|e| format!("EIP1559 gas_limit: {}", e))?;
              let to_bytes: Vec<u8> = rlp.val_at(5).map_err(|e| format!("EIP1559 to: {}", e))?;
              let value: u128 = rlp.val_at(6).map_err(|e| format!("EIP1559 value: {}", e))?;
              let data: Vec<u8> = rlp.val_at(7).map_err(|e| format!("EIP1559 data: {}", e))?;
+             let access_list: Vec<u8> = rlp.val_at(8).map_err(|e| format!("EIP1559 access_list: {}", e))?;
              let v_val: u64 = rlp.val_at(9).map_err(|e| format!("EIP1559 v: {}", e))?;
-             let r: Vec<u8> = rlp.val_at(10).map_err(|e| format!("EIP1559 r: {}", e))?;
-             let s: Vec<u8> = rlp.val_at(11).map_err(|e| format!("EIP1559 s: {}", e))?;
+             let r_bytes: Vec<u8> = rlp.val_at(10).map_err(|e| format!("EIP1559 r: {}", e))?;
+             let s_bytes: Vec<u8> = rlp.val_at(11).map_err(|e| format!("EIP1559 s: {}", e))?;
              
              let to = if to_bytes.is_empty() { Address::ZERO } else { 
                  let mut b = [0u8; 20];
-                 if to_bytes.len() > 20 { return Err("Invalid to address length".into()); }
                  b[20-to_bytes.len()..].copy_from_slice(&to_bytes);
                  Address::from_evm_address(b)
              };
 
-             // msg_hash construction for EIP-1559 not implemented fully here (needs list hashing)
-             // Using placeholder hash to allow parsing
-             let msg_hash = [0u8; 32]; 
+             // Reconstruct signing data for EIP-1559
+             let mut s_rlp = RlpStream::new_list(9);
+             s_rlp.append(&chain_id).append(&nonce).append(&max_priority_fee).append(&max_fee)
+                  .append(&gas_limit).append(&to_bytes).append(&value).append(&data).append_raw(&access_list, 1);
+             
+             let mut msg = vec![0x02];
+             msg.extend_from_slice(&s_rlp.out());
+             let mut hasher = Keccak256::new();
+             hasher.update(&msg);
+             let hash: [u8; 32] = hasher.finalize().into();
 
-             (chain_id, nonce, max_fee, gas_limit, to, value, data, v_val, r, s, msg_hash)
+             (chain_id, nonce, max_fee, gas_limit, to, value, data, v_val, r_bytes, s_bytes, hash)
         } else if Rlp::new(bytes).is_list() {
+             // Legacy: [nonce, gasPrice, gasLimit, to, value, data, v, r, s]
              let rlp = Rlp::new(bytes);
              let nonce: u64 = rlp.val_at(0).map_err(|e| format!("Legacy nonce: {}", e))?;
              let gas_price: u128 = rlp.val_at(1).map_err(|e| format!("Legacy gas_price: {}", e))?;
@@ -148,32 +157,64 @@ impl Transaction {
              let s: Vec<u8> = rlp.val_at(8).map_err(|e| format!("Legacy s: {}", e))?;
              
              let to = if to_bytes.is_empty() { Address::ZERO } else {
-                 if to_bytes.len() != 20 { return Err(format!("Invalid legacy to length: {}", to_bytes.len())); }
                  let mut b = [0u8; 20];
-                 b.copy_from_slice(&to_bytes);
+                 b[20-to_bytes.len()..].copy_from_slice(&to_bytes);
                  Address::from_evm_address(b)
              };
 
-             // Derive Chain ID from v
-             let chain_id = if v >= 35 { (v - 35) / 2 } else { 1 };
-             let msg_hash = [0u8; 32]; // TODO: Implement RLP hashing for recovery
+             let chain_id = if v >= 35 { (v - 35) / 2 } else { 72511 };
+             
+             // Reconstruct signing data for Legacy/EIP-155
+             let mut s_rlp = RlpStream::new_list(9);
+             s_rlp.append(&nonce).append(&gas_price).append(&gas_limit).append(&to_bytes)
+                  .append(&value).append(&data).append(&chain_id).append(&0u8).append(&0u8);
+             
+             let mut hasher = Keccak256::new();
+             hasher.update(&s_rlp.out());
+             let hash: [u8; 32] = hasher.finalize().into();
 
-             (chain_id, nonce, gas_price, gas_limit, to, value, data, v, r, s, msg_hash)
+             (chain_id, nonce, gas_price, gas_limit, to, value, data, v, r, s, hash)
         } else {
              return Err("Unknown TX format".into())
         };
 
-        // Attempt basic recovery or use Zero
-        // (Full recovery requiring accurate msg_hash is omitted to prevent bugs in hotfix)
-        // We set a flag in signature maybe?
+        // Cryptographic Sender Recovery (Ecrecover)
+        if r.len() != 32 || s.len() != 32 { return Err("Invalid signature component length".into()); }
+        let mut sig_bytes = [0u8; 64];
+        sig_bytes[0..32].copy_from_slice(&r);
+        sig_bytes[32..64].copy_from_slice(&s);
+        
+        let signature = EcdsaSignature::from_slice(&sig_bytes).map_err(|e| format!("Sig error: {}", e))?;
+        let recovery_id = if bytes[0] == 0x02 {
+            RecoveryId::try_from(v as u8).map_err(|_| "Invalid recovery ID")?
+        } else {
+            let rec_v = if v >= 35 { (v - 35) % 2 } else { v % 2 };
+            RecoveryId::try_from(rec_v as u8).map_err(|_| "Invalid legacy recovery ID")?
+        };
+
+        let recovered_key = VerifyingKey::recover_from_prehash(&signing_hash, &signature, recovery_id)
+            .map_err(|_| "Failed to recover public key")?;
+        
+        let encoded_pub = recovered_key.to_encoded_point(false);
+        let pub_bytes = encoded_pub.as_bytes(); // [0x04, x_bytes, y_bytes]
+        
+        // Use Keccak256 on the public key (excluding the 0x04 prefix) to get the Ethereum address
+        let mut hasher = Keccak256::new();
+        hasher.update(&pub_bytes[1..]);
+        let hash = hasher.finalize();
+        let mut evm_addr = [0u8; 20];
+        evm_addr.copy_from_slice(&hash[12..32]);
+        
+        let from = Address::from_evm_address(evm_addr);
         
         Ok(Transaction {
-                nonce, from: Address::ZERO, to, value, gas_limit, gas_price, data,
+                nonce, from, to, value, gas_limit, gas_price, data,
                 vm_type: VmType::EVM,
                 chain_id,
                 signature: Some(bytes.to_vec())
         })
     }
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
