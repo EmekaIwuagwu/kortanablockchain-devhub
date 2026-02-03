@@ -28,8 +28,15 @@ pub fn create_genesis_state() -> State {
     // Addr: kn:0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade
     let faucet_addr = Address::from_hex("kn:0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade").unwrap();
     let mut faucet_acc = Account::new();
-    faucet_acc.balance = 1_000_000_000_000_000_000_000_000; // 1M DNR
+    faucet_acc.balance = 100_000_000_000_000_000_000_000_000; // 100M DNR
     state.update_account(faucet_addr, faucet_acc);
+
+    // User Account (0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9)
+    let user_evm_addr = hex::decode("28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9").unwrap();
+    let user_addr = Address::from_evm_address(user_evm_addr.try_into().unwrap());
+    let mut user_acc = Account::new();
+    user_acc.balance = 4_500_000_000_000_000_000_000_000; // 4.5M DNR
+    state.update_account(user_addr, user_acc);
 
     state
 }
