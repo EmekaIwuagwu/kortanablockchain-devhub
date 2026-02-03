@@ -1,6 +1,7 @@
 // File: src/lib.rs
 
 pub mod address;
+pub mod config;
 pub mod consensus;
 pub mod core;
 pub mod crypto;
