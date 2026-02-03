@@ -174,6 +174,7 @@ impl Transaction {
                 signature: Some(bytes.to_vec())
         })
     }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionReceipt {
