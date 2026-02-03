@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  node:
+    build: .
+    container_name: kortana-node
+    restart: always
+    ports:
+      - "8545:8545"
+      - "30333:30333"
+    volumes:
+      - ./data:/app/data
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
