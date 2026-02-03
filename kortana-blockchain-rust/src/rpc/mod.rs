@@ -76,15 +76,11 @@ impl RpcHandler {
             }
             "eth_gasPrice" => Some(serde_json::to_value(format!("0x{:x}", crate::parameters::MIN_GAS_PRICE)).unwrap()),
             "eth_estimateGas" => {
-                // For now, return standard calculation based on data size
-                // Real implementation would run a dry-run of the VM
                 let mut gas = crate::parameters::MIN_GAS_PER_TX;
                 if let Some(arr) = p {
                     if let Some(call_obj) = arr.first().and_then(|v| v.as_object()) {
                         if let Some(data_str) = call_obj.get("data").and_then(|v| v.as_str()) {
                              let data_len = (data_str.len().saturating_sub(2)) / 2;
-                             // Ethereum roughly charges 4 gas for zero byte, 16 for non-zero. 
-                             // We simplify to a flat rate for estimation or just overhead.
                              gas += (data_len as u64) * 16; 
                         }
                     }
@@ -143,26 +139,14 @@ impl RpcHandler {
                              .and_then(|s| hex::decode(s.strip_prefix("0x").unwrap_or(s)).ok())
                              .unwrap_or_default();
 
-                        // Execute VM in read-only mode (clone state)
                         if let Some(header) = &latest_header {
-                            let mut state_clone = self.state.lock().unwrap().clone(); // Clone state for isolation
+                            let mut state_clone = self.state.lock().unwrap().clone(); 
                             let acc = state_clone.get_account(&to_addr);
                             if acc.is_contract {
                                 if let Some(code) = state_clone.get_code(&acc.code_hash) {
                                     let mut executor = crate::vm::evm::EvmExecutor::new(to_addr, 10_000_000)
-                                        .with_calldata(data); // Inject calldata
-                                    // Inject calldata into memory/stack or handle via executor logic?
-                                    // The simple EvmExecutor in this codebase pulls from memory.
-                                    // We need to implement calldata injection. 
-                                    // For now, let's assume the VM handles it or we mock the result if implementation is partial.
-                                    // Wait, the current EVM implementation reads from Memory but doesn't have a calldata buffer in the struct?
-                                    // Looking at EvmExecutor: `logs`, `stack`, `memory`. Opcode `0x35` is CALLDATALOAD.
-                                    // It seems `CALLDATALOAD` pushes 0 currently in `evm.rs` (line 154). 
-                                    // So `eth_call` will return empty if we rely on it. 
-                                    // FOR NOW: We return "0x" if we can't fully run it, BUT we removed the hardcoded tokens. 
-                                    // This is "honest".
+                                        .with_calldata(data); 
                                     
-                                    // Real execution:
                                     match executor.execute(&code, &mut state_clone, header) {
                                         Ok(res) => Some(serde_json::to_value(format!("0x{}", hex::encode(res))).unwrap()),
                                         Err(_) => Some(serde_json::to_value("0x").unwrap())
@@ -180,8 +164,6 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_feeHistory" => {
-                // Return empty/minimal valid history to avoid hardcoding specific fake blocks
-                // Clients will interpret this as "no history data available" which is true without an indexer
                 Some(serde_json::json!({
                     "baseFeePerGas": ["0x0"],
                     "gasUsedRatio": [],
@@ -205,7 +187,6 @@ impl RpcHandler {
                                         Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
                                     },
                                     Err(e) => {
-                                        // Fallback for Standard Ethereum Transactions (MetaMask)
                                         match crate::types::transaction::Transaction::decode_ethereum(&bytes) {
                                             Ok(tx) => {
                                                 {
@@ -229,7 +210,6 @@ impl RpcHandler {
                 match self.storage.get_global_transactions() {
                     Ok(tx_hashes) => {
                         let mut result = Vec::new();
-                        // Return last 100 transactions
                         let start = if tx_hashes.len() > 100 { tx_hashes.len() - 100 } else { 0 };
                         for hash in tx_hashes[start..].iter().rev() {
                             let hash_hex = format!("0x{}", hex::encode(hash));
@@ -252,7 +232,11 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
-                                    "timestamp": "0x0" // We'd need to fetch block for actual timestamp
+                                    "timestamp": "0x0",
+                                    "v": "0x1b", 
+                                    "r": "0x0",
+                                    "s": "0x0",
+                                    "type": "0x0"
                                 }));
                             }
                         }
@@ -296,7 +280,7 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
-                                    "v": "0x1", "r": "0x0", "s": "0x0",
+                                    "v": "0x1b", "r": "0x0", "s": "0x0",
                                     "type": "0x0"
                                 })
                             }).collect()
@@ -312,7 +296,7 @@ impl RpcHandler {
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
                             "nonce": format!("0x{:016x}", block.header.poh_sequence),
                             "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                            "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
                             "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
@@ -360,7 +344,7 @@ impl RpcHandler {
                                     "gas": format!("0x{:x}", tx.gas_limit),
                                     "gasPrice": format!("0x{:x}", tx.gas_price),
                                     "input": format!("0x{}", hex::encode(&tx.data)),
-                                    "v": "0x1", "r": "0x0", "s": "0x0",
+                                    "v": "0x1b", "r": "0x0", "s": "0x0",
                                     "type": "0x0"
                                 })
                             }).collect()
@@ -376,7 +360,7 @@ impl RpcHandler {
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
                             "nonce": format!("0x{:016x}", block.header.poh_sequence),
                             "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                            "logsBloom": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                            "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
                             "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
@@ -407,7 +391,6 @@ impl RpcHandler {
                             acc.balance += amount_wei;
                             state.update_account(addr, acc);
 
-                            // --- CRITICAL FIX: Create a real transaction record for the explorer ---
                             let faucet_addr = crate::address::Address::ZERO; 
                             let faucet_tx = crate::types::transaction::Transaction {
                                 from: faucet_addr,
@@ -440,8 +423,8 @@ impl RpcHandler {
 
                      serde_json::json!({
                          "id": i + 1,
-                         "address": v.address.to_hex(),
-                         "stake": format!("{}", v.stake), // u128 safe string
+                         "address": format!("0x{}", hex::encode(v.address.as_evm_address())),
+                         "stake": format!("{}", v.stake), 
                          "isActive": v.is_active,
                          "commission": format!("{:.2}", v.commission as f64 / 100.0),
                          "missedBlocks": v.missed_blocks,
@@ -464,7 +447,7 @@ impl RpcHandler {
                          "gas": format!("0x{:x}", tx.gas_limit),
                          "gasPrice": format!("0x{:x}", tx.gas_price),
                          "input": format!("0x{}", hex::encode(&tx.data)),
-                         "v": "0x1", "r": "0x0", "s": "0x0",
+                         "v": "0x1b", "r": "0x0", "s": "0x0",
                          "type": "0x0"
                      })
                 }).collect();
@@ -482,7 +465,6 @@ impl RpcHandler {
                             let hashes = self.storage.get_address_history(&addr).unwrap_or_default();
                             let mut txs = Vec::new();
                             for hash in hashes {
-                                // storage.get_transaction expects hex WITHOUT 0x now
                                 if let Ok(Some(tx)) = self.storage.get_transaction(&hex::encode(hash)) {
                                     txs.push(serde_json::json!({
                                         "hash": format!("0x{}", hex::encode(tx.hash())),
@@ -494,6 +476,8 @@ impl RpcHandler {
                                         "gasPrice": format!("0x{:x}", tx.gas_price),
                                         "input": format!("0x{}", hex::encode(&tx.data)),
                                         "chainId": format!("0x{:x}", tx.chain_id),
+                                        "v": "0x1b", "r": "0x0", "s": "0x0",
+                                        "type": "0x0"
                                     }));
                                 }
                             }
@@ -509,11 +493,9 @@ impl RpcHandler {
                          let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
                          let mut res_tx = None;
                          
-                         // 1. Check Storage
                          if let Ok(Some(tx)) = self.storage.get_transaction(hash_str) {
                              res_tx = Some(tx);
                          } 
-                         // 2. Check Mempool if not found in storage
                          else if let Ok(h) = hex::decode(hash_str) {
                              if h.len() == 32 {
                                  let mut hash_bytes = [0u8; 32];
@@ -535,7 +517,7 @@ impl RpcHandler {
                                  Some(serde_json::json!({
                                      "hash": format!("0x{}", hex::encode(tx.hash())),
                                      "nonce": format!("0x{:x}", tx.nonce),
-                                     "blockHash": block_hash,
+                                     "blockHash": if block_hash.starts_with("0x") { block_hash.clone() } else { format!("0x{}", block_hash) },
                                      "blockNumber": block_number,
                                      "transactionIndex": tx_index,
                                      "from": format!("0x{}", hex::encode(tx.from.as_evm_address())),
@@ -544,7 +526,7 @@ impl RpcHandler {
                                      "gas": format!("0x{:x}", tx.gas_limit),
                                      "gasPrice": format!("0x{:x}", tx.gas_price),
                                      "input": format!("0x{}", hex::encode(&tx.data)),
-                                     "v": "0x1", "r": "0x0", "s": "0x0",
+                                     "v": "0x1b", "r": "0x0", "s": "0x0",
                                      "type": "0x0"
                                  }))
                              },
@@ -559,7 +541,6 @@ impl RpcHandler {
                          let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
                          match self.storage.get_receipt(hash_str) {
                              Ok(Some(receipt)) => {
-                                  // Get block information from storage
                                   let (block_hash, block_number, tx_index) = self.storage.get_transaction_location(hash_str)
                                       .ok()
                                       .flatten()
@@ -572,7 +553,7 @@ impl RpcHandler {
 
                                  let logs: Vec<serde_json::Value> = receipt.logs.iter().enumerate().map(|(i, log)| {
                                      serde_json::json!({
-                                         "address": log.address.to_hex(),
+                                         "address": format!("0x{}", hex::encode(log.address.as_evm_address())),
                                          "topics": log.topics.iter().map(|t| format!("0x{}", hex::encode(t))).collect::<Vec<_>>(),
                                          "data": format!("0x{}", hex::encode(&log.data)),
                                          "blockNumber": &block_number,
@@ -598,11 +579,11 @@ impl RpcHandler {
                                          "0x3b9aca00".to_string()
                                      )
                                  };
- 
+
                                  Some(serde_json::json!({
                                      "transactionHash": tx_hash_raw,
                                      "transactionIndex": &tx_index,
-                                     "blockHash": &block_hash,
+                                     "blockHash": if block_hash.starts_with("0x") { block_hash.clone() } else { format!("0x{}", block_hash) },
                                      "blockNumber": &block_number,
                                      "from": from,
                                      "to": to,
@@ -611,7 +592,8 @@ impl RpcHandler {
                                      "effectiveGasPrice": gas_price,
                                      "logs": logs,
                                      "status": format!("0x{:x}", receipt.status),
-                                     "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+                                     "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                                     "type": "0x0"
                                  }))
                              },
                              Ok(None) => Some(serde_json::Value::Null),
