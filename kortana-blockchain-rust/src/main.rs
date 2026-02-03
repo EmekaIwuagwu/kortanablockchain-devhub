@@ -24,11 +24,11 @@ const CLR_BOLD: &str = "\x1b[1m";
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// RPC server address
-    #[arg(short, long, default_value = "127.0.0.1:8545")]
+    #[arg(short, long, default_value = "0.0.0.0:8545")]
     rpc_addr: String,
 
     /// P2P listen address (Multiaddr format)
-    #[arg(short, long, default_value = "0.0.0.0:30333")]
+    #[arg(short, long, default_value = "/ip4/0.0.0.0/tcp/30333")]
     p2p_addr: String,
 
     /// Bootnodes to connect to (Multiaddr format)
@@ -182,7 +182,18 @@ async fn main() {
                 network.add_bootnode(addr);
             }
         }
-        network.run(p2p_addr).await;
+        
+        let formatted_addr = if !p2p_addr.starts_with('/') {
+            if let Ok(socket_addr) = p2p_addr.parse::<std::net::SocketAddr>() {
+                format!("/ip4/{}/tcp/{}", socket_addr.ip(), socket_addr.port())
+            } else {
+                p2p_addr
+            }
+        } else {
+            p2p_addr
+        };
+
+        network.run(formatted_addr).await;
     });
     println!("{}RUNNING{}", CLR_GREEN, CLR_RESET);
 
