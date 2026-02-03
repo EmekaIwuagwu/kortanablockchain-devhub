@@ -37,6 +37,7 @@ pub struct Mempool {
 }
 
 impl Mempool {
+    #[allow(clippy::new_without_default)]
     pub fn new(max_size: usize) -> Self {
         Self {
             heap: BinaryHeap::new(),

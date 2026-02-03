@@ -19,6 +19,7 @@ pub struct PohGenerator {
 }
 
 impl PohGenerator {
+    #[allow(clippy::new_without_default)]
     pub fn new(genesis_seed: &[u8]) -> Self {
         let mut hasher = Sha3_256::new();
         hasher.update(genesis_seed);
@@ -281,11 +282,7 @@ impl ConsensusEngine {
         self.validators.sort_by(|a, b| b.stake.cmp(&a.stake));
         
         for (i, v) in self.validators.iter_mut().enumerate() {
-            if i < ACTIVE_VALIDATOR_COUNT && v.stake >= MIN_VALIDATOR_STAKE && !self.jailed_validators.contains_key(&v.address) {
-                v.is_active = true;
-            } else {
-                v.is_active = false;
-            }
+            v.is_active = i < ACTIVE_VALIDATOR_COUNT && v.stake >= MIN_VALIDATOR_STAKE && !self.jailed_validators.contains_key(&v.address);
         }
     }
 }

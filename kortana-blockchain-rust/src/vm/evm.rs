@@ -18,6 +18,12 @@ pub struct EvmStack {
     data: Vec<[u8; 32]>,
 }
 
+impl Default for EvmStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EvmStack {
     pub fn new() -> Self {
         Self { data: Vec::with_capacity(1024) }
@@ -45,6 +51,12 @@ impl EvmStack {
 
 pub struct EvmMemory {
     data: Vec<u8>,
+}
+
+impl Default for EvmMemory {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EvmMemory {
@@ -193,7 +205,7 @@ impl EvmExecutor {
                      self.consume_gas(20000)?; 
                      let key = self.stack.pop()?;
                      let val = self.stack.pop()?;
-                     let storage = state.storage.entry(self.address).or_insert(std::collections::HashMap::new());
+                     let storage = state.storage.entry(self.address).or_default();
                      storage.insert(key, val);
                 }
 
@@ -261,7 +273,7 @@ impl EvmExecutor {
                     let mut topics = Vec::new();
                     for _ in 0..topic_count { topics.push(self.stack.pop()?); }
                     let data = self.memory.load(offset, length)?;
-                    self.logs.push(crate::types::transaction::TransactionLog { address: self.address.clone(), topics, data });
+                    self.logs.push(crate::types::transaction::TransactionLog { address: self.address, topics, data });
                 }
 
                 // System

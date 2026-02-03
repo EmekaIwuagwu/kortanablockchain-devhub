@@ -28,6 +28,12 @@ pub struct StakingStore {
     pub min_self_stake: u128,
 }
 
+impl Default for StakingStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StakingStore {
     pub fn new() -> Self {
         Self {
@@ -38,7 +44,7 @@ impl StakingStore {
     }
 
     pub fn delegate(&mut self, delegator: Address, validator: Address, amount: u128, height: u64) {
-        let entry = self.delegations.entry(validator).or_insert_with(Vec::new);
+        let entry = self.delegations.entry(validator).or_default();
         entry.push(Delegation {
             delegator,
             validator,

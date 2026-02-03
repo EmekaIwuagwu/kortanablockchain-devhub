@@ -9,6 +9,12 @@ pub struct FeeMarket {
     pub elasticity_multiplier: u64,
 }
 
+impl Default for FeeMarket {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeeMarket {
     pub fn new() -> Self {
         Self {

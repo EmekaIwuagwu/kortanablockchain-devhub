@@ -67,7 +67,7 @@ pub fn is_valid_gas_price(price: u128) -> bool {
 }
 
 pub fn is_valid_gas_limit(limit: u64) -> bool {
-    limit >= MIN_GAS_PER_TX && limit <= GAS_LIMIT_PER_TX
+    (MIN_GAS_PER_TX..=GAS_LIMIT_PER_TX).contains(&limit)
 }
 
 #[cfg(test)]

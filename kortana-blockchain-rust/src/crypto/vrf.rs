@@ -14,7 +14,7 @@ pub fn generate_vrf_seed(private_key: &[u8], epoch_seed: &[u8], slot: u64) -> Vr
     let mut hasher = Sha3_256::new();
     hasher.update(private_key);
     hasher.update(epoch_seed);
-    hasher.update(&slot.to_be_bytes());
+    hasher.update(slot.to_be_bytes());
     let output: [u8; 32] = hasher.finalize().into();
     
     // The "proof" would allow anyone with the public key to verify this output was generated correctly

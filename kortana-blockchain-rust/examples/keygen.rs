@@ -1,6 +1,6 @@
 fn main() {
     // Generate a valid Secp256k1 keypair
-    use k256::ecdsa::{SigningKey, VerifyingKey};
+    use k256::ecdsa::SigningKey;
     use k256::elliptic_curve::rand_core::OsRng;
     use sha3::{Digest, Keccak256, Sha3_256};
 

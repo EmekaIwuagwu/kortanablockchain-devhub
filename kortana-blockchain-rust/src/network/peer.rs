@@ -29,6 +29,12 @@ pub struct P2PHandler {
     pub peers: Vec<Peer>,
 }
 
+impl Default for P2PHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl P2PHandler {
     pub fn new() -> Self {
         Self {

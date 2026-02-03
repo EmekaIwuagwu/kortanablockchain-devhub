@@ -15,6 +15,12 @@ pub struct Account {
     pub is_contract: bool,
 }
 
+impl Default for Account {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Account {
     pub fn new() -> Self {
         Self {
@@ -34,6 +40,12 @@ pub struct State {
     pub codes: HashMap<[u8; 32], Vec<u8>>,
     pub trie: MerklePatriciaTrie,
     pub staking: crate::staking::StakingStore,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl State {

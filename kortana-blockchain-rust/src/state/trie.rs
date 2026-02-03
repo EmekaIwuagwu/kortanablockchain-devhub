@@ -39,6 +39,12 @@ pub struct MerklePatriciaTrie {
     pub nodes: HashMap<[u8; 32], TrieNode>,
 }
 
+impl Default for MerklePatriciaTrie {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MerklePatriciaTrie {
     pub fn new() -> Self {
         Self {

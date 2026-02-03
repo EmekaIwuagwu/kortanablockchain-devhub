@@ -23,6 +23,12 @@ pub struct IbcCore {
     pub sequences: std::collections::HashMap<String, u64>, // chain_id -> sequence
 }
 
+impl Default for IbcCore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IbcCore {
     pub fn new() -> Self {
         Self {

@@ -95,7 +95,7 @@ impl<'a> BlockProcessor<'a> {
         } else {
             match tx.vm_type {
                 VmType::EVM => {
-                    let mut executor = EvmExecutor::new(tx.to.clone(), tx.gas_limit);
+                    let mut executor = EvmExecutor::new(tx.to, tx.gas_limit);
                     match executor.execute(&tx.data, self.state, header) {
                         Ok(_) => {
                             logs = executor.logs;

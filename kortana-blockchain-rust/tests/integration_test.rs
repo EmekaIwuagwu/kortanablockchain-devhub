@@ -29,8 +29,26 @@ fn test_full_transaction_flow() {
         signature: None,
     };
 
-    let mut processor = BlockProcessor::new(&mut state);
-    let receipt = processor.process_transaction(tx).unwrap();
+    let header = kortana_blockchain_rust::types::block::BlockHeader {
+        version: 1,
+        height: 1,
+        slot: 1,
+        timestamp: 1234567890,
+        parent_hash: [0u8; 32],
+        state_root: [0u8; 32],
+        transactions_root: [0u8; 32],
+        receipts_root: [0u8; 32],
+        poh_hash: [0u8; 32],
+        poh_sequence: 0,
+        proposer: Address::from_pubkey(b"validator"),
+        gas_used: 0,
+        gas_limit: 1000000,
+        base_fee: 1,
+        vrf_output: [0u8; 32],
+    };
+
+    let mut processor = BlockProcessor::new(&mut state, kortana_blockchain_rust::core::fees::FeeMarket::new());
+    let receipt = processor.process_transaction(tx, &header).unwrap();
 
     assert_eq!(receipt.status, 1);
     assert_eq!(state.get_account(&bob).balance, 10_000_000_000_000_000_000);

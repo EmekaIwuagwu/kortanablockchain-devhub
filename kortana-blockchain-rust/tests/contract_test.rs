@@ -4,7 +4,6 @@ use kortana_blockchain_rust::vm::quorlin::QuorlinOpcode;
 use kortana_blockchain_rust::core::processor::BlockProcessor;
 use kortana_blockchain_rust::core::fees::FeeMarket;
 use kortana_blockchain_rust::parameters::CHAIN_ID;
-use kortana_blockchain_rust::state::account::Account;
 
 #[cfg(test)]
 mod tests {

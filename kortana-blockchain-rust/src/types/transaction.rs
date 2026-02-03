@@ -70,15 +70,15 @@ impl Transaction {
     pub fn hash(&self) -> [u8; 32] {
         let mut hasher = Sha3_256::new();
         // Hash everything except the signature
-        hasher.update(&self.nonce.to_be_bytes());
-        hasher.update(&self.from.to_bytes());
-        hasher.update(&self.to.to_bytes());
-        hasher.update(&self.value.to_be_bytes());
-        hasher.update(&self.gas_limit.to_be_bytes());
-        hasher.update(&self.gas_price.to_be_bytes());
+        hasher.update(self.nonce.to_be_bytes());
+        hasher.update(self.from.to_bytes());
+        hasher.update(self.to.to_bytes());
+        hasher.update(self.value.to_be_bytes());
+        hasher.update(self.gas_limit.to_be_bytes());
+        hasher.update(self.gas_price.to_be_bytes());
         hasher.update(&self.data);
-        hasher.update(&(self.vm_type.clone() as u8).to_be_bytes());
-        hasher.update(&self.chain_id.to_be_bytes());
+        hasher.update((self.vm_type.clone() as u8).to_be_bytes());
+        hasher.update(self.chain_id.to_be_bytes());
         hasher.finalize().into()
     }
 
@@ -170,7 +170,7 @@ impl Transaction {
                   .append(&value).append(&data).append(&chain_id).append(&0u8).append(&0u8);
              
              let mut hasher = Keccak256::new();
-             hasher.update(&s_rlp.out());
+             hasher.update(s_rlp.out());
              let hash: [u8; 32] = hasher.finalize().into();
 
              (chain_id, nonce, gas_price, gas_limit, to, value, data, v, r, s, hash)

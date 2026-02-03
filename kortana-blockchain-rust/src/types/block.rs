@@ -27,21 +27,21 @@ pub struct BlockHeader {
 impl BlockHeader {
     pub fn hash(&self) -> [u8; 32] {
         let mut hasher = Sha3_256::new();
-        hasher.update(&self.version.to_be_bytes());
-        hasher.update(&self.height.to_be_bytes());
-        hasher.update(&self.slot.to_be_bytes());
-        hasher.update(&self.timestamp.to_be_bytes());
-        hasher.update(&self.parent_hash);
-        hasher.update(&self.state_root);
-        hasher.update(&self.transactions_root);
-        hasher.update(&self.receipts_root);
-        hasher.update(&self.poh_hash);
-        hasher.update(&self.poh_sequence.to_be_bytes());
-        hasher.update(&self.proposer.to_bytes());
-        hasher.update(&self.gas_used.to_be_bytes());
-        hasher.update(&self.gas_limit.to_be_bytes());
-        hasher.update(&self.base_fee.to_be_bytes());
-        hasher.update(&self.vrf_output);
+        hasher.update(self.version.to_be_bytes());
+        hasher.update(self.height.to_be_bytes());
+        hasher.update(self.slot.to_be_bytes());
+        hasher.update(self.timestamp.to_be_bytes());
+        hasher.update(self.parent_hash);
+        hasher.update(self.state_root);
+        hasher.update(self.transactions_root);
+        hasher.update(self.receipts_root);
+        hasher.update(self.poh_hash);
+        hasher.update(self.poh_sequence.to_be_bytes());
+        hasher.update(self.proposer.to_bytes());
+        hasher.update(self.gas_used.to_be_bytes());
+        hasher.update(self.gas_limit.to_be_bytes());
+        hasher.update(self.base_fee.to_be_bytes());
+        hasher.update(self.vrf_output);
         hasher.finalize().into()
     }
 }
@@ -102,8 +102,8 @@ impl Block {
                     left
                 };
                 let mut hasher = Sha3_256::new();
-                hasher.update(&left);
-                hasher.update(&right);
+                hasher.update(left);
+                hasher.update(right);
                 next_level.push(hasher.finalize().into());
             }
             current_level = next_level;

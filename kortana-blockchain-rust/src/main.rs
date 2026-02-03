@@ -257,7 +257,7 @@ async fn main() {
                 let req_body_str = String::from_utf8_lossy(&buffer);
                 
                 let (http_res, method_name) = if req_body_str.starts_with("OPTIONS") {
-                    (format!("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\n\r\n"), "OPTIONS".to_string())
+                    ("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\n\r\n".to_string(), "OPTIONS".to_string())
                 } else if req_body_str.starts_with("GET") {
                     let status_json = serde_json::json!({
                         "status": "online", "node": "Kortana", "version": "1.0.0",
@@ -283,7 +283,7 @@ async fn main() {
                     };
 
                     if body.is_empty() {
-                        (format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\n\r\nKortana RPC is Live!"), "EMPTY_POST".to_string())
+                        ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\n\r\nKortana RPC is Live!".to_string(), "EMPTY_POST".to_string())
                     } else {
                         let (res_json, m_name) = if body.starts_with('[') {
                             match serde_json::from_str::<Vec<kortana_blockchain_rust::rpc::JsonRpcRequest>>(&body) {
@@ -306,7 +306,7 @@ async fn main() {
                         (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", res_json.len(), res_json), m_name)
                     }
                 } else {
-                    (format!("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"), "MALFORMED".to_string())
+                    ("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n".to_string(), "MALFORMED".to_string())
                 };
 
                 if method_name != "OPTIONS" && method_name != "HTTP_GET" {
@@ -355,7 +355,7 @@ async fn main() {
                             receipts_root: [0u8; 32],
                             poh_hash: [0u8; 32],
                             poh_sequence: 0,
-                            proposer: leader.clone(),
+                            proposer: leader,
                             gas_used: 0,
                             gas_limit: GAS_LIMIT_PER_BLOCK,
                             base_fee: fees.base_fee,
@@ -363,7 +363,7 @@ async fn main() {
                         };
 
                         let mut state = node.state.lock().unwrap();
-                        let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
+                        let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut state, fees.clone());
                         
                         let mut receipts = Vec::new();
                         for tx in &txs {
@@ -411,7 +411,7 @@ async fn main() {
                         
                         node.height.fetch_add(1, Ordering::SeqCst);
                         let _ = node.storage.put_block(&block);
-                        let _ = node.storage.put_state(block.header.height, &*state);
+                        let _ = node.storage.put_state(block.header.height, &state);
                         
                         // Update consensus for next block to have correct parent hash
                         consensus.finalized_hash = block_hash;
@@ -450,8 +450,8 @@ async fn main() {
                              
                              let mut success = false;
                              {
-                                 let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
-                                 if let Ok(_) = processor.validate_block(&block) {
+                                 let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut state, fees.clone());
+                                 if processor.validate_block(&block).is_ok() {
                                      println!("  {}✅ Block verified and applied.{}", CLR_GREEN, CLR_RESET);
                                      *fees = processor.fee_market;
                                      success = true;
@@ -468,14 +468,14 @@ async fn main() {
                                  let root = state.calculate_root();
                                  let _ = node.storage.put_block(&block);
                                  let _ = node.storage.put_state_root(block.header.height, root);
-                                 let _ = node.storage.put_state(block.header.height, &*state);
+                                 let _ = node.storage.put_state(block.header.height, &state);
                                  node.height.fetch_add(1, Ordering::SeqCst);
                              }
                         }
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::NewTransaction(tx) => {
                         let mut mempool = node.mempool.lock().unwrap();
-                        println!("{}[MEMPOOL]{} Added tx 0x{} from {}", CLR_MAGENTA, CLR_RESET, hex::encode(tx.hash())[..8].to_string(), tx.from);
+                        println!("{}[MEMPOOL]{} Added tx 0x{} from {}", CLR_MAGENTA, CLR_RESET, &hex::encode(tx.hash())[..8], tx.from);
                         mempool.add(tx);
                     }
                     kortana_blockchain_rust::network::messages::NetworkMessage::SyncRequest { start_height, end_height } => {
@@ -502,8 +502,8 @@ async fn main() {
                             if block.header.height == h + 1 {
                                 let mut success = false;
                                 {
-                                    let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut *state, fees.clone());
-                                    if let Ok(_) = processor.validate_block(&block) {
+                                    let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut state, fees.clone());
+                                    if processor.validate_block(&block).is_ok() {
                                         println!("  {}✅ Sync Block {} verified.{}", CLR_GREEN, block.header.height, CLR_RESET);
                                         *fees = processor.fee_market.clone();
                                         success = true;
@@ -522,7 +522,7 @@ async fn main() {
                                 if success {
                                     node.height.fetch_add(1, Ordering::SeqCst);
                                     let _ = node.storage.put_block(&block);
-                                    let _ = node.storage.put_state(block.header.height, &*state);
+                                    let _ = node.storage.put_state(block.header.height, &state);
                                 } else {
                                     break;
                                 }

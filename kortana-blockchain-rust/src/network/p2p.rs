@@ -49,7 +49,7 @@ impl KortanaNetwork {
                     .validation_mode(gossipsub::ValidationMode::Strict)
                     .message_id_fn(message_id_fn)
                     .build()
-                    .map_err(|msg| std::io::Error::new(std::io::ErrorKind::Other, msg))
+                    .map_err(std::io::Error::other)
                     .expect("Failed to build gossipsub config");
 
                 let gossipsub = gossipsub::Behaviour::new(

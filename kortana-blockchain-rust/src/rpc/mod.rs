@@ -80,7 +80,7 @@ impl RpcHandler {
                 // Real implementation would run a dry-run of the VM
                 let mut gas = crate::parameters::MIN_GAS_PER_TX;
                 if let Some(arr) = p {
-                    if let Some(call_obj) = arr.get(0).and_then(|v| v.as_object()) {
+                    if let Some(call_obj) = arr.first().and_then(|v| v.as_object()) {
                         if let Some(data_str) = call_obj.get("data").and_then(|v| v.as_str()) {
                              let data_len = (data_str.len().saturating_sub(2)) / 2;
                              // Ethereum roughly charges 4 gas for zero byte, 16 for non-zero. 
@@ -93,7 +93,7 @@ impl RpcHandler {
             }
             "eth_getBalance" => {
                 if let Some(arr) = p {
-                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(addr_str) = arr.first().and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let state = self.state.lock().unwrap();
                             let acc = state.get_account(&addr);
@@ -104,7 +104,7 @@ impl RpcHandler {
             }
             "eth_getTransactionCount" => {
                 if let Some(arr) = p {
-                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(addr_str) = arr.first().and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let state = self.state.lock().unwrap();
                             let acc = state.get_account(&addr);
@@ -115,7 +115,7 @@ impl RpcHandler {
             }
             "eth_getCode" => {
                 if let Some(arr) = p {
-                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(addr_str) = arr.first().and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                              let state = self.state.lock().unwrap();
                              let acc = state.get_account(&addr);
@@ -134,7 +134,7 @@ impl RpcHandler {
             }
             "eth_call" => {
                 if let Some(arr) = p {
-                    if let Some(call_obj) = arr.get(0).and_then(|v| v.as_object()) {
+                    if let Some(call_obj) = arr.first().and_then(|v| v.as_object()) {
                         let to_addr = call_obj.get("to").and_then(|v| v.as_str())
                              .and_then(|s| crate::address::Address::from_hex(s).ok())
                              .unwrap_or(crate::address::Address::ZERO);
@@ -191,7 +191,7 @@ impl RpcHandler {
             }
             "eth_sendRawTransaction" => {
                 if let Some(arr) = p {
-                    if let Some(raw_tx_hex) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(raw_tx_hex) = arr.first().and_then(|v| v.as_str()) {
                         let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
                         match hex::decode(hex_str) {
                             Ok(bytes) => {
@@ -233,8 +233,8 @@ impl RpcHandler {
                         let start = if tx_hashes.len() > 100 { tx_hashes.len() - 100 } else { 0 };
                         for hash in tx_hashes[start..].iter().rev() {
                             let hash_hex = format!("0x{}", hex::encode(hash));
-                            if let Ok(Some(tx)) = self.storage.get_transaction(&hash_hex.strip_prefix("0x").unwrap()) {
-                                let (block_height, block_hash, tx_index) = self.storage.get_transaction_location(&hash_hex.strip_prefix("0x").unwrap())
+                            if let Ok(Some(tx)) = self.storage.get_transaction(hash_hex.strip_prefix("0x").unwrap()) {
+                                let (block_height, block_hash, tx_index) = self.storage.get_transaction_location(hash_hex.strip_prefix("0x").unwrap())
                                     .ok()
                                     .flatten()
                                     .map(|(h, hash, idx)| (format!("0x{:x}", h), format!("0x{}", hash), format!("0x{:x}", idx)))
@@ -266,7 +266,7 @@ impl RpcHandler {
                 let mut full_txs = false;
                 
                 if let Some(arr) = p {
-                     if let Some(h_val) = arr.get(0) {
+                     if let Some(h_val) = arr.first() {
                          if h_val.as_str() == Some("latest") {
                              requested_height = current_height;
                          } else if let Some(h_str) = h_val.as_str() {
@@ -335,7 +335,7 @@ impl RpcHandler {
                 let mut full_txs = false;
                 
                 if let Some(arr) = p {
-                     if let Some(h_val) = arr.get(0).and_then(|v| v.as_str()) {
+                     if let Some(h_val) = arr.first().and_then(|v| v.as_str()) {
                          hash_str = h_val.to_string();
                      }
                      full_txs = arr.get(1).and_then(|v| v.as_bool()).unwrap_or(false);
@@ -396,7 +396,7 @@ impl RpcHandler {
             }
             "eth_requestDNR" => {
                 if let Some(arr) = p {
-                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(addr_str) = arr.first().and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let amount_str = arr.get(1).and_then(|v| v.as_str()).unwrap_or("10");
                             let amount_dnr: u128 = amount_str.parse().unwrap_or(10);
@@ -405,15 +405,15 @@ impl RpcHandler {
                             let mut state = self.state.lock().unwrap();
                             let mut acc = state.get_account(&addr);
                             acc.balance += amount_wei;
-                            state.update_account(addr.clone(), acc);
+                            state.update_account(addr, acc);
 
                             // --- CRITICAL FIX: Create a real transaction record for the explorer ---
                             let faucet_addr = crate::address::Address::ZERO; 
                             let faucet_tx = crate::types::transaction::Transaction {
                                 from: faucet_addr,
-                                to: addr.clone(),
+                                to: addr,
                                 value: amount_wei,
-                                nonce: (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 10000) as u64,
+                                nonce: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 10000,
                                 gas_limit: 21000,
                                 gas_price: 1,
                                 data: vec![],
@@ -477,7 +477,7 @@ impl RpcHandler {
             "web3_clientVersion" => Some(serde_json::to_value("Kortana/v1.0.0/rust").unwrap()),
             "eth_getAddressHistory" => {
                 if let Some(arr) = p {
-                    if let Some(addr_str) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(addr_str) = arr.first().and_then(|v| v.as_str()) {
                         if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
                             let hashes = self.storage.get_address_history(&addr).unwrap_or_default();
                             let mut txs = Vec::new();
@@ -505,7 +505,7 @@ impl RpcHandler {
             }
             "eth_getTransactionByHash" => {
                 if let Some(arr) = p {
-                    if let Some(tx_hash_raw) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(tx_hash_raw) = arr.first().and_then(|v| v.as_str()) {
                          let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
                          let mut res_tx = None;
                          
@@ -555,7 +555,7 @@ impl RpcHandler {
             }
             "eth_getTransactionReceipt" => {
                 if let Some(arr) = p {
-                    if let Some(tx_hash_raw) = arr.get(0).and_then(|v| v.as_str()) {
+                    if let Some(tx_hash_raw) = arr.first().and_then(|v| v.as_str()) {
                          let hash_str = tx_hash_raw.strip_prefix("0x").unwrap_or(tx_hash_raw);
                          match self.storage.get_receipt(hash_str) {
                              Ok(Some(receipt)) => {
