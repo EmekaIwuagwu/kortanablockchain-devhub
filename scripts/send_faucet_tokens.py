@@ -3,11 +3,11 @@ from eth_account import Account
 import sys
 
 # Configuration
-RPC_URL = "https://poseidon-rpc.kortana.worchsester.xyz"
+RPC_URL = "http://localhost:8545"
 CHAIN_ID = 72511
 FAUCET_PRIVATE_KEY = "2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa"
 RECIPIENT_ADDRESS = "0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9"
-AMOUNT_DNR = 500000
+AMOUNT_DNR = 4500000
 
 def send_tokens():
     w3 = Web3(Web3.HTTPProvider(RPC_URL))
