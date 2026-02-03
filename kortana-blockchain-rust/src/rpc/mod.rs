@@ -602,6 +602,51 @@ impl RpcHandler {
                     } else { None }
                 } else { None }
             }
+            "eth_newBlockFilter" => {
+                // Return a stable filter ID
+                Some(serde_json::to_value("0x1").unwrap())
+            }
+            "eth_getFilterChanges" | "eth_getFilterLogs" => {
+                // If MetaMask asks for changes, return the latest block hash to keep it synced
+                let block_hash = latest_block.map(|b| format!("0x{}", hex::encode(b.header.hash()))).unwrap_or_else(|| "0x0".to_string());
+                Some(serde_json::json!([block_hash]))
+            }
+            "eth_getTransactionByBlockNumberAndIndex" | "eth_getTransactionByBlockHashAndIndex" => {
+                 if let Some(arr) = p {
+                     let block = if request.method == "eth_getTransactionByBlockNumberAndIndex" {
+                         let h_str = arr.first().and_then(|v| v.as_str()).unwrap_or("latest");
+                         let height = if h_str == "latest" { current_height } else { 
+                             u64::from_str_radix(h_str.strip_prefix("0x").unwrap_or(h_str), 16).unwrap_or(current_height)
+                         };
+                         self.storage.get_block(height).ok().flatten()
+                     } else {
+                         let h_str = arr.first().and_then(|v| v.as_str()).unwrap_or("");
+                         self.storage.get_block_by_hash(h_str).ok().flatten()
+                     };
+
+                     if let Some(b) = block {
+                         let idx_str = arr.get(1).and_then(|v| v.as_str()).unwrap_or("0x0");
+                         let idx = usize::from_str_radix(idx_str.strip_prefix("0x").unwrap_or(idx_str), 16).unwrap_or(0);
+                         if let Some(tx) = b.transactions.get(idx) {
+                             Some(serde_json::json!({
+                                 "hash": format!("0x{}", hex::encode(tx.hash())),
+                                 "nonce": format!("0x{:x}", tx.nonce),
+                                 "blockHash": format!("0x{}", hex::encode(b.header.hash())),
+                                 "blockNumber": format!("0x{:x}", b.header.height),
+                                 "transactionIndex": format!("0x{:x}", idx),
+                                 "from": format!("0x{}", hex::encode(tx.from.as_evm_address())),
+                                 "to": format!("0x{}", hex::encode(tx.to.as_evm_address())),
+                                 "value": format!("0x{:x}", tx.value),
+                                 "gas": format!("0x{:x}", tx.gas_limit),
+                                 "gasPrice": format!("0x{:x}", tx.gas_price),
+                                 "input": format!("0x{}", hex::encode(&tx.data)),
+                                 "v": "0x1b", "r": "0x0", "s": "0x0",
+                                 "type": "0x0"
+                             }))
+                         } else { Some(serde_json::Value::Null) }
+                     } else { Some(serde_json::Value::Null) }
+                 } else { None }
+            }
             _ => None,
         };
 
