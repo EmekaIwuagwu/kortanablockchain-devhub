@@ -404,13 +404,36 @@ impl EvmExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::address::Address;
+    use crate::state::account::State;
+    use crate::types::block::BlockHeader;
 
     #[test]
     fn test_evm_add() {
-        let mut executor = EvmExecutor::new(100);
+        let addr = Address::from_pubkey(b"test");
+        let mut executor = EvmExecutor::new(addr, 100000);
+        let mut state = State::new();
+        let header = BlockHeader {
+            version: 1,
+            height: 0,
+            slot: 0,
+            timestamp: 1234567890,
+            parent_hash: [0u8; 32],
+            state_root: [0u8; 32],
+            transactions_root: [0u8; 32],
+            receipts_root: [0u8; 32],
+            poh_hash: [0u8; 32],
+            poh_sequence: 0,
+            proposer: Address::ZERO,
+            gas_used: 0,
+            gas_limit: 1000000,
+            base_fee: 1,
+            vrf_output: [0u8; 32],
+        };
+        
         // PUSH1 0x01, PUSH1 0x02, ADD, STOP
         let bytecode = vec![0x60, 0x01, 0x60, 0x02, 0x01, 0x00];
-        executor.execute(&bytecode).unwrap();
+        executor.execute(&bytecode, &mut state, &header).unwrap();
         let result = executor.stack.pop().unwrap();
         assert_eq!(result[31], 0x03);
     }

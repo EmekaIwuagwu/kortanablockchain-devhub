@@ -111,8 +111,8 @@ impl Address {
 
     pub fn distance(&self, other: &Address) -> [u8; 24] {
         let mut dist = [0u8; 24];
-        for i in 0..24 {
-            dist[i] = self.0[i] ^ other.0[i];
+        for (i, item) in dist.iter_mut().enumerate() {
+            *item = self.0[i] ^ other.0[i];
         }
         dist
     }

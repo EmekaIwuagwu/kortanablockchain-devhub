@@ -31,7 +31,7 @@ impl PohGenerator {
 
     pub fn tick(&mut self) -> PohEntry {
         let mut hasher = Sha3_256::new();
-        hasher.update(&self.last_hash);
+        hasher.update(self.last_hash);
         self.last_hash = hasher.finalize().into();
         self.sequence += 1;
         PohEntry {
@@ -42,7 +42,7 @@ impl PohGenerator {
 
     pub fn hash_transaction(&mut self, tx_hash: &[u8]) -> PohEntry {
         let mut hasher = Sha3_256::new();
-        hasher.update(&self.last_hash);
+        hasher.update(self.last_hash);
         hasher.update(tx_hash);
         self.last_hash = hasher.finalize().into();
         self.sequence += 1;
@@ -56,7 +56,7 @@ impl PohGenerator {
         let mut current_hash = start_hash;
         for entry in entries {
             let mut hasher = Sha3_256::new();
-            hasher.update(&current_hash);
+            hasher.update(current_hash);
             // If the entry contains a transaction (indicated by hash jump), 
             // we would need that tx hash here. For simplicity, we assume 
             // pure PoH chain verification here.
@@ -81,13 +81,19 @@ pub struct VoteAggregator {
     pub votes: HashMap<[u8; 32], HashMap<Address, Vec<u8>>>, // block_hash -> validator -> signature
 }
 
+impl Default for VoteAggregator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VoteAggregator {
     pub fn new() -> Self {
         Self { votes: HashMap::new() }
     }
 
     pub fn add_vote(&mut self, block_hash: [u8; 32], validator: Address, signature: Vec<u8>) {
-        let block_votes = self.votes.entry(block_hash).or_insert_with(HashMap::new);
+        let block_votes = self.votes.entry(block_hash).or_default();
         block_votes.insert(validator, signature);
     }
 
@@ -161,7 +167,7 @@ impl ConsensusEngine {
             validator.stake = validator.stake.saturating_sub(amount_to_slash);
             
             // Record slashing
-            self.slashing_history.records.entry(addr).or_insert_with(Vec::new).push((slot, reason));
+            self.slashing_history.records.entry(addr).or_default().push((slot, reason));
             
             // Jail if necessary
             if slash_percent >= 1000 { // 10% or more
@@ -225,7 +231,7 @@ impl ConsensusEngine {
         }
         
         let mut hasher = Sha3_256::new();
-        hasher.update(&slot.to_be_bytes());
+ hasher.update(slot.to_be_bytes());
         let hash = hasher.finalize();
         let index = (u64::from_be_bytes(hash[0..8].try_into().unwrap()) % active_validators.len() as u64) as usize;
         
@@ -239,7 +245,7 @@ impl ConsensusEngine {
     }
 
     pub fn advance_era(&mut self, current_height: u64) {
-        if current_height % BLOCKS_PER_EPOCH == 0 {
+        if current_height.is_multiple_of(BLOCKS_PER_EPOCH) {
             self.distribute_rewards(current_height);
             self.recompute_active_set();
         }
@@ -300,12 +306,12 @@ mod tests {
     #[test]
     fn test_leader_election() {
         let validators = vec![
-            ValidatorInfo { address: Address::from_pubkey(b"v1"), stake: 100, is_active: true },
-            ValidatorInfo { address: Address::from_pubkey(b"v2"), stake: 100, is_active: true },
+            ValidatorInfo { address: Address::from_pubkey(b"v1"), stake: 100, is_active: true, commission: 500, missed_blocks: 0 },
+            ValidatorInfo { address: Address::from_pubkey(b"v2"), stake: 100, is_active: true, commission: 500, missed_blocks: 0 },
         ];
         let engine = ConsensusEngine::new(validators);
         let leader1 = engine.get_leader(1).unwrap();
-        let leader2 = engine.get_leader(2).unwrap();
+        let _leader2 = engine.get_leader(2).unwrap();
         // Deterministic but likely different
         assert!(leader1 == leader1); 
     }

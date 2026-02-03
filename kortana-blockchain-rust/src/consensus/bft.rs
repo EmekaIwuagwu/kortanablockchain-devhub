@@ -19,6 +19,12 @@ pub struct FinalityGadget {
     pub pending_commits: HashMap<u64, FinalityCommit>,
 }
 
+impl Default for FinalityGadget {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FinalityGadget {
     pub fn new() -> Self {
         Self {
