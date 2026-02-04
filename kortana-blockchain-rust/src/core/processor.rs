@@ -54,10 +54,10 @@ impl<'a> BlockProcessor<'a> {
         
         let is_staking = tx.to.to_hex() == STAKING_CONTRACT_ADDRESS;
 
-        let (status, gas_used) = if is_staking {
+        let (status, gas_used, contract_address) = if is_staking {
             // Primitive Staking Logic
             if tx.data.is_empty() {
-                (0, 21000)
+                (0, 21000, None)
             } else {
                 match tx.data[0] {
                     1 => { // Delegate
@@ -66,9 +66,9 @@ impl<'a> BlockProcessor<'a> {
                             val_bytes.copy_from_slice(&tx.data[1..25]);
                             if let Ok(validator_addr) = Address::from_bytes(val_bytes) {
                                 self.state.staking.delegate(tx.from, validator_addr, tx.value, header.height);
-                                (1, 50000)
-                            } else { (0, 21000) }
-                        } else { (0, 21000) }
+                                (1, 50000, None)
+                            } else { (0, 21000, None) }
+                        } else { (0, 21000, None) }
                     }
                     2 => { // Undelegate
                          if tx.data.len() >= 25 {
@@ -78,30 +78,91 @@ impl<'a> BlockProcessor<'a> {
                             let amount = tx.value; // For now use tx.value or parse from data
                             if let Ok(validator_addr) = Address::from_bytes(val_bytes) {
                                 match self.state.staking.undelegate(tx.from, validator_addr, amount, header.height) {
-                                    Ok(_) => (1, 50000),
-                                    Err(_) => (0, 50000),
+                                    Ok(_) => (1, 50000, None),
+                                    Err(_) => (0, 50000, None),
                                 }
-                            } else { (0, 21000) }
-                         } else { (0, 21000) }
+                            } else { (0, 21000, None) }
+                         } else { (0, 21000, None) }
                     }
-                    _ => (0, 21000)
+                    _ => (0, 21000, None)
                 }
             }
         } else if let Some(precompile) = crate::vm::precompiles::get_precompile(&tx.to) {
              match precompile(&tx.data) {
-                 Ok(_) => (1, 500u64), // Static cost for precompile
-                 Err(_) => (0, 500u64),
+                 Ok(_) => (1, 500u64, None), // Static cost for precompile
+                 Err(_) => (0, 500u64, None),
              }
         } else {
             match tx.vm_type {
                 VmType::EVM => {
-                    let mut executor = EvmExecutor::new(tx.to, tx.gas_limit);
-                    match executor.execute(&tx.data, self.state, header) {
-                        Ok(_) => {
-                            logs = executor.logs;
-                            (1, tx.gas_limit - executor.gas_remaining)
+                    // Check if this is a contract deployment (to == 0x0)
+                    let is_deployment = tx.to == Address::ZERO || tx.to.to_hex() == "0x0000000000000000000000000000000000000000";
+                    
+                    if is_deployment {
+                        // CONTRACT DEPLOYMENT
+                        // Derive contract address from sender and nonce (nonce was already incremented)
+                        let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce - 1);
+                        
+                        // Execute init code to get runtime bytecode
+                        let mut executor = EvmExecutor::new(contract_addr, tx.gas_limit);
+                        match executor.execute(&tx.data, self.state, header) {
+                            Ok(runtime_code) => {
+                                // Store the runtime code
+                                let code_hash = {
+                                    use sha3::{Digest, Sha3_256};
+                                    let mut hasher = Sha3_256::new();
+                                    hasher.update(&runtime_code);
+                                    let result = hasher.finalize();
+                                    let mut hash = [0u8; 32];
+                                    hash.copy_from_slice(&result);
+                                    hash
+                                };
+                                
+                                self.state.put_code(code_hash, runtime_code);
+                                
+                                // Create contract account
+                                let mut contract_acc = self.state.get_account(&contract_addr);
+                                contract_acc.is_contract = true;
+                                contract_acc.code_hash = code_hash;
+                                if tx.value > 0 {
+                                    contract_acc.balance += tx.value;
+                                }
+                                self.state.update_account(contract_addr, contract_acc);
+                                
+                                logs = executor.logs;
+                                (1, tx.gas_limit - executor.gas_remaining, Some(contract_addr))
+                            }
+                            Err(_) => (0, tx.gas_limit, None),
                         }
-                        Err(_) => (0, tx.gas_limit),
+                    } else {
+                        // REGULAR CONTRACT CALL
+                        let to_account = self.state.get_account(&tx.to);
+                        
+                        if to_account.is_contract {
+                            // Call existing contract
+                            if let Some(code) = self.state.get_code(&to_account.code_hash) {
+                                let mut executor = EvmExecutor::new(tx.to, tx.gas_limit);
+                                executor.calldata = tx.data.clone();
+                                match executor.execute(&code, self.state, header) {
+                                    Ok(_) => {
+                                        logs = executor.logs;
+                                        (1, tx.gas_limit - executor.gas_remaining, None)
+                                    }
+                                    Err(_) => (0, tx.gas_limit, None),
+                                }
+                            } else {
+                                // Contract has no code
+                                (0, 21000, None)
+                            }
+                        } else {
+                            // Regular transfer with data (no code to execute)
+                            if !tx.data.is_empty() {
+                                // Data sent to non-contract address
+                                (1, 21000 + (tx.data.len() as u64 * 16), None)
+                            } else {
+                                (1, 21000, None)
+                            }
+                        }
                     }
                 }
                 VmType::Quorlin => {
@@ -111,11 +172,11 @@ impl<'a> BlockProcessor<'a> {
                     if let Ok(instructions) = serde_json::from_slice::<Vec<QuorlinOpcode>>(&tx.data) {
                         let mut executor = QuorlinExecutor::new(tx.gas_limit);
                         match executor.execute(&instructions) {
-                            Ok(_) => (1, tx.gas_limit - executor.gas_remaining),
-                            Err(_) => (0, tx.gas_limit),
+                            Ok(_) => (1, tx.gas_limit - executor.gas_remaining, None),
+                            Err(_) => (0, tx.gas_limit, None),
                         }
                     } else {
-                        (0, 21000)
+                        (0, 21000, None)
                     }
                 }
             }
@@ -140,6 +201,7 @@ impl<'a> BlockProcessor<'a> {
             status,
             gas_used,
             logs,
+            contract_address,
         })
     }
 

@@ -223,6 +223,7 @@ pub struct TransactionReceipt {
     pub status: u8, // 1 for success, 0 for failure
     pub gas_used: u64,
     pub logs: Vec<TransactionLog>,
+    pub contract_address: Option<Address>, // Contract address for deployments
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
