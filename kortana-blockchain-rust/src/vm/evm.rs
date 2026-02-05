@@ -86,6 +86,8 @@ pub struct EvmExecutor {
     pub address: crate::address::Address,
     pub calldata: Vec<u8>,
     pub logs: Vec<crate::types::transaction::TransactionLog>,
+    pub caller: crate::address::Address,  // NEW: msg.sender
+    pub callvalue: u128,  // NEW: msg.value
 }
 
 impl EvmExecutor {
@@ -97,6 +99,8 @@ impl EvmExecutor {
             address,
             calldata: Vec::new(),
             logs: Vec::new(),
+            caller: crate::address::Address::ZERO,  // Default, should be set before execution
+            callvalue: 0,  // Default
         }
     }
 
@@ -153,7 +157,7 @@ impl EvmExecutor {
                 }
 
                 // Environment
-                0x30 => { self.stack.push(self.address.as_evm_address_u256())?; }
+                0x30 => {  self.stack.push(self.address.as_evm_address_u256())?; }
                 0x31 => { // BALANCE 
                      self.consume_gas(100)?; 
                      let addr_bytes = self.stack.pop()?;
@@ -166,7 +170,8 @@ impl EvmExecutor {
                          self.stack.push([0u8; 32])?;
                      }
                 }
-                0x33 => { self.stack.push(crate::address::Address::ZERO.as_evm_address_u256())?; } // CALLER
+                0x33 => { self.stack.push(self.caller.as_evm_address_u256())?; } // CALLER - FIXED!
+                0x34 => { self.stack.push(Self::u128_to_u256(self.callvalue))?; } // CALLVALUE - NEW!
                 0x35 => { // CALLDATALOAD
                     self.consume_gas(3)?;
                     let offset = Self::u256_to_usize(self.stack.pop()?)?;

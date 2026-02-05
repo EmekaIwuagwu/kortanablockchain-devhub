@@ -164,4 +164,71 @@ impl Storage {
             None => Ok(Vec::new()),
         }
     }
+
+    pub fn clear_all_data(&self) -> Result<(), String> {
+        // Clear blocks
+        for key in self.db.scan_prefix("block:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear block hashes
+        for key in self.db.scan_prefix("blockhash:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear transactions
+        for key in self.db.scan_prefix("tx:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear transaction locations
+        for key in self.db.scan_prefix("txloc:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear receipts
+        for key in self.db.scan_prefix("receipt:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear address indices
+        for key in self.db.scan_prefix("addr_txs:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear global transactions
+        self.db.remove("global_txs").map_err(|e| e.to_string())?;
+        
+        // Clear state roots
+        for key in self.db.scan_prefix("stateroot:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        // Clear states
+        for key in self.db.scan_prefix("state:") {
+            if let Ok((k, _)) = key {
+                self.db.remove(k).map_err(|e| e.to_string())?;
+            }
+        }
+        
+        self.db.remove("latest_state_height").map_err(|e| e.to_string())?;
+        
+        self.db.flush().map_err(|e| e.to_string())?;
+        println!("[STORAGE] Database cleared successfully");
+        Ok(())
+    }
 }

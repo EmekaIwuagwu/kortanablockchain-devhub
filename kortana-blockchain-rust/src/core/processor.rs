@@ -105,6 +105,9 @@ impl<'a> BlockProcessor<'a> {
                         
                         // Execute init code to get runtime bytecode
                         let mut executor = EvmExecutor::new(contract_addr, tx.gas_limit);
+                        executor.caller = tx.from;  // FIX: Set msg.sender
+                        executor.callvalue = tx.value;  // FIX: Set msg.value
+                        
                         match executor.execute(&tx.data, self.state, header) {
                             Ok(runtime_code) => {
                                 // Store the runtime code
@@ -143,6 +146,9 @@ impl<'a> BlockProcessor<'a> {
                             if let Some(code) = self.state.get_code(&to_account.code_hash) {
                                 let mut executor = EvmExecutor::new(tx.to, tx.gas_limit);
                                 executor.calldata = tx.data.clone();
+                                executor.caller = tx.from;  // FIX: Set msg.sender
+                                executor.callvalue = tx.value;  // FIX: Set msg.value
+                                
                                 match executor.execute(&code, self.state, header) {
                                     Ok(_) => {
                                         logs = executor.logs;
