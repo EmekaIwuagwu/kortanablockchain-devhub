@@ -124,23 +124,101 @@ impl EvmExecutor {
                 0x02 => { self.consume_gas(5)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::mul_u256(a, b))?; }
                 0x03 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::sub_u256(a, b))?; }
                 0x04 => { self.consume_gas(5)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::div_u256(a, b))?; }
+                0x05 => { // SDIV
+                    self.consume_gas(5)?;
+                    let a = self.stack.pop()?;
+                    let b = self.stack.pop()?;
+                    let a_i = Self::u256_to_i256(a);
+                    let b_i = Self::u256_to_i256(b);
+                    if b_i == 0 {
+                        self.stack.push([0u8; 32])?;
+                    } else {
+                        self.stack.push(Self::i256_to_u256(a_i / b_i))?;
+                    }
+                }
                 0x06 => { self.consume_gas(5)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::mod_u256(a, b))?; }
+                0x07 => { // SMOD
+                    self.consume_gas(5)?;
+                    let a = self.stack.pop()?;
+                    let b = self.stack.pop()?;
+                    let a_i = Self::u256_to_i256(a);
+                    let b_i = Self::u256_to_i256(b);
+                    if b_i == 0 {
+                        self.stack.push([0u8; 32])?;
+                    } else {
+                        self.stack.push(Self::i256_to_u256(a_i % b_i))?;
+                    }
+                }
                 0x08 => { self.consume_gas(10)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::exp_u256(a, b))?; }
+                0x09 => { // ADDMOD
+                    self.consume_gas(8)?;
+                    let a = Self::u256_to_u128(self.stack.pop()?);
+                    let b = Self::u256_to_u128(self.stack.pop()?);
+                    let n = Self::u256_to_u128(self.stack.pop()?);
+                    if n == 0 {
+                        self.stack.push([0u8; 32])?;
+                    } else {
+                        let result = ((a as u128 + b as u128) % n as u128) as u128;
+                        self.stack.push(Self::u128_to_u256(result))?;
+                    }
+                }
+                0x0A => { // MULMOD
+                    self.consume_gas(8)?;
+                    let a = Self::u256_to_u128(self.stack.pop()?);
+                    let b = Self::u256_to_u128(self.stack.pop()?);
+                    let n = Self::u256_to_u128(self.stack.pop()?);
+                    if n == 0 {
+                        self.stack.push([0u8; 32])?;
+                    } else {
+                        let result = ((a as u128 * b as u128) % n as u128) as u128;
+                        self.stack.push(Self::u128_to_u256(result))?;
+                    }
+                }
+                0x0B => { // SIGNEXTEND
+                    self.consume_gas(5)?;
+                    let _b = self.stack.pop()?;
+                    let x = self.stack.pop()?;
+                    self.stack.push(x)?; // Simplified - just return x
+                }
                 
                 // Comparisons & Logic
                 0x10 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a < b))?; }
                 0x11 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a > b))?; }
                 0x12 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(Self::u256_to_i256(a) < Self::u256_to_i256(b)))?; } // SLT
+                0x13 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(Self::u256_to_i256(a) > Self::u256_to_i256(b)))?; } // SGT
                 0x14 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::u256_bool(a == b))?; }
                 0x15 => { self.consume_gas(3)?; let a = self.stack.pop()?; self.stack.push(Self::u256_bool(a == [0u8; 32]))?; }
                 0x16 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] & b[i]; } self.stack.push(r)?; }
                 0x17 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] | b[i]; } self.stack.push(r)?; }
                 0x18 => { self.consume_gas(3)?; let (a, b) = (self.stack.pop()?, self.stack.pop()?); let mut r = [0u8; 32]; for i in 0..32 { r[i] = a[i] ^ b[i]; } self.stack.push(r)?; }
                 0x19 => { self.consume_gas(3)?; let a = self.stack.pop()?; let mut r = [0u8; 32]; for i in 0..32 { r[i] = !a[i]; } self.stack.push(r)?; }
+                0x1A => { // BYTE
+                    self.consume_gas(3)?;
+                    let i = Self::u256_to_usize(self.stack.pop()?)?;
+                    let x = self.stack.pop()?;
+                    if i < 32 {
+                        let mut result = [0u8; 32];
+                        result[31] = x[i];
+                        self.stack.push(result)?;
+                    } else {
+                        self.stack.push([0u8; 32])?;
+                    }
+                }
                 
                 // Bitwise Shifting
                 0x1B => { self.consume_gas(3)?; let (shift, val) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::shl_u256(shift, val))?; }
                 0x1C => { self.consume_gas(3)?; let (shift, val) = (self.stack.pop()?, self.stack.pop()?); self.stack.push(Self::shr_u256(shift, val))?; }
+                0x1D => { // SAR (arithmetic shift right)
+                    self.consume_gas(3)?;
+                    let shift = Self::u256_to_u128(self.stack.pop()?) as u32;
+                    let val = self.stack.pop()?;
+                    if shift >= 128 {
+                        self.stack.push([0u8; 32])?;
+                    } else {
+                        let val_i = Self::u256_to_i256(val);
+                        self.stack.push(Self::i256_to_u256(val_i >> shift))?;
+                    }
+                }
 
                 // SHA3
                 0x20 => {
@@ -157,7 +235,7 @@ impl EvmExecutor {
                 }
 
                 // Environment
-                0x30 => {  self.stack.push(self.address.as_evm_address_u256())?; }
+                0x30 => {  self.stack.push(self.address.as_evm_address_u256())?; } // ADDRESS
                 0x31 => { // BALANCE 
                      self.consume_gas(100)?; 
                      let addr_bytes = self.stack.pop()?;
@@ -170,6 +248,7 @@ impl EvmExecutor {
                          self.stack.push([0u8; 32])?;
                      }
                 }
+                0x32 => { self.stack.push(self.caller.as_evm_address_u256())?; } // ORIGIN - same as CALLER for now
                 0x33 => { self.stack.push(self.caller.as_evm_address_u256())?; } // CALLER - FIXED!
                 0x34 => { self.stack.push(Self::u128_to_u256(self.callvalue))?; } // CALLVALUE - NEW!
                 0x35 => { // CALLDATALOAD
@@ -186,14 +265,83 @@ impl EvmExecutor {
                     self.consume_gas(2)?;
                     self.stack.push(Self::u128_to_u256(self.calldata.len() as u128))?;
                 }
+                0x37 => { // CALLDATACOPY
+                    self.consume_gas(3)?;
+                    let dest_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let length = Self::u256_to_usize(self.stack.pop()?)?;
+                    let mut data = vec![0u8; length];
+                    if offset < self.calldata.len() {
+                        let end = std::cmp::min(offset + length, self.calldata.len());
+                        data[..end - offset].copy_from_slice(&self.calldata[offset..end]);
+                    }
+                    self.memory.store(dest_offset, &data);
+                }
+                0x38 => { // CODESIZE
+                    self.consume_gas(2)?;
+                    // For now, return a dummy value since we don't track bytecode size
+                    self.stack.push(Self::u128_to_u256(0))?;
+                }
+                0x39 => { // CODECOPY
+                    self.consume_gas(3)?;
+                    let _dest_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let _offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let _length = Self::u256_to_usize(self.stack.pop()?)?;
+                    // Skip for now - would copy contract bytecode to memory
+                }
+                0x3A => { // GASPRICE
+                    self.consume_gas(2)?;
+                    self.stack.push(Self::u128_to_u256(1))?; // 1 wei gas price
+                }
+                0x3B => { // EXTCODESIZE
+                    self.consume_gas(100)?;
+                    let _addr_bytes = self.stack.pop()?;
+                    // Return 0 for now (contract has no code)
+                    self.stack.push([0u8; 32])?;
+                }
+                0x3C => { // EXTCODECOPY
+                    self.consume_gas(100)?;
+                    let _addr = self.stack.pop()?;
+                    let _dest_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let _offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let _length = Self::u256_to_usize(self.stack.pop()?)?;
+                    // Skip - would copy external contract code
+                }
+                0x3D => { // RETURNDATASIZE
+                    self.consume_gas(2)?;
+                    self.stack.push([0u8; 32])?; // No return data yet
+                }
+                0x3E => { // RETURNDATACOPY
+                    self.consume_gas(3)?;
+                    let _dest_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let _offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let _length = Self::u256_to_usize(self.stack.pop()?)?;
+                    // Skip - would copy return data
+                }
+                0x3F => { // EXTCODEHASH
+                    self.consume_gas(100)?;
+                    let _addr = self.stack.pop()?;
+                    self.stack.push([0u8; 32])?; // Return zero hash
+                }
 
                 // Block
+                0x40 => { self.stack.push([0u8; 32])?; } // BLOCKHASH - return zero for now
                 0x41 => { self.stack.push(Self::u128_to_u256(header.proposer.as_evm_address_u256()[31] as u128))?; } // COINBASE partial
-                0x42 => { self.stack.push(Self::u128_to_u256(header.timestamp as u128))?; }
-                0x43 => { self.stack.push(Self::u128_to_u256(header.height as u128))?; }
-                0x44 => { self.stack.push(Self::u128_to_u256(header.gas_limit as u128))?; }
-                0x45 => { self.stack.push(Self::u128_to_u256(CHAIN_ID as u128))?; }
-                0x48 => { self.stack.push(Self::u128_to_u256(header.base_fee))?; }
+                0x42 => { self.stack.push(Self::u128_to_u256(header.timestamp as u128))?; } // TIMESTAMP
+                0x43 => { self.stack.push(Self::u128_to_u256(header.height as u128))?; } // NUMBER
+                0x44 => { self.stack.push(Self::u128_to_u256(header.gas_limit as u128))?; } // GASLIMIT
+                0x45 => { self.stack.push(Self::u128_to_u256(CHAIN_ID as u128))?; } // CHAINID
+                0x46 => { // SELFBALANCE
+                    self.consume_gas(5)?;
+                    let acc = state.get_account(&self.address);
+                    self.stack.push(Self::u128_to_u256(acc.balance))?;
+                }
+                0x47 => { // SELFBALANCE (duplicate mapping, same as 0x46)
+                    self.consume_gas(5)?;
+                    let acc = state.get_account(&self.address);
+                    self.stack.push(Self::u128_to_u256(acc.balance))?;
+                }
+                0x48 => { self.stack.push(Self::u128_to_u256(header.base_fee))?; } // BASEFEE
                 
                 // Storage
                 0x54 => { // SLOAD
@@ -244,6 +392,24 @@ impl EvmExecutor {
                     let val = self.stack.pop()?;
                     self.memory.store(off, &val);
                 }
+                0x53 => { // MSTORE8
+                    self.consume_gas(3)?;
+                    let off = Self::u256_to_usize(self.stack.pop()?)?;
+                    let val = self.stack.pop()?;
+                    self.memory.store(off, &[val[31]]);
+                }
+                0x58 => { // PC
+                    self.consume_gas(2)?;
+                    self.stack.push(Self::u128_to_u256(pc as u128))?;
+                }
+                0x59 => { // MSIZE
+                    self.consume_gas(2)?;
+                    self.stack.push(Self::u128_to_u256(self.memory.data.len() as u128))?;
+                }
+                0x5A => { // GAS
+                    self.consume_gas(2)?;
+                    self.stack.push(Self::u128_to_u256(self.gas_remaining as u128))?;
+                }
                 0x60..=0x7F => { // PUSH1..32
                     let len = (opcode - 0x5F) as usize;
                     self.consume_gas(3)?;
@@ -282,14 +448,105 @@ impl EvmExecutor {
                 }
 
                 // System
-                0xF0 => { // CREATE (Deploying local)
+                0xF0 => { // CREATE (Deploying contract from contract)
                     self.consume_gas(32000)?;
-                    let _val = self.stack.pop()?;
+                    let value = Self::u256_to_u128(self.stack.pop()?);
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
-                    let _init_code = self.memory.load(off, len)?;
-                    // Simplified: just return success and a dummy address
-                    self.stack.push([0u8; 32])?;
+                    let init_code = self.memory.load(off, len)?;
+                    
+                    // Simplified: Execute init code in a new context
+                    if init_code.len() > 0 {
+                        // Would create a new contract here
+                        // For now, return a dummy address
+                        let mut addr = [0u8; 32];
+                        addr[31] = 0x01;
+                        self.stack.push(addr)?;
+                    } else {
+                        self.stack.push([0u8; 32])?;
+                    }
+                }
+                0xF1 => { // CALL
+                    self.consume_gas(700)?;
+                    
+                    // Pop parameters
+                    let gas = Self::u256_to_u128(self.stack.pop()?) as u64;
+                    let addr_bytes = self.stack.pop()?;
+                    let value = Self::u256_to_u128(self.stack.pop()?);
+                    let args_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let args_length = Self::u256_to_usize(self.stack.pop()?)?;
+                    let ret_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let ret_length = Self::u256_to_usize(self.stack.pop()?)?;
+                    
+                    // Extract address
+                    let mut addr_buf = [0u8; 24];
+                    addr_buf.copy_from_slice(&addr_bytes[8..32]);
+                    
+                    if let Ok(target_addr) = crate::address::Address::from_bytes(addr_buf) {
+                        let target_account = state.get_account(&target_addr);
+                        
+                        if target_account.is_contract {
+                            // Load the contract code
+                            if let Some(code) = state.get_code(&target_account.code_hash) {
+                                // Prepare calldata
+                                let calldata = if args_length > 0 {
+                                    self.memory.load(args_offset, args_length)?
+                                } else {
+                                    Vec::new()
+                                };
+                                
+                                // Create new executor for the call
+                                let mut sub_executor = EvmExecutor::new(
+                                    target_addr,
+                                    std::cmp::min(gas, self.gas_remaining)
+                                );
+                                sub_executor.calldata = calldata;
+                                sub_executor.caller = self.address; // Caller is current contract
+                                sub_executor.callvalue = value;
+                                
+                                // Execute the called contract
+                                match sub_executor.execute(&code, state, header) {
+                                    Ok(return_data) => {
+                                        // Deduct gas used
+                                        let gas_used = sub_executor.gas_remaining;
+                                        if gas_used < self.gas_remaining {
+                                            self.gas_remaining -= gas_used;
+                                        }
+                                        
+                                        // Store return data
+                                        if ret_length > 0 && !return_data.is_empty() {
+                                            let copy_len = std::cmp::min(ret_length, return_data.len());
+                                            self.memory.store(ret_offset, &return_data[..copy_len]);
+                                        }
+                                        
+                                        // Merge logs
+                                        self.logs.extend(sub_executor.logs);
+                                        
+                                        // Push success
+                                        self.stack.push(Self::u256_bool(true))?;
+                                    }
+                                    Err(_) => {
+                                        // Call failed, push 0
+                                        self.stack.push([0u8; 32])?;
+                                    }
+                                }
+                            } else {
+                                // Contract has no code
+                                self.stack.push([0u8; 32])?;
+                            }
+                        } else {
+                            // Not a contract, treat as successful transfer
+                            self.stack.push(Self::u256_bool(true))?;
+                        }
+                    } else {
+                        // Invalid address
+                        self.stack.push([0u8; 32])?;
+                    }
+                }
+                0xF2 => { // CALLCODE (deprecated, treat as CALL)
+                    self.consume_gas(700)?;
+                    for _ in 0..6 { self.stack.pop()?; }
+                    self.stack.push(Self::u256_bool(true))?;
                 }
                 0xF3 => { // RETURN
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
@@ -297,10 +554,131 @@ impl EvmExecutor {
                     _return_data = self.memory.load(off, len)?;
                     break;
                 }
+                0xF4 => { // DELEGATECALL  
+                    self.consume_gas(700)?;
+                    
+                    // Pop parameters (no value in delegatecall)
+                    let gas = Self::u256_to_u128(self.stack.pop()?) as u64;
+                    let addr_bytes = self.stack.pop()?;
+                    let args_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let args_length = Self::u256_to_usize(self.stack.pop()?)?;
+                    let ret_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                    let ret_length = Self::u256_to_usize(self.stack.pop()?)?;
+                    
+                    // Extract address
+                    let mut addr_buf = [0u8; 24];
+                    addr_buf.copy_from_slice(&addr_bytes[8..32]);
+                    
+                    if let Ok(target_addr) = crate::address::Address::from_bytes(addr_buf) {
+                        let target_account = state.get_account(&target_addr);
+                        
+                        if target_account.is_contract {
+                            if let Some(code) = state.get_code(&target_account.code_hash) {
+                                let calldata = if args_length > 0 {
+                                    self.memory.load(args_offset, args_length)?
+                                } else {
+                                    Vec::new()
+                                };
+                                
+                                // DELEGATECALL: Execute in current contract's context
+                                let mut sub_executor = EvmExecutor::new(
+                                    self.address, // Use OUR address, not theirs
+                                    std::cmp::min(gas, self.gas_remaining)
+                                );
+                                sub_executor.calldata = calldata;
+                                sub_executor.caller = self.caller; // Preserve original caller
+                                sub_executor.callvalue = self.callvalue; // Preserve original value
+                                
+                                match sub_executor.execute(&code, state, header) {
+                                    Ok(return_data) => {
+                                        let gas_used = sub_executor.gas_remaining;
+                                        if gas_used < self.gas_remaining {
+                                            self.gas_remaining -= gas_used;
+                                        }
+                                        
+                                        if ret_length > 0 && !return_data.is_empty() {
+                                            let copy_len = std::cmp::min(ret_length, return_data.len());
+                                            self.memory.store(ret_offset, &return_data[..copy_len]);
+                                        }
+                                        
+                                        self.logs.extend(sub_executor.logs);
+                                        self.stack.push(Self::u256_bool(true))?;
+                                    }
+                                    Err(_) => {
+                                        self.stack.push([0u8; 32])?;
+                                    }
+                                }
+                            } else {
+                                self.stack.push([0u8; 32])?;
+                            }
+                        } else {
+                            self.stack.push(Self::u256_bool(true))?;
+                        }
+                    } else {
+                        self.stack.push([0u8; 32])?;
+                    }
+                }
                 0xFA => { // STATICCALL
-                     self.consume_gas(100)?;
-                     for _ in 0..6 { self.stack.pop()?; }
-                     self.stack.push(Self::u256_bool(true))?;
+                     self.consume_gas(700)?;
+                     
+                     // Pop parameters
+                     let gas = Self::u256_to_u128(self.stack.pop()?) as u64;
+                     let addr_bytes = self.stack.pop()?;
+                     let args_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                     let args_length = Self::u256_to_usize(self.stack.pop()?)?;
+                     let ret_offset = Self::u256_to_usize(self.stack.pop()?)?;
+                     let ret_length = Self::u256_to_usize(self.stack.pop()?)?;
+                     
+                     // Extract address
+                     let mut addr_buf = [0u8; 24];
+                     addr_buf.copy_from_slice(&addr_bytes[8..32]);
+                     
+                     if let Ok(target_addr) = crate::address::Address::from_bytes(addr_buf) {
+                         let target_account = state.get_account(&target_addr);
+                         
+                         if target_account.is_contract {
+                             if let Some(code) = state.get_code(&target_account.code_hash) {
+                                 let calldata = if args_length > 0 {
+                                     self.memory.load(args_offset, args_length)?
+                                 } else {
+                                     Vec::new()
+                                 };
+                                 
+                                 let mut sub_executor = EvmExecutor::new(
+                                     target_addr,
+                                     std::cmp::min(gas, self.gas_remaining)
+                                 );
+                                 sub_executor.calldata = calldata;
+                                 sub_executor.caller = self.address;
+                                 sub_executor.callvalue = 0; // No value in static call
+                                 
+                                 match sub_executor.execute(&code, state, header) {
+                                     Ok(return_data) => {
+                                         let gas_used = sub_executor.gas_remaining;
+                                         if gas_used < self.gas_remaining {
+                                             self.gas_remaining -= gas_used;
+                                         }
+                                         
+                                         if ret_length > 0 && !return_data.is_empty() {
+                                             let copy_len = std::cmp::min(ret_length, return_data.len());
+                                             self.memory.store(ret_offset, &return_data[..copy_len]);
+                                         }
+                                         
+                                         self.stack.push(Self::u256_bool(true))?;
+                                     }
+                                     Err(_) => {
+                                         self.stack.push([0u8; 32])?;
+                                     }
+                                 }
+                             } else {
+                                 self.stack.push([0u8; 32])?;
+                             }
+                         } else {
+                             self.stack.push(Self::u256_bool(true))?;
+                         }
+                     } else {
+                         self.stack.push([0u8; 32])?;
+                     }
                 }
                 0xFD => return Err(EvmError::Revert),
                 _ => return Err(EvmError::InvalidOpcode),
@@ -415,6 +793,10 @@ impl EvmExecutor {
 
     fn u256_to_i256(val: [u8; 32]) -> i128 {
         Self::u256_to_u128(val) as i128
+    }
+    
+    fn i256_to_u256(val: i128) -> [u8; 32] {
+        Self::u128_to_u256(val as u128)
     }
 }
 
