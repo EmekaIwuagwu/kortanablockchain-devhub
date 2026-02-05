@@ -1,7 +1,7 @@
 // File: src/types/block.rs
 
 use serde::{Serialize, Deserialize};
-use sha3::{Digest, Sha3_256};
+use sha3::{Digest, Keccak256};
 use crate::address::Address;
 use crate::types::transaction::Transaction;
 
@@ -26,7 +26,7 @@ pub struct BlockHeader {
 
 impl BlockHeader {
     pub fn hash(&self) -> [u8; 32] {
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(self.version.to_be_bytes());
         hasher.update(self.height.to_be_bytes());
         hasher.update(self.slot.to_be_bytes());
@@ -101,7 +101,7 @@ impl Block {
                 } else {
                     left
                 };
-                let mut hasher = Sha3_256::new();
+                let mut hasher = Keccak256::new();
                 hasher.update(left);
                 hasher.update(right);
                 next_level.push(hasher.finalize().into());

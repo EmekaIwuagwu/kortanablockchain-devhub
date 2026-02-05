@@ -33,8 +33,8 @@ impl Storage {
     }
 
     pub fn get_block_by_hash(&self, hash_hex: &str) -> Result<Option<Block>, String> {
-        let hash = hash_hex.strip_prefix("0x").unwrap_or(hash_hex);
-        let key = format!("blockhash:{}", hash);
+        let h = hash_hex.strip_prefix("0x").unwrap_or(hash_hex).to_lowercase();
+        let key = format!("blockhash:{}", h);
         let val = self.db.get(key).map_err(|e| e.to_string())?;
         match val {
             Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
@@ -69,7 +69,8 @@ impl Storage {
     }
 
     pub fn get_transaction_location(&self, tx_hash: &str) -> Result<Option<(u64, String, usize)>, String> {
-        let key = format!("txloc:{}", tx_hash.strip_prefix("0x").unwrap_or(tx_hash));
+        let h = tx_hash.strip_prefix("0x").unwrap_or(tx_hash).to_lowercase();
+        let key = format!("txloc:{}", h);
         let val = self.db.get(key).map_err(|e| e.to_string())?;
         match val {
             Some(data) => {
@@ -84,7 +85,8 @@ impl Storage {
     }
 
     pub fn get_transaction(&self, hash_hex: &str) -> Result<Option<crate::types::transaction::Transaction>, String> {
-        let key = format!("tx:{}", hash_hex);
+        let h = hash_hex.strip_prefix("0x").unwrap_or(hash_hex).to_lowercase();
+        let key = format!("tx:{}", h);
         let val = self.db.get(key).map_err(|e| e.to_string())?;
         match val {
             Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
@@ -93,14 +95,15 @@ impl Storage {
     }
     
     pub fn put_receipt(&self, receipt: &crate::types::transaction::TransactionReceipt) -> Result<(), String> {
-        let key = format!("receipt:0x{}", hex::encode(receipt.tx_hash));
+        let key = format!("receipt:{}", hex::encode(receipt.tx_hash));
         let val = serde_json::to_vec(receipt).map_err(|e| e.to_string())?;
         self.db.insert(key, val).map_err(|e| e.to_string())?;
         Ok(())
     }
 
     pub fn get_receipt(&self, hash_hex: &str) -> Result<Option<crate::types::transaction::TransactionReceipt>, String> {
-        let key = format!("receipt:0x{}", hash_hex.strip_prefix("0x").unwrap_or(hash_hex));
+        let h = hash_hex.strip_prefix("0x").unwrap_or(hash_hex).to_lowercase();
+        let key = format!("receipt:{}", h);
         let val = self.db.get(key).map_err(|e| e.to_string())?;
         match val {
             Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),

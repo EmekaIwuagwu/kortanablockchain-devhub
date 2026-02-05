@@ -78,6 +78,7 @@ fn main() {
         vm_type: VmType::EVM,
         chain_id: 1, // Mainnet
         signature: None,
+        cached_hash: None,
     };
 
     println!("3. Signing Transaction (Mint 100 DNR to Alice)...");

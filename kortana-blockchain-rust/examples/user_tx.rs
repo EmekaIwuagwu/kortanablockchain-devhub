@@ -81,6 +81,7 @@ fn main() {
         vm_type: VmType::EVM,
         chain_id: 72511,
         signature: None,
+        cached_hash: None,
     };
 
     let hash = tx.hash();

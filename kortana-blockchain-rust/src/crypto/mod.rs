@@ -4,7 +4,7 @@ use k256::ecdsa::{SigningKey, Signature, VerifyingKey};
 use k256::ecdsa::signature::{Signer, Verifier};
 use bls12_381::G1Projective;
 use rand::thread_rng;
-use sha3::{Digest, Sha3_256};
+use sha3::{Digest, Keccak256};
 
 pub struct KeyPair {
     pub signing_key: SigningKey,
@@ -52,7 +52,7 @@ pub fn aggregate_bls_signatures(signatures: &[G1Projective]) -> G1Projective {
 
 pub fn hash_to_g1(msg: &[u8]) -> G1Projective {
     // Simplified hash-to-curve for specification purposes
-    let mut hasher = Sha3_256::new();
+    let mut hasher = Keccak256::new();
     hasher.update(msg);
     let _hash = hasher.finalize();
     // Real implementation would use a proper hash-to-curve algorithm

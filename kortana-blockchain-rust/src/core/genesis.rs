@@ -25,8 +25,8 @@ pub fn create_genesis_state() -> State {
     state.staking.delegate(validator_addr, validator_addr, stake, 0);
 
     // Faucet Account (Priv: 2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa)
-    // Addr: kn:0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade
-    let faucet_addr = Address::from_hex("kn:0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade").unwrap();
+    // Addr: 0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade
+    let faucet_addr = Address::from_hex("0x450abfda8fc66fcd1f98f7108bfa71ca338322738c512ade").unwrap();
     let mut faucet_acc = Account::new();
     faucet_acc.balance = 100_000_000_000_000_000_000_000_000; // 100M DNR
     state.update_account(faucet_addr, faucet_acc);

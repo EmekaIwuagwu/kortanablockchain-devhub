@@ -1,13 +1,12 @@
 // File: src/types/transaction.rs
 
 use serde::{Serialize, Deserialize};
-use sha3::{Digest, Sha3_256};
+use sha3::{Digest, Keccak256};
 use crate::address::Address;
 use k256::ecdsa::{Signature, VerifyingKey};
 use k256::ecdsa::signature::Verifier;
 use rlp::{Encodable, Decodable, RlpStream, Rlp};
 use k256::ecdsa::{RecoveryId, Signature as EcdsaSignature};
-use sha3::{Keccak256};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum VmType {
@@ -27,6 +26,8 @@ pub struct Transaction {
     pub vm_type: VmType,
     pub chain_id: u64,
     pub signature: Option<Vec<u8>>,
+    #[serde(skip)]
+    pub cached_hash: Option<[u8; 32]>,
 }
 
 impl Encodable for Transaction {
@@ -39,7 +40,7 @@ impl Encodable for Transaction {
         s.append(&self.gas_limit);
         s.append(&self.gas_price);
         s.append(&self.data);
-        s.append(&(self.vm_type.clone() as u8));
+        s.append(&(0u8)); // Always EVM
         s.append(&self.chain_id);
         s.append(&self.signature);
     }
@@ -55,21 +56,22 @@ impl Decodable for Transaction {
             gas_limit: rlp.val_at(4)?,
             gas_price: rlp.val_at(5)?,
             data: rlp.val_at(6)?,
-            vm_type: match rlp.val_at::<u8>(7)? {
-                0 => VmType::EVM,
-                1 => VmType::Quorlin,
-                _ => return Err(rlp::DecoderError::Custom("Invalid VM type")),
-            },
+            vm_type: VmType::EVM, // Always EVM
             chain_id: rlp.val_at(8)?,
             signature: rlp.val_at(9).ok(),
+            cached_hash: None,
         })
     }
 }
 
 impl Transaction {
     pub fn hash(&self) -> [u8; 32] {
-        let mut hasher = Sha3_256::new();
-        // Hash everything except the signature
+        if let Some(h) = self.cached_hash {
+            return h;
+        }
+
+        // Fallback to custom hashing if no cached hash (e.g. for internally created txs)
+        let mut hasher = Keccak256::new();
         hasher.update(self.nonce.to_be_bytes());
         hasher.update(self.from.to_bytes());
         hasher.update(self.to.to_bytes());
@@ -211,7 +213,8 @@ impl Transaction {
                 nonce, from, to, value, gas_limit, gas_price, data,
                 vm_type: VmType::EVM,
                 chain_id,
-                signature: Some(bytes.to_vec())
+                signature: Some(bytes.to_vec()), 
+                cached_hash: None,
         })
     }
 

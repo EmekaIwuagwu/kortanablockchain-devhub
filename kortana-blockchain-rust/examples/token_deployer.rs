@@ -80,6 +80,7 @@ fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmTy
         vm_type,
         chain_id: 72511,
         signature: None,
+        cached_hash: None,
     };
 
     let hash = tx.hash();

@@ -34,6 +34,7 @@ mod tests {
             vm_type: VmType::Quorlin,
             chain_id: CHAIN_ID,
             signature: None,
+            cached_hash: None,
         };
 
         let mut processor = BlockProcessor::new(&mut state, FeeMarket::new());
@@ -66,6 +67,7 @@ mod tests {
             vm_type: VmType::EVM,
             chain_id: CHAIN_ID,
             signature: None,
+            cached_hash: None,
         };
 
         let mut processor = BlockProcessor::new(&mut state, FeeMarket::new());

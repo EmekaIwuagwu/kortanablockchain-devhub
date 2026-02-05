@@ -27,6 +27,7 @@ fn test_full_transaction_flow() {
         vm_type: VmType::EVM,
         chain_id: kortana_blockchain_rust::parameters::CHAIN_ID,
         signature: None,
+        cached_hash: None,
     };
 
     let header = kortana_blockchain_rust::types::block::BlockHeader {

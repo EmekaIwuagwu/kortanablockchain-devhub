@@ -32,6 +32,7 @@ async fn test_rpc_formatting() {
         vm_type: VmType::EVM,
         chain_id,
         signature: None,
+        cached_hash: None,
     };
     let tx_hash = tx.hash();
     let tx_hash_hex = format!("0x{}", hex::encode(tx_hash));

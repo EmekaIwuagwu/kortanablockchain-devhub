@@ -41,6 +41,7 @@ use std::collections::HashMap;
 use crate::state::account::State;
 use crate::mempool::Mempool;
 use crate::storage::Storage;
+use sha3::{Digest, Keccak256};
 use tokio::sync::mpsc;
 
 use crate::consensus::ConsensusEngine;
@@ -98,14 +99,47 @@ impl RpcHandler {
             "eth_gasPrice" => Some(serde_json::to_value(format!("0x{:x}", crate::parameters::MIN_GAS_PRICE)).unwrap()),
             "eth_estimateGas" => {
                 let mut gas = crate::parameters::MIN_GAS_PER_TX;
+                let mut is_deployment = false;
+                
                 if let Some(arr) = p {
                     if let Some(call_obj) = arr.first().and_then(|v| v.as_object()) {
+                        // Check if this is a contract deployment (no 'to' address or to == null)
+                        is_deployment = match call_obj.get("to") {
+                            None => true,
+                            Some(v) if v.is_null() => true,
+                            Some(v) => {
+                                if let Some(s) = v.as_str() {
+                                    s.is_empty() || s == "0x" || s == "0x0" || s == "0x0000000000000000000000000000000000000000"
+                                } else {
+                                    false
+                                }
+                            }
+                        };
+                        
                         if let Some(data_str) = call_obj.get("data").and_then(|v| v.as_str()) {
-                             let data_len = (data_str.len().saturating_sub(2)) / 2;
-                             gas += (data_len as u64) * 16; 
+                            let data_len = (data_str.len().saturating_sub(2)) / 2;
+                            
+                            if is_deployment {
+                                // Contract deployment: 53k intrinsic + bytecode cost
+                                // Use higher multiplier for deployment complexity
+                                let creation_cost = 53000u64;
+                                let bytecode_cost = (data_len as u64) * 100; // More realistic than 16
+                                gas = creation_cost + bytecode_cost;
+                                
+                                // Minimum 200k for any deployment, max 10M
+                                gas = std::cmp::max(gas, 200000);
+                                gas = std::cmp::min(gas, 10000000);
+                            } else {
+                                // Regular transaction with data
+                                gas = 21000 + ((data_len as u64) * 16);
+                            }
+                        } else if is_deployment {
+                            // Deployment with no data? Return minimum deployment gas
+                            gas = 53000;
                         }
                     }
                 }
+                
                 Some(serde_json::to_value(format!("0x{:x}", gas)).unwrap())
             }
             "eth_getBalance" => {
@@ -193,31 +227,53 @@ impl RpcHandler {
                 }))
             }
             "eth_sendRawTransaction" => {
+                use std::io::Write;
+                println!("[RPC] ========== eth_sendRawTransaction CALLED ==========");
+                let _ = std::io::stdout().flush();
+                
                 if let Some(arr) = p {
                     if let Some(raw_tx_hex) = arr.first().and_then(|v| v.as_str()) {
+                        println!("[RPC] Received raw transaction hex (length: {} chars)", raw_tx_hex.len());
+                        let _ = std::io::stdout().flush();
+                        
                         let hex_str = raw_tx_hex.strip_prefix("0x").unwrap_or(raw_tx_hex);
                         match hex::decode(hex_str) {
                             Ok(bytes) => {
-                                match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
-                                    Ok(tx) => {
+                                println!("[RPC] Decoded bytes: {} bytes", bytes.len());
+                                let _ = std::io::stdout().flush();
+                                
+                                // Calculate the proper Ethereum-style hash of the raw bytes
+                                let mut hasher = sha3::Keccak256::new();
+                                hasher.update(&bytes);
+                                let tx_hash_bytes: [u8; 32] = hasher.finalize().into();
+                                let tx_hash_hex = hex::encode(tx_hash_bytes);
+
+                                // Try Ethereum format first as it's the standard for our tools
+                                match crate::types::transaction::Transaction::decode_ethereum(&bytes) {
+                                    Ok(mut tx) => {
+                                        tx.cached_hash = Some(tx_hash_bytes);
                                         {
                                             let mut mempool = self.mempool.lock().unwrap();
-                                            mempool.add(tx.clone());
+                                            let added = mempool.add(tx.clone());
+                                            println!("[RPC] eth_sendRawTransaction: Ethereum format received. Added to mempool: {}", added);
                                         }
                                         let _ = self.network_tx.try_send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
-                                        Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
+                                        Some(serde_json::to_value(format!("0x{}", tx_hash_hex)).unwrap())
                                     },
-                                    Err(e) => {
-                                        match crate::types::transaction::Transaction::decode_ethereum(&bytes) {
-                                            Ok(tx) => {
+                                    Err(e_eth) => {
+                                        // Fallback to Kortana format if Ethereum decoding fails
+                                        match rlp::decode::<crate::types::transaction::Transaction>(&bytes) {
+                                            Ok(mut tx) => {
+                                                tx.cached_hash = Some(tx_hash_bytes);
                                                 {
                                                     let mut mempool = self.mempool.lock().unwrap();
-                                                    mempool.add(tx.clone());
+                                                    let added = mempool.add(tx.clone());
+                                                    println!("[RPC] eth_sendRawTransaction: Kortana format received. Added to mempool: {}", added);
                                                 }
                                                 let _ = self.network_tx.try_send(crate::network::messages::NetworkMessage::NewTransaction(tx.clone()));
-                                                Some(serde_json::to_value(format!("0x{}", hex::encode(tx.hash()))).unwrap())
+                                                Some(serde_json::to_value(format!("0x{}", tx_hash_hex)).unwrap())
                                             },
-                                            Err(e2) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("RLP error: {}; Eth error: {}", e, e2))).unwrap())
+                                            Err(e_kn) => Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32602, &format!("Eth error: {}; Kortana error: {}", e_eth, e_kn))).unwrap())
                                         }
                                     }
                                 }
@@ -423,7 +479,8 @@ impl RpcHandler {
                                 data: vec![],
                                 vm_type: crate::types::transaction::VmType::EVM,
                                 chain_id: self.chain_id,
-                                signature: Some(vec![0u8; 65]), 
+                                signature: Some(vec![0u8; 65]),
+                                cached_hash: None,
                             };
 
                             let _ = self.storage.put_transaction(&faucet_tx);

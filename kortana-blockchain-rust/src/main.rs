@@ -7,6 +7,7 @@ use kortana_blockchain_rust::core::fees::FeeMarket;
 use kortana_blockchain_rust::consensus::bft::FinalityGadget;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::io::Write;
 use std::time::Duration;
 use clap::Parser;
 
@@ -74,7 +75,7 @@ async fn main() {
         print!("Test 1: Wallet Derivation... ");
         let priv_key = k256::ecdsa::SigningKey::random(&mut rand::thread_rng());
         let addr = Address::from_pubkey(&priv_key.verifying_key().to_sec1_bytes());
-        if addr.to_hex().starts_with("kn:0x") {
+        if addr.to_hex().starts_with("0x") {
             println!("{}PASS{}", CLR_GREEN, CLR_RESET);
         } else {
             println!("{}FAIL{}", CLR_RED, CLR_RESET);
@@ -92,7 +93,7 @@ async fn main() {
 
         // Test 3: Transaction Processing
         print!("Test 3: Core Processor (Mint & Transfer)... ");
-        let faucet_addr = Address::from_hex("kn:0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
+        let faucet_addr = Address::from_hex("0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
         let mut acc = test_state.get_account(&faucet_addr);
         acc.balance += 1000;
         test_state.update_account(faucet_addr, acc);
@@ -111,9 +112,10 @@ async fn main() {
     println!("{}██╔═██╗ ██║   ██║██╔══██╗   ██║   ██╔══██║██║╚██╗██║██╔══██║{}", CLR_BLUE, CLR_RESET);
     println!("{}██║  ██╗╚██████╔╝██║  ██║   ██║   ██║  ██║██║ ╚████║██║  ██║{}", CLR_BLUE, CLR_RESET);
     println!("{}╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝{}", CLR_BLUE, CLR_RESET);
-    println!("\n{}--- KORTANA BLOCKCHAIN NODE (RUST) - PRODUCTION GRADE v1.0.0 ---{}", CLR_BOLD, CLR_RESET);
+    println!("\n{}--- KORTANA BLOCKCHAIN NODE (RUST) - FIXED GAS, PUSH0 & REFUNDS v1.0.2 ---{}", CLR_BOLD, CLR_RESET);
     println!("{}RPC Address: {}{}", CLR_CYAN, args.rpc_addr, CLR_RESET);
     println!("{}P2P Address: {}{}\n", CLR_CYAN, args.p2p_addr, CLR_RESET);
+    let _ = std::io::stdout().flush();
 
     // 1. Initialize Storage
     print!("{}[1/5] Initializing Database... {}", CLR_YELLOW, CLR_RESET);
@@ -338,6 +340,11 @@ async fn main() {
                         
                         let mut mempool = node.mempool.lock().unwrap();
                         let txs = mempool.select_transactions(GAS_LIMIT_PER_BLOCK);
+                        if !txs.is_empty() {
+                            println!("[BLOCK PRODUCER] Selected {} transactions from mempool", txs.len());
+                            use std::io::Write;
+                            let _ = std::io::stdout().flush();
+                        }
                         
                         let leader_priv = hex::decode("2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa").unwrap();
                         let vrf = kortana_blockchain_rust::crypto::vrf::generate_vrf_seed(&leader_priv, b"epoch_seed", current_slot);
@@ -374,6 +381,9 @@ async fn main() {
                                 let _ = node.storage.put_index(&tx.from, tx.hash());
                                 let _ = node.storage.put_index(&tx.to, tx.hash());
                                 let _ = node.storage.put_global_transaction(tx.hash());
+                                
+                                // Remove from mempool
+                                mempool.remove_transaction(&tx.hash());
                             }
                         }
 
@@ -456,10 +466,14 @@ async fn main() {
                                      *fees = processor.fee_market;
                                      success = true;
                                      // Index transactions
+                                     let mut mempool = node.mempool.lock().unwrap();
                                      for tx in &block.transactions {
                                          let _ = node.storage.put_transaction(tx);
                                          let _ = node.storage.put_index(&tx.from, tx.hash());
                                          let _ = node.storage.put_index(&tx.to, tx.hash());
+                                         
+                                         // Remove from mempool if present
+                                         mempool.remove_transaction(&tx.hash());
                                      }
                                  }
                              }

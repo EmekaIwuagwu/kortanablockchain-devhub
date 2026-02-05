@@ -1,6 +1,6 @@
 // File: src/address.rs
 
-use sha3::{Digest, Keccak256, Sha3_256};
+use sha3::{Digest, Keccak256};
 use std::fmt;
 use serde::{Serialize, Deserialize};
 use hex;
@@ -12,7 +12,7 @@ impl Address {
     pub const ZERO: Address = Address([0u8; 24]);
 
     pub fn from_pubkey(pubkey: &[u8]) -> Self {
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(pubkey);
         let result = hasher.finalize();
         
@@ -64,6 +64,14 @@ impl Address {
         Address(addr_bytes)
     }
 
+    pub fn is_zero(&self) -> bool {
+        self.0 == [0u8; 24]
+    }
+
+    pub fn is_evm_zero(&self) -> bool {
+        self.0[0..20] == [0u8; 20]
+    }
+
     pub fn is_contract(&self) -> bool {
         // High bit of byte 0 as flag? (Specification mentioned contract flag)
         // Let's use a specific byte or bit as protocol convention
@@ -86,6 +94,11 @@ impl Address {
         let s = s.strip_prefix("kn").unwrap_or(s);
         let s = s.strip_prefix("0x").unwrap_or(s);
         
+        // If empty or just 0x, it's zero address
+        if s.is_empty() {
+            return Ok(Address::ZERO);
+        }
+
         let bytes = hex::decode(s).map_err(|_| "Invalid hex")?;
         
         match bytes.len() {
@@ -105,8 +118,14 @@ impl Address {
         }
     }
 
+    /// Returns the EVM-compatible hex representation (20 bytes with 0x prefix)
     pub fn to_hex(&self) -> String {
-        format!("kn:0x{}", hex::encode(self.0))
+        format!("0x{}", hex::encode(self.as_evm_address()))
+    }
+
+    /// Returns the full Kortana hex representation (24 bytes with kn:0x prefix)
+    pub fn to_full_hex(&self) -> String {
+        format!("0x{}", hex::encode(self.0))
     }
 
     pub fn distance(&self, other: &Address) -> [u8; 24] {
@@ -118,18 +137,22 @@ impl Address {
     }
 
     /// Derives a unique contract address from a creator and their nonce.
+    /// Uses standard Ethereum derivation: keccak256(rlp([sender, nonce]))
     pub fn derive_contract_address(creator: &Address, nonce: u64) -> Self {
-        let mut hasher = Sha3_256::new();
-        hasher.update(creator.to_bytes());
-        hasher.update(nonce.to_be_bytes());
+        use rlp::RlpStream;
+        
+        let mut s = RlpStream::new_list(2);
+        s.append(&creator.as_evm_address().as_slice());
+        s.append(&nonce);
+        
+        let mut hasher = Keccak256::new();
+        hasher.update(&s.out());
         let result = hasher.finalize();
         
-        let mut addr_bytes = [0u8; 24];
-        addr_bytes[0..20].copy_from_slice(&result[0..20]);
-        let checksum = Self::calculate_checksum(&addr_bytes[0..20]);
-        addr_bytes[20..24].copy_from_slice(&checksum);
+        let mut evm_addr = [0u8; 20];
+        evm_addr.copy_from_slice(&result[12..32]);
         
-        Address(addr_bytes)
+        Self::from_evm_address(evm_addr)
     }
 }
 
@@ -141,7 +164,7 @@ impl fmt::Display for Address {
 
 impl fmt::Debug for Address {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Address({})", self.to_hex())
+        write!(f, "0x{}", hex::encode(self.as_evm_address()))
     }
 }
 

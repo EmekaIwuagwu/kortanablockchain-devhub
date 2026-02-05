@@ -1,6 +1,6 @@
 // File: src/state/trie.rs
 
-use sha3::{Digest, Sha3_256};
+use sha3::{Digest, Keccak256};
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
@@ -27,7 +27,7 @@ impl TrieNode {
             return [0u8; 32];
         }
         let serialized = serde_json::to_vec(self).unwrap();
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(&serialized);
         hasher.finalize().into()
     }

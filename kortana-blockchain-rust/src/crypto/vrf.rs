@@ -1,6 +1,6 @@
 // File: src/crypto/vrf.rs
 
-use sha3::{Digest, Sha3_256};
+use sha3::{Digest, Keccak256};
 use crate::address::Address;
 
 pub struct VrfSeed {
@@ -11,7 +11,7 @@ pub struct VrfSeed {
 pub fn generate_vrf_seed(private_key: &[u8], epoch_seed: &[u8], slot: u64) -> VrfSeed {
     // In a production environment, this would use a proper VRF library (like ed25519-vrf)
     // Here we simulate the property that the output is deterministic based on private key + slot
-    let mut hasher = Sha3_256::new();
+    let mut hasher = Keccak256::new();
     hasher.update(private_key);
     hasher.update(epoch_seed);
     hasher.update(slot.to_be_bytes());

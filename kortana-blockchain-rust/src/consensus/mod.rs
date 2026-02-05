@@ -1,7 +1,7 @@
 pub mod sync;
 pub mod bft;
 
-use sha3::{Digest, Sha3_256};
+use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 use crate::address::Address;
 use serde::{Serialize, Deserialize};
@@ -21,7 +21,7 @@ pub struct PohGenerator {
 impl PohGenerator {
     #[allow(clippy::new_without_default)]
     pub fn new(genesis_seed: &[u8]) -> Self {
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(genesis_seed);
         let hash: [u8; 32] = hasher.finalize().into();
         Self {
@@ -31,7 +31,7 @@ impl PohGenerator {
     }
 
     pub fn tick(&mut self) -> PohEntry {
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(self.last_hash);
         self.last_hash = hasher.finalize().into();
         self.sequence += 1;
@@ -42,7 +42,7 @@ impl PohGenerator {
     }
 
     pub fn hash_transaction(&mut self, tx_hash: &[u8]) -> PohEntry {
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
         hasher.update(self.last_hash);
         hasher.update(tx_hash);
         self.last_hash = hasher.finalize().into();
@@ -56,7 +56,7 @@ impl PohGenerator {
     pub fn verify(start_hash: [u8; 32], entries: &[PohEntry]) -> bool {
         let mut current_hash = start_hash;
         for entry in entries {
-            let mut hasher = Sha3_256::new();
+            let mut hasher = Keccak256::new();
             hasher.update(current_hash);
             // If the entry contains a transaction (indicated by hash jump), 
             // we would need that tx hash here. For simplicity, we assume 
@@ -231,7 +231,7 @@ impl ConsensusEngine {
             return None;
         }
         
-        let mut hasher = Sha3_256::new();
+        let mut hasher = Keccak256::new();
  hasher.update(slot.to_be_bytes());
         let hash = hasher.finalize();
         let index = (u64::from_be_bytes(hash[0..8].try_into().unwrap()) % active_validators.len() as u64) as usize;
