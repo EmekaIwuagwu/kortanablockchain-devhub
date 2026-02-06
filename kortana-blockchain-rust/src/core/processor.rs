@@ -114,12 +114,18 @@ impl<'a> BlockProcessor<'a> {
                 println!("[PROCESSOR] Contract deployment detected - Data length: {}, Gas: {}", tx.data.len(), tx.gas_limit);
                 
                 // Derive contract address from sender and nonce (nonce was already incremented)
-                let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce - 1);
+                let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce);
                 
                 let mut executor = EvmExecutor::new(contract_addr, tx.gas_limit - intrinsic_gas);
                 executor.caller = tx.from;
-                executor.callvalue = tx.value; 
-                
+                executor.callvalue = tx.value;
+
+                // Standard Ethereum: Transfer value to contract address BEFORE execution
+                if tx.value > 0 {
+                    let mut contract_acc = self.state.get_account(&contract_addr);
+                    contract_acc.balance += tx.value;
+                    self.state.update_account(contract_addr, contract_acc);
+                }                
                 match executor.execute(&tx.data, self.state, header) {
                     Ok(runtime_code) => {
                         println!("[PROCESSOR DEBUG] Deployment successful. Runtime code length: {}", runtime_code.len());
@@ -141,8 +147,6 @@ use sha3::{Digest, Keccak256};
                         let mut contract_acc = self.state.get_account(&contract_addr);
                         contract_acc.is_contract = true;
                         contract_acc.code_hash = code_hash;
-                        // Initial endowment
-                        contract_acc.balance += tx.value;
                         self.state.update_account(contract_addr, contract_acc);
                         
                         logs = executor.logs;
@@ -160,6 +164,13 @@ use sha3::{Digest, Keccak256};
                 if to_account.is_contract {
                     // Call existing contract
                     if let Some(code) = self.state.get_code(&to_account.code_hash) {
+                         // Standard Ethereum: Transfer value to contract address BEFORE execution
+                        if tx.value > 0 {
+                            let mut recipient = self.state.get_account(&tx.to);
+                            recipient.balance += tx.value;
+                            self.state.update_account(tx.to, recipient);
+                        }
+
                         let mut executor = EvmExecutor::new(tx.to, tx.gas_limit - intrinsic_gas);
                         executor.calldata = tx.data.clone();
                         executor.caller = tx.from;
@@ -179,22 +190,35 @@ use sha3::{Digest, Keccak256};
                         // Contract has no code
                         (0, intrinsic_gas, None)
                     }
-                } else {
-                    // Regular transfer with data (no code to execute)
-                    (1, intrinsic_gas + (tx.data.len() as u64 * 16), None)
+                    let gas_used = intrinsic_gas + (tx.data.len() as u64 * 16);
+                    if gas_used > tx.gas_limit {
+                        println!("[PROCESSOR ERROR] Out of gas: used {} > limit {}", gas_used, tx.gas_limit);
+                        (0, tx.gas_limit, None) // Return 0 status, used all gas
+                    } else {
+                        println!("[PROCESSOR] Regular transfer: from {} to {} value {}", tx.from, tx.to, tx.value);
+                        // Transfer value to recipient
+                        if tx.value > 0 {
+                            let mut recipient = self.state.get_account(&tx.to);
+                            recipient.balance += tx.value;
+                            self.state.update_account(tx.to, recipient);
+                        }
+                        (1, gas_used, None)
+                    }
                 }
             }
         };
 
-        // 4. Transfer value (Only for non-staking and non-deployment calls)
-        if status == 1 && tx.value > 0 && !is_staking && !is_deployment {
-            let mut recipient = self.state.get_account(&tx.to);
-            recipient.balance += tx.value;
-            self.state.update_account(tx.to, recipient);
-        }
+        // 5. Refund unused gas AND value if failed
+        let mut refund = if tx.gas_limit >= gas_used {
+            (tx.gas_limit - gas_used) as u128 * tx.gas_price
+        } else {
+            0
+        };
 
-        // 5. Refund unused gas
-        let refund = (tx.gas_limit - gas_used) as u128 * tx.gas_price;
+        if status == 0 && tx.value > 0 && !is_staking {
+            // Revert value transfer on failure
+            refund += tx.value;
+        }
         if refund > 0 {
             sender.balance += refund;
             self.state.update_account(tx.from, sender);

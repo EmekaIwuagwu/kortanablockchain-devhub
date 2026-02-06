@@ -374,16 +374,24 @@ async fn main() {
                         
                         let mut receipts = Vec::new();
                         for tx in &txs {
-                            if let Ok(receipt) = processor.process_transaction(tx.clone(), &header) {
-                                receipts.push(receipt);
-                                // Index transaction
-                                let _ = node.storage.put_transaction(tx);
-                                let _ = node.storage.put_index(&tx.from, tx.hash());
-                                let _ = node.storage.put_index(&tx.to, tx.hash());
-                                let _ = node.storage.put_global_transaction(tx.hash());
-                                
-                                // Remove from mempool
-                                mempool.remove_transaction(&tx.hash());
+                            let tx_hash = tx.hash();
+                            match processor.process_transaction(tx.clone(), &header) {
+                                Ok(receipt) => {
+                                    receipts.push(receipt);
+                                    // Index transaction
+                                    let _ = node.storage.put_transaction(tx);
+                                    let _ = node.storage.put_index(&tx.from, tx_hash);
+                                    let _ = node.storage.put_index(&tx.to, tx_hash);
+                                    let _ = node.storage.put_global_transaction(tx_hash);
+                                    
+                                    // Remove from mempool
+                                    mempool.remove_transaction(&tx_hash);
+                                }
+                                Err(e) => {
+                                    println!("{}[BLOCK PRODUCER]{} Transaction 0x{} failed: {}. Dropping from mempool.", 
+                                        CLR_RED, CLR_RESET, hex::encode(tx_hash), e);
+                                    mempool.remove_transaction(&tx_hash);
+                                }
                             }
                         }
 
