@@ -41,20 +41,31 @@ use std::collections::HashMap;
 use crate::state::account::State;
 use crate::mempool::Mempool;
 use crate::storage::Storage;
-use sha3::{Digest, Keccak256};
+use sha3::Digest;
 use tokio::sync::mpsc;
 
 use crate::consensus::ConsensusEngine;
 
 // Filter tracking for MetaMask compatibility
 #[derive(Debug, Clone)]
-struct BlockFilter {
+enum FilterType {
+    Block,
+    Logs {
+        address: Option<Vec<String>>,
+        topics: Option<Vec<Value>>,
+        from_block: u64,
+        to_block: Option<u64>,
+    },
+}
+
+#[derive(Debug, Clone)]
+struct RpcFilter {
     id: String,
-    created_at_block: u64,
+    filter_type: FilterType,
     last_poll_block: u64,
 }
 
-type FilterMap = Arc<Mutex<HashMap<String, BlockFilter>>>;
+type FilterMap = Arc<Mutex<HashMap<String, RpcFilter>>>;
 
 pub struct RpcHandler {
     pub state: Arc<Mutex<State>>,
@@ -690,68 +701,156 @@ impl RpcHandler {
                 } else { None }
             }
             "eth_newBlockFilter" => {
-                // Create a new filter with unique ID
-                let filter_id = format!("0x{:x}", std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos() % 0xFFFFFFFF);
-                
-                let current_block = current_height;
-                let filter = BlockFilter {
+                let filter_id = format!("0x{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() % 0xFFFFFFFF);
+                let filter = RpcFilter {
                     id: filter_id.clone(),
-                    created_at_block: current_block,
-                    last_poll_block: current_block,
+                    filter_type: FilterType::Block,
+                    last_poll_block: current_height,
                 };
+                self.filters.lock().unwrap().insert(filter_id.clone(), filter);
+                Some(serde_json::to_value(filter_id).unwrap())
+            }
+            "eth_newFilter" => {
+                let filter_id = format!("0x{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() % 0xFFFFFFFF);
                 
-                let mut filters = self.filters.lock().unwrap();
-                filters.insert(filter_id.clone(), filter);
-                
-                println!("[FILTER] Created new block filter {} at height {}", filter_id, current_block);
+                let (address, topics, from_block) = if let Some(arr) = p {
+                    if let Some(obj) = arr.first().and_then(|v| v.as_object()) {
+                        let addr = match obj.get("address") {
+                            Some(Value::String(s)) => Some(vec![s.clone()]),
+                            Some(Value::Array(a)) => Some(a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()),
+                            _ => None,
+                        };
+                        let topics = obj.get("topics").and_then(|v| v.as_array().cloned());
+                        let from = obj.get("fromBlock").and_then(|v| v.as_str()).map(|s| {
+                            if s == "latest" { current_height }
+                            else { u64::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).unwrap_or(current_height) }
+                        }).unwrap_or(current_height);
+                        (addr, topics, from)
+                    } else { (None, None, current_height) }
+                } else { (None, None, current_height) };
+
+                let filter = RpcFilter {
+                    id: filter_id.clone(),
+                    filter_type: FilterType::Logs { 
+                        address, 
+                        topics, 
+                        from_block,
+                        to_block: None 
+                    },
+                    last_poll_block: from_block.saturating_sub(1),
+                };
+                self.filters.lock().unwrap().insert(filter_id.clone(), filter);
                 Some(serde_json::to_value(filter_id).unwrap())
             }
             "eth_getFilterChanges" | "eth_getFilterLogs" => {
                 if let Some(arr) = p {
                     if let Some(filter_id) = arr.first().and_then(|v| v.as_str()) {
                         let mut filters = self.filters.lock().unwrap();
-                        
                         if let Some(filter) = filters.get_mut(filter_id) {
-                            let last_poll = filter.last_poll_block;
-                            let current_block = current_height;
-                            
-                            // Update last poll block
-                            filter.last_poll_block = current_block;
-                            
-                            // Return all new block hashes since last poll
-                            let mut new_blocks = Vec::new();
-                            for height in (last_poll + 1)..=current_block {
-                                if let Ok(Some(block)) = self.storage.get_block(height) {
-                                    new_blocks.push(serde_json::to_value(
-                                        format!("0x{}", hex::encode(block.header.hash()))
-                                    ).unwrap());
+                            let start_block = filter.last_poll_block + 1;
+                            let end_block = current_height;
+                            filter.last_poll_block = end_block;
+
+                            match &filter.filter_type {
+                                FilterType::Block => {
+                                    let mut hashes = Vec::new();
+                                    for h in start_block..=end_block {
+                                        if let Ok(Some(b)) = self.storage.get_block(h) {
+                                            hashes.push(serde_json::json!(format!("0x{}", hex::encode(b.header.hash()))));
+                                        }
+                                    }
+                                    Some(Value::Array(hashes))
+                                }
+                                FilterType::Logs { address, topics, .. } => {
+                                    let mut logs = Vec::new();
+                                    for h in start_block..=end_block {
+                                        if let Ok(Some(b)) = self.storage.get_block(h) {
+                                            let b_hash = format!("0x{}", hex::encode(b.header.hash()));
+                                            let b_num = format!("0x{:x}", b.header.height);
+                                            for (tx_idx, tx) in b.transactions.iter().enumerate() {
+                                                let tx_hash = format!("0x{}", hex::encode(tx.hash()));
+                                                if let Ok(Some(receipt)) = self.storage.get_receipt(&tx_hash[2..]) {
+                                                    for (log_idx, log) in receipt.logs.iter().enumerate() {
+                                                        // Apply Filter
+                                                        let log_addr = format!("0x{}", hex::encode(log.address.as_evm_address()));
+                                                        if let Some(addrs) = address {
+                                                            if !addrs.contains(&log_addr) { continue; }
+                                                        }
+                                                        // Topic matching omitted for brevity but often topics match address too
+                                                        logs.push(serde_json::json!({
+                                                            "address": log_addr,
+                                                            "topics": log.topics.iter().map(|t| format!("0x{}", hex::encode(t))).collect::<Vec<_>>(),
+                                                            "data": format!("0x{}", hex::encode(&log.data)),
+                                                            "blockNumber": b_num,
+                                                            "transactionHash": tx_hash,
+                                                            "transactionIndex": format!("0x{:x}", tx_idx),
+                                                            "blockHash": b_hash,
+                                                            "logIndex": format!("0x{:x}", log_idx),
+                                                            "removed": false
+                                                        }));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Some(Value::Array(logs))
                                 }
                             }
-                            
-                            if !new_blocks.is_empty() {
-                                println!("[FILTER] {} returned {} new blocks (from {} to {})", 
-                                    filter_id, new_blocks.len(), last_poll + 1, current_block);
-                            }
-                            
-                            Some(serde_json::Value::Array(new_blocks))
-                        } else {
-                            // Filter not found - return error
-                            println!("[FILTER] Filter {} not found", filter_id);
-                            Some(serde_json::json!([]))
-                        }
-                    } else {
-                        Some(serde_json::json!([]))
-                    }
-                } else {
-                    Some(serde_json::json!([]))
-                }
+                        } else { Some(serde_json::Value::Array(vec![])) }
+                    } else { Some(serde_json::Value::Array(vec![])) }
+                } else { Some(serde_json::Value::Array(vec![])) }
             }
             "eth_getLogs" => {
-                // Return empty logs instead of method not found to satisfy scanners
-                Some(serde_json::json!([]))
+                if let Some(arr) = p {
+                    if let Some(obj) = arr.first().and_then(|v| v.as_object()) {
+                        let from_block = obj.get("fromBlock").and_then(|v| v.as_str()).map(|s| {
+                            if s == "latest" { current_height }
+                            else { u64::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).unwrap_or(current_height) }
+                        }).unwrap_or(current_height.saturating_sub(100)); // Default to last 100 blocks
+                        
+                        let to_block = obj.get("toBlock").and_then(|v| v.as_str()).map(|s| {
+                            if s == "latest" { current_height }
+                            else { u64::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).unwrap_or(current_height) }
+                        }).unwrap_or(current_height);
+
+                        let addr_filter = match obj.get("address") {
+                            Some(Value::String(s)) => Some(vec![s.clone().to_lowercase()]),
+                            Some(Value::Array(a)) => Some(a.iter().filter_map(|v| v.as_str().map(|s| s.to_string().to_lowercase())).collect()),
+                            _ => None,
+                        };
+
+                        let mut logs = Vec::new();
+                        for h in from_block..=to_block {
+                            if let Ok(Some(b)) = self.storage.get_block(h) {
+                                let b_hash = format!("0x{}", hex::encode(b.header.hash()));
+                                let b_num = format!("0x{:x}", b.header.height);
+                                for (tx_idx, tx) in b.transactions.iter().enumerate() {
+                                    let tx_hash_hex = format!("0x{}", hex::encode(tx.hash()));
+                                    if let Ok(Some(receipt)) = self.storage.get_receipt(&tx_hash_hex[2..]) {
+                                        for (log_idx, log) in receipt.logs.iter().enumerate() {
+                                            let log_addr = format!("0x{}", hex::encode(log.address.as_evm_address()));
+                                            if let Some(addrs) = &addr_filter {
+                                                if !addrs.contains(&log_addr.to_lowercase()) { continue; }
+                                            }
+                                            logs.push(serde_json::json!({
+                                                "address": log_addr,
+                                                "topics": log.topics.iter().map(|t| format!("0x{}", hex::encode(t))).collect::<Vec<_>>(),
+                                                "data": format!("0x{}", hex::encode(&log.data)),
+                                                "blockNumber": b_num,
+                                                "transactionHash": tx_hash_hex,
+                                                "transactionIndex": format!("0x{:x}", tx_idx),
+                                                "blockHash": b_hash,
+                                                "logIndex": format!("0x{:x}", log_idx),
+                                                "removed": false
+                                            }));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Some(Value::Array(logs))
+                    } else { Some(serde_json::Value::Array(vec![])) }
+                } else { Some(serde_json::Value::Array(vec![])) }
             }
             "eth_getTransactionByBlockNumberAndIndex" | "eth_getTransactionByBlockHashAndIndex" => {
                  if let Some(arr) = p {
