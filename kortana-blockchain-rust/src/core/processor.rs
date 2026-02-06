@@ -190,6 +190,7 @@ use sha3::{Digest, Keccak256};
                         // Contract has no code
                         (0, intrinsic_gas, None)
                     }
+                } else {
                     let gas_used = intrinsic_gas + (tx.data.len() as u64 * 16);
                     if gas_used > tx.gas_limit {
                         println!("[PROCESSOR ERROR] Out of gas: used {} > limit {}", gas_used, tx.gas_limit);
