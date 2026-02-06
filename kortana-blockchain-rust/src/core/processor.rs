@@ -1,7 +1,7 @@
 // File: src/core/processor.rs
 
 use crate::state::account::State;
-use crate::types::transaction::{Transaction, TransactionReceipt, VmType};
+use crate::types::transaction::{Transaction, TransactionReceipt};
 use crate::vm::evm::EvmExecutor;
 use crate::address::Address;
 use crate::parameters::*;
