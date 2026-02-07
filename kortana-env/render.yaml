@@ -28,3 +28,8 @@ services:
     autoDeploy: true
     buildCommand: "true"
     startCommand: "/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
+
+    disk:
+      name: kortana-persistence
+      mountPath: /data
+      sizeGB: 50

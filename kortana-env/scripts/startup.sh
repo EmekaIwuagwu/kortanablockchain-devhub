@@ -3,6 +3,11 @@ set -e
 
 echo "[$(date)] Bootstrapping Kortana Virtual Environment..."
 
+# Prepare persistent storage
+mkdir -p /data/logs /data/virtual-envs
+if [ ! -L /logs ]; then rm -rf /logs && ln -s /data/logs /logs; fi
+if [ ! -L /virtual-envs ]; then rm -rf /virtual-envs && ln -s /data/virtual-envs /virtual-envs; fi
+
 # Wait for Environment Manager API to be ready
 echo "[$(date)] Waiting for API on port 9000..."
 max_retries=30
@@ -38,20 +43,37 @@ echo "[$(date)] Env ID: $ENV_ID"
 echo "[$(date)] Public URL: $PUBLIC_URL"
 
 # 4. Deploy blockchain
-curl -X POST http://localhost:9000/api/deploy \
+echo "[$(date)] Deploying blockchain to $ENV_ID..."
+DEPLOY_RES=$(curl -s -X POST http://localhost:9000/api/deploy \
   -H "Content-Type: application/json" \
-  -d "{\"env_id\": \"$ENV_ID\", \"repo\": \"$GITHUB_REPO\"}"
+  -d "{\"env_id\": \"$ENV_ID\", \"repo\": \"$GITHUB_REPO\"}")
+echo "[$(date)] Deploy response: $DEPLOY_RES"
+
+if echo "$DEPLOY_RES" | grep -q "failed"; then
+    echo "[ERROR] Deployment failed: $DEPLOY_RES"
+    exit 1
+fi
 
 # 5. Start blockchain
-curl -X POST http://localhost:9000/api/start \
+echo "[$(date)] Starting blockchain $ENV_ID..."
+START_RES=$(curl -s -X POST http://localhost:9000/api/start \
   -H "Content-Type: application/json" \
-  -d "{\"env_id\": \"$ENV_ID\"}"
+  -d "{\"env_id\": \"$ENV_ID\"}")
+echo "[$(date)] Start response: $START_RES"
+
+if echo "$START_RES" | grep -q "failed"; then
+    echo "[ERROR] Start failed: $START_RES"
+    exit 1
+fi
 
 # 6. Health check
+echo "[$(date)] Waiting for RPC health check..."
 sleep 15
-curl -s http://localhost:8545 \
+HEALTH_RES=$(curl -s -X POST http://localhost:8545 \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
+  -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' || echo "failed")
+
+echo "[$(date)] RPC health check result: $HEALTH_RES"
 
 echo "[$(date)] ✅ Environment ready!"
 echo "Public URL (Custom Domain): $PUBLIC_URL"

@@ -15,15 +15,25 @@ int BlockchainDeployer::execute_command(const std::string& cmd) {
 }
 
 bool BlockchainDeployer::clone_repository(const std::string& env_id, const std::string& repo_url) {
+    std::string target_dir = "/virtual-envs/" + env_id + "/blockchain";
+    
+    // Check if already exists
+    if (std::system(("[ -d " + target_dir + " ]").c_str()) == 0) {
+        std::cout << "[INFO] Blockchain already exists for " << env_id << ". Skipping copy." << std::endl;
+        return true;
+    }
+
     if (std::system("[ -d /app/blockchain-template ]") != 0) {
         last_error_ = "Template directory /app/blockchain-template not found.";
         return false;
     }
 
-    std::string cmd = "mkdir -p /virtual-envs/" + env_id + " && cp -r /app/blockchain-template /virtual-envs/" + env_id + "/blockchain 2>&1";
+    std::cout << "[INFO] Copying template to " << target_dir << "..." << std::endl;
+    // Use . to copy contents and avoid nested directory
+    std::string cmd = "mkdir -p " + target_dir + " && cp -r /app/blockchain-template/. " + target_dir + "/ 2>&1";
     int res = execute_command(cmd);
     if (res != 0) {
-        last_error_ = "Failed to copy template to /virtual-envs/" + env_id + "/blockchain. Exit code: " + std::to_string(res);
+        last_error_ = "Failed to copy template. Exit code: " + std::to_string(res);
         return false;
     }
     return true;
@@ -31,6 +41,11 @@ bool BlockchainDeployer::clone_repository(const std::string& env_id, const std::
 
 bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
     std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain-rust";
+    
+    // Ensure the binary is executable
+    std::cout << "[INFO] Setting execution permissions for " << binary_path << std::endl;
+    execute_command("chmod +x " + binary_path);
+
     std::string cmd = "[ -f " + binary_path + " ]";
     if (execute_command(cmd) != 0) {
         last_error_ = "Blockchain binary not found at " + binary_path;
@@ -40,12 +55,18 @@ bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
 }
 
 bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
+    if (get_blockchain_status(env_id) == "running") {
+        std::cout << "[INFO] Blockchain already running for " << env_id << std::endl;
+        return true;
+    }
+
     std::string log_file = "/logs/" + env_id + ".log";
     std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain-rust";
     std::string data_dir = "/virtual-envs/" + env_id + "/data";
     
     execute_command("mkdir -p " + data_dir);
 
+    std::cout << "[INFO] Forking process for " << env_id << " on port " << port << "..." << std::endl;
     pid_t pid = fork();
     if (pid == 0) {
         std::string cmd = binary_path + " --testnet --port " + std::to_string(port) + " --data-dir " + data_dir + " --log-level debug > " + log_file + " 2>&1";
@@ -55,6 +76,7 @@ bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
         process_map[env_id] = pid;
         return true;
     }
+    last_error_ = "Fork failed";
     return false;
 }
 

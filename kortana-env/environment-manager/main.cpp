@@ -47,83 +47,123 @@ int main() {
     httplib::Server svr;
 
     svr.Post("/api/allocate", [&](const httplib::Request& req, httplib::Response& res) {
-        auto j = json::parse(req.body);
-        uint64_t rom = j.value("rom_gb", 2048);
-        uint64_t ram = j.value("ram_gb", 32);
-        std::string name = j.value("blockchain_name", "kortana");
+        try {
+            auto j = json::parse(req.body);
+            uint64_t rom = j.value("rom_gb", 2048);
+            uint64_t ram = j.value("ram_gb", 32);
+            std::string name = j.value("blockchain_name", "kortana");
 
-        auto env = allocator->allocate_environment(rom, ram, name);
-        env.public_url = url_manager->generate_public_url(env.env_id, name);
-        env.rpc_port = url_manager->assign_rpc_port(env.env_id);
-        allocator->update_environment(env);
+            std::cout << "[API] Allocating environment: " << name << " (ROM: " << rom << "GB, RAM: " << ram << "GB)" << std::endl;
 
-        json response = {
-            {"env_id", env.env_id},
-            {"status", env.status},
-            {"resources", {
-                {"rom", {{"allocated_gb", rom}, {"used_gb", 0}}},
-                {"ram", {{"allocated_gb", ram}, {"used_gb", 0}}}
-            }},
-            {"path", env.base_path},
-            {"created_at", env.created_at}
-        };
+            auto env = allocator->allocate_environment(rom, ram, name);
+            env.public_url = url_manager->generate_public_url(env.env_id, name);
+            env.rpc_port = url_manager->assign_rpc_port(env.env_id);
+            allocator->update_environment(env);
 
-        res.set_content(response.dump(), "application/json");
+            json response = {
+                {"env_id", env.env_id},
+                {"status", env.status},
+                {"resources", {
+                    {"rom", {{"allocated_gb", rom}, {"used_gb", 0}}},
+                    {"ram", {{"allocated_gb", ram}, {"used_gb", 0}}}
+                }},
+                {"path", env.base_path},
+                {"public_url", env.public_url},
+                {"created_at", env.created_at}
+            };
+
+            res.set_content(response.dump(), "application/json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Error in /api/allocate: " << e.what() << std::endl;
+            res.status = 500;
+            res.set_content("{\"error\":\"Internal server error during allocation\"}", "application/json");
+        }
     });
 
     svr.Post("/api/deploy", [&](const httplib::Request& req, httplib::Response& res) {
-        auto j = json::parse(req.body);
-        std::string env_id = j.at("env_id");
-        std::string repo = j.at("repo");
+        try {
+            auto j = json::parse(req.body);
+            std::string env_id = j.at("env_id");
+            std::string repo = j.at("repo");
 
-        bool success = deployer->clone_repository(env_id, repo);
-        if (success) {
-            success = deployer->compile_blockchain(env_id);
+            std::cout << "[API] Deploying environment: " << env_id << " from " << repo << std::endl;
+
+            bool success = deployer->clone_repository(env_id, repo);
+            if (success) {
+                success = deployer->compile_blockchain(env_id);
+            }
+
+            if (success) {
+                auto env = allocator->get_resource_stats(env_id);
+                env.status = "deployed";
+                allocator->update_environment(env);
+            }
+
+            json response = {
+                {"env_id", env_id},
+                {"status", success ? "deployed" : "failed"},
+                {"blockchain_path", "/virtual-envs/" + env_id + "/blockchain"}
+            };
+
+            if (!success) {
+                response["error"] = deployer->get_last_error();
+                std::cerr << "[ERROR] Deployment failed for " << env_id << ": " << deployer->get_last_error() << std::endl;
+            }
+
+            res.set_content(response.dump(), "application/json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] JSON parse error in /api/deploy: " << e.what() << std::endl;
+            res.status = 400;
+            res.set_content("{\"error\":\"Invalid JSON or missing fields\"}", "application/json");
         }
-
-        json response = {
-            {"env_id", env_id},
-            {"status", success ? "deployed" : "failed"},
-            {"blockchain_path", "/virtual-envs/" + env_id + "/blockchain"}
-        };
-
-        if (!success) {
-            response["error"] = deployer->get_last_error();
-        }
-
-        res.set_content(response.dump(), "application/json");
     });
 
     svr.Post("/api/start", [&](const httplib::Request& req, httplib::Response& res) {
-        auto j = json::parse(req.body);
-        std::string env_id = j.at("env_id");
-        int port = j.value("port", 8545);
+        try {
+            auto j = json::parse(req.body);
+            std::string env_id = j.at("env_id");
+            int port = j.value("port", 8545);
 
-        auto env = allocator->get_resource_stats(env_id);
-        std::string name = env.env_id; // Using env_id which contains the prefix
-        
-        bool success = deployer->start_blockchain(env_id, port);
-        std::string url = url_manager->generate_public_url(env_id, name);
-        url_manager->configure_reverse_proxy(env_id, port, url);
+            std::cout << "[API] Starting blockchain for environment: " << env_id << " on port " << port << std::endl;
 
-        if (success) {
             auto env = allocator->get_resource_stats(env_id);
-            env.status = "running";
-            allocator->update_environment(env);
+            if (env.env_id.empty()) {
+                res.status = 404;
+                res.set_content("{\"error\":\"Environment not found\"}", "application/json");
+                return;
+            }
+
+            std::string name = env.env_id; 
+            
+            bool success = deployer->start_blockchain(env_id, port);
+            std::string url = url_manager->generate_public_url(env_id, name);
+            url_manager->configure_reverse_proxy(env_id, port, url);
+
+            if (success) {
+                env.status = "running";
+                env.rpc_port = port;
+                env.public_url = url;
+                allocator->update_environment(env);
+            }
+
+            json response = {
+                {"env_id", env_id},
+                {"status", success ? "running" : "failed"},
+                {"rpc_endpoint", "http://localhost:" + std::to_string(port)},
+                {"public_url", url}
+            };
+
+            if (!success) {
+                response["error"] = deployer->get_last_error();
+                std::cerr << "[ERROR] Start failed for " << env_id << ": " << deployer->get_last_error() << std::endl;
+            }
+
+            res.set_content(response.dump(), "application/json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] JSON parse error in /api/start: " << e.what() << std::endl;
+            res.status = 400;
+            res.set_content("{\"error\":\"Invalid JSON or missing fields\"}", "application/json");
         }
-
-        json response = {
-            {"env_id", env_id},
-            {"status", success ? "running" : "failed"},
-            {"rpc_endpoint", "http://localhost:" + std::to_string(port)},
-            {"public_url", url}
-        };
-
-        if (!success) {
-            response["error"] = deployer->get_last_error();
-        }
-
-        res.set_content(response.dump(), "application/json");
     });
 
     svr.Get("/api/list", [&](const httplib::Request& req, httplib::Response& res) {
