@@ -82,6 +82,10 @@ int main() {
         res.set_content(response.dump(), "application/json");
     });
 
+    svr.Get("/api/status/health", [&](const httplib::Request& req, httplib::Response& res) {
+        res.set_content("{\"status\":\"ok\"}", "application/json");
+    });
+
     svr.Get(R"(/api/status/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
         std::string env_id = req.matches[1];
         auto env = allocator->get_resource_stats(env_id);
@@ -95,10 +99,6 @@ int main() {
             }}
         };
         res.set_content(response.dump(), "application/json");
-    });
-
-    svr.Get("/api/status/health", [&](const httplib::Request& req, httplib::Response& res) {
-        res.set_content("{\"status\":\"ok\"}", "application/json");
     });
 
     std::cout << "[SYSTEM] API Server listening on port 9000..." << std::endl;
