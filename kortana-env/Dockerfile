@@ -44,6 +44,9 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /app
 COPY --from=cpp-builder /build/environment-manager /app/environment-manager/environment-manager
 
+# Copy pre-built blockchain template
+COPY --from=rust-builder /build/kortanablockchain-devhub /app/blockchain-template
+
 # Copy scripts
 COPY scripts/ /app/scripts/
 RUN chmod +x /app/scripts/*.sh
