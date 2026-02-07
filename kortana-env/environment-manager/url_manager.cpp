@@ -3,9 +3,9 @@
 #include <cstdlib>
 
 std::string URLManager::generate_public_url(const std::string& env_id, const std::string& blockchain_name) {
-    // Format: https://name-rpc.worchsester.xyz/
-    // This supports standard *.worchsester.xyz wildcard SSL
-    return "https://" + blockchain_name + "-rpc." + domain_;
+    // Format: https://name-rpc-kortana.worchsester.xyz/
+    // This is 100% compatible with DNS wildcards and Level 1 SSL certificates
+    return "https://" + blockchain_name + "-rpc-kortana." + domain_;
 }
 
 int URLManager::assign_rpc_port(const std::string& env_id) {
