@@ -17,11 +17,11 @@ while ! curl -s http://localhost:9000/api/status/health > /dev/null; do
 done
 
 # 1. Allocate virtual environment
-echo "[$(date)] Allocating environment..."
+echo "[$(date)] Allocating environment (5TB ROM, 32GB RAM)..."
 B_NAME=${BLOCKCHAIN_NAME:-poseidon}
 curl -X POST http://localhost:9000/api/allocate \
   -H "Content-Type: application/json" \
-  -d "{\"rom_gb\": 2048, \"ram_gb\": 32, \"blockchain_name\": \"$B_NAME\"}" > /tmp/env.json
+  -d "{\"rom_gb\": 5120, \"ram_gb\": 32, \"blockchain_name\": \"$B_NAME\"}" > /tmp/env.json
 
 ENV_ID=$(jq -r '.env_id' /tmp/env.json)
 PUBLIC_URL=$(jq -r '.public_url' /tmp/env.json)
