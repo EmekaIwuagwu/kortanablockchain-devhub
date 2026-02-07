@@ -51,6 +51,11 @@ RUN chmod +x /app/scripts/*.sh
 # Copy configurations
 COPY nginx/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/default.conf /etc/nginx/sites-available/default
+
+# Remove default symlink and create ours
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 # Create directories
 RUN mkdir -p /virtual-envs /data /logs /var/log/supervisor /run/nginx
