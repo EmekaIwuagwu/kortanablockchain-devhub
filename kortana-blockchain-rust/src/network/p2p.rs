@@ -2,7 +2,7 @@
 
 use libp2p::{
     futures::StreamExt,
-    gossipsub, kad, mdns, noise, swarm::SwarmEvent, tcp, yamux, PeerId, Swarm,
+    gossipsub, kad, noise, swarm::SwarmEvent, tcp, yamux, PeerId, Swarm,
 };
 use std::error::Error;
 use std::time::Duration;
@@ -14,7 +14,6 @@ use crate::network::messages::NetworkMessage;
 pub struct KortanaBehaviour {
     pub gossipsub: gossipsub::Behaviour,
     pub kademlia: kad::Behaviour<kad::store::MemoryStore>,
-    pub mdns: mdns::tokio::Behaviour,
 }
 
 pub struct KortanaNetwork {
@@ -59,10 +58,8 @@ impl KortanaNetwork {
 
                 let store = kad::store::MemoryStore::new(key.public().to_peer_id());
                 let kademlia = kad::Behaviour::new(key.public().to_peer_id(), store);
-                let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())
-                    .expect("Failed to create mdns behaviour");
 
-                KortanaBehaviour { gossipsub, kademlia, mdns }
+                KortanaBehaviour { gossipsub, kademlia }
             })
             .expect("Failed to build behaviour")
             .build();
@@ -125,13 +122,8 @@ impl KortanaNetwork {
                                 }
                             }
                         }
-                        KortanaBehaviourEvent::Mdns(mdns::Event::Discovered(list)) => {
-                            for (peer_id, multiaddr) in list {
-                                self.swarm.behaviour_mut().kademlia.add_address(&peer_id, multiaddr);
-                            }
-                        }
                         _ => {}
-                    }
+                    },
                     _ => {}
                 }
             }
