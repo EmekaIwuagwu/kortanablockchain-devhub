@@ -15,16 +15,28 @@ int BlockchainDeployer::execute_command(const std::string& cmd) {
 }
 
 bool BlockchainDeployer::clone_repository(const std::string& env_id, const std::string& repo_url) {
-    // Instead of cloning from web (slow and needs build), copy from our pre-built template
-    std::string cmd = "mkdir -p /virtual-envs/" + env_id + " && cp -r /app/blockchain-template /virtual-envs/" + env_id + "/blockchain";
-    return execute_command(cmd) == 0;
+    if (std::system("[ -d /app/blockchain-template ]") != 0) {
+        last_error_ = "Template directory /app/blockchain-template not found.";
+        return false;
+    }
+
+    std::string cmd = "mkdir -p /virtual-envs/" + env_id + " && cp -r /app/blockchain-template /virtual-envs/" + env_id + "/blockchain 2>&1";
+    int res = execute_command(cmd);
+    if (res != 0) {
+        last_error_ = "Failed to copy template to /virtual-envs/" + env_id + "/blockchain. Exit code: " + std::to_string(res);
+        return false;
+    }
+    return true;
 }
 
 bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
-    // Blockchain is already pre-compiled in Dockerfile. Just verify it exists.
     std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain";
     std::string cmd = "[ -f " + binary_path + " ]";
-    return execute_command(cmd) == 0;
+    if (execute_command(cmd) != 0) {
+        last_error_ = "Blockchain binary not found at " + binary_path;
+        return false;
+    }
+    return true;
 }
 
 bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {

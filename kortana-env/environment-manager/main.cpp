@@ -62,6 +62,11 @@ int main() {
             {"status", success ? "deployed" : "failed"},
             {"blockchain_path", "/virtual-envs/" + env_id + "/blockchain"}
         };
+
+        if (!success) {
+            response["error"] = deployer->get_last_error();
+        }
+
         res.set_content(response.dump(), "application/json");
     });
 
@@ -89,6 +94,11 @@ int main() {
             {"rpc_endpoint", "http://localhost:" + std::to_string(port)},
             {"public_url", url}
         };
+
+        if (!success) {
+            response["error"] = "Failed to launch blockchain process. Check system logs.";
+        }
+
         res.set_content(response.dump(), "application/json");
     });
 

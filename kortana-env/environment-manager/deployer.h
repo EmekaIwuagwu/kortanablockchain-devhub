@@ -10,7 +10,9 @@ public:
     bool stop_blockchain(const std::string& env_id);
     std::string get_blockchain_status(const std::string& env_id);
     std::string get_blockchain_logs(const std::string& env_id, int lines);
+    std::string get_last_error() { return last_error_; }
 
 private:
     int execute_command(const std::string& cmd);
+    std::string last_error_;
 };
