@@ -32,6 +32,13 @@ bool EnvironmentAllocator::deallocate_environment(const std::string& env_id) {
     return environments_.erase(env_id) > 0;
 }
 
+void EnvironmentAllocator::update_environment(const VirtualEnvironment& env) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (environments_.count(env.env_id)) {
+        environments_[env.env_id] = env;
+    }
+}
+
 VirtualEnvironment EnvironmentAllocator::get_resource_stats(const std::string& env_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (environments_.count(env_id)) {

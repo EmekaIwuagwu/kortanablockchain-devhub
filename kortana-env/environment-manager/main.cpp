@@ -31,6 +31,7 @@ int main() {
         auto env = allocator->allocate_environment(rom, ram, name);
         env.public_url = url_manager->generate_public_url(env.env_id, name);
         env.rpc_port = url_manager->assign_rpc_port(env.env_id);
+        allocator->update_environment(env);
 
         json response = {
             {"env_id", env.env_id},
@@ -73,6 +74,12 @@ int main() {
         std::string url = url_manager->generate_public_url(env_id, "kortana");
         url_manager->configure_reverse_proxy(env_id, port, url);
 
+        if (success) {
+            auto env = allocator->get_resource_stats(env_id);
+            env.status = "running";
+            allocator->update_environment(env);
+        }
+
         json response = {
             {"env_id", env_id},
             {"status", success ? "running" : "failed"},
@@ -80,6 +87,19 @@ int main() {
             {"public_url", url}
         };
         res.set_content(response.dump(), "application/json");
+    });
+
+    svr.Get("/api/list", [&](const httplib::Request& req, httplib::Response& res) {
+        auto environments = allocator->list_environments();
+        json env_list = json::array();
+        for (const auto& env : environments) {
+            env_list.push_back({
+                {"env_id", env.env_id},
+                {"status", env.status},
+                {"public_url", env.public_url}
+            });
+        }
+        res.set_content(env_list.dump(), "application/json");
     });
 
     svr.Get("/api/status/health", [&](const httplib::Request& req, httplib::Response& res) {
