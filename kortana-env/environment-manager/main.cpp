@@ -17,6 +17,7 @@ int main() {
     std::cout << "[SYSTEM] Starting Kortana Environment Manager..." << std::endl;
 
     auto allocator = std::make_shared<EnvironmentAllocator>();
+    allocator->load_from_disk();
     auto deployer = std::make_shared<BlockchainDeployer>();
     auto url_manager = std::make_shared<URLManager>(domain);
 
