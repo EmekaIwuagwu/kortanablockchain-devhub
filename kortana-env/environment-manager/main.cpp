@@ -158,6 +158,21 @@ int main() {
         res.set_content(env_list.dump(), "application/json");
     });
 
+    svr.Get(R"(/api/logs/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        std::string env_id = req.matches[1];
+        int lines = 100;
+        if (req.has_param("lines")) {
+            lines = std::stoi(req.get_param_value("lines"));
+        }
+        
+        std::string logs = deployer->get_blockchain_logs(env_id, lines);
+        json response = {
+            {"env_id", env_id},
+            {"logs", logs}
+        };
+        res.set_content(response.dump(), "application/json");
+    });
+
     svr.Get("/api/status/health", [&](const httplib::Request& req, httplib::Response& res) {
         res.set_content("{\"status\":\"ok\"}", "application/json");
     });
