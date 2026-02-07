@@ -36,7 +36,8 @@ RUN apt-get update && apt-get install -y \
     g++ \
     build-essential \
     supervisor \
-    libssl-dev
+    libssl-dev \
+    pkg-config
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"

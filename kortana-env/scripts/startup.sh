@@ -68,13 +68,19 @@ fi
 
 # 6. Health check
 echo "[$(date)] Waiting for RPC health check..."
-sleep 15
+sleep 20
 HEALTH_RES=$(curl -s -X POST http://localhost:8545 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' || echo "failed")
 
 echo "[$(date)] RPC health check result: $HEALTH_RES"
 
-echo "[$(date)] ✅ Environment ready!"
+if [ "$HEALTH_RES" == "failed" ]; then
+    echo "[CRITICAL ERROR] Blockchain failed to respond. Dumping last logs for $ENV_ID:"
+    curl -s http://localhost:9000/api/logs/$ENV_ID?lines=30 | jq -r '.logs'
+    # We don't exit here so at least the API manager stays alive for you to debug
+fi
+
+echo "[$(date)] ✅ Bootstrap sequence finished."
 echo "Public URL (Custom Domain): $PUBLIC_URL"
 echo "Public URL (Direct Render): ${RENDER_EXTERNAL_URL}/rpc"

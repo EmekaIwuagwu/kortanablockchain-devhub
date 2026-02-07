@@ -69,7 +69,8 @@ bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
     std::cout << "[INFO] Forking process for " << env_id << " on port " << port << "..." << std::endl;
     pid_t pid = fork();
     if (pid == 0) {
-        std::string cmd = binary_path + " --testnet --port " + std::to_string(port) + " --data-dir " + data_dir + " --log-level debug > " + log_file + " 2>&1";
+        std::string work_dir = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust";
+        std::string cmd = "cd " + work_dir + " && " + binary_path + " --testnet --port " + std::to_string(port) + " --data-dir " + data_dir + " --log-level debug > " + log_file + " 2>&1";
         execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
         exit(1);
     } else if (pid > 0) {
