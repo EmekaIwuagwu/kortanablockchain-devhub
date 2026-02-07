@@ -79,7 +79,12 @@ bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
     pid_t pid = fork();
     if (pid == 0) {
         std::string work_dir = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust";
-        std::string cmd = "cd " + work_dir + " && " + binary_path + " --testnet --port " + std::to_string(port) + " --data-dir " + data_dir + " --log-level debug > " + log_file + " 2>&1";
+        // Correcting arguments: 
+        // 1. --testnet -> not supported (node IS testnet by default). 
+        // 2. --port -> should be --rpc-addr. 
+        // 3. --data-dir -> hardcoded in node to ./data/.
+        // 4. --log-level -> not supported.
+        std::string cmd = "cd " + work_dir + " && mkdir -p data && " + binary_path + " --rpc-addr 0.0.0.0:" + std::to_string(port) + " > " + log_file + " 2>&1";
         execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
         exit(1);
     } else if (pid > 0) {
