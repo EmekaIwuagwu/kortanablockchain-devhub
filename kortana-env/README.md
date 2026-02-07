@@ -3,12 +3,10 @@
 This project provides a system for allocating and managing isolated virtual environments for running Kortana blockchain instances.
 
 ## Architecture
-- **C++ Environment Manager**: Manages resource allocation (2TB ROM, 32GB RAM simulation) and lifecycle.
-- **Blockchain Deployer**: Clones and compiles the Kortana blockchain.
-- **URL Manager**: Handles unique URL generation and reverse proxy configuration.
-- **Dockerized**: Entire system runs in a Docker container for consistency and 24/7 uptime on Render.
+- **Linux Standardized**: Standardized on Ubuntu 22.04 for both build and runtime to ensure 100% binary compatibility.
 - **State Persistence**: Environment data is persisted to disk, ensuring state is maintained across restarts.
 - **Auto-Recovery**: Environments that were running before a restart are automatically relaunched upon system startup.
+- **Pre-flight Validation**: Automatic dynamic library linkage checks (`ldd`) during deployment.
 
 ## Components
 - `environment-manager/`: C++ source code for the manager.

@@ -46,6 +46,15 @@ bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
     std::cout << "[INFO] Setting execution permissions for " << binary_path << std::endl;
     execute_command("chmod +x " + binary_path);
 
+    // Pre-flight check: Verify all Linux libraries are linked
+    std::cout << "[INFO] Verifying library links for " << binary_path << " (ldd check)..." << std::endl;
+    std::string check_cmd = "ldd " + binary_path + " 2>&1";
+    int check_res = execute_command(check_cmd);
+    if (check_res != 0) {
+        last_error_ = "Missing Linux libraries or dynamic linker error. Check system dependencies.";
+        return false;
+    }
+
     std::string cmd = "[ -f " + binary_path + " ]";
     if (execute_command(cmd) != 0) {
         last_error_ = "Blockchain binary not found at " + binary_path;

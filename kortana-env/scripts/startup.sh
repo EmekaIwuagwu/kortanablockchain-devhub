@@ -4,9 +4,12 @@ set -e
 echo "[$(date)] Bootstrapping Kortana Virtual Environment..."
 
 # Prepare persistent storage
-mkdir -p /data/logs /data/virtual-envs
+mkdir -p /data/logs /data/virtual-envs /data/configs
 if [ ! -L /logs ]; then rm -rf /logs && ln -s /data/logs /logs; fi
 if [ ! -L /virtual-envs ]; then rm -rf /virtual-envs && ln -s /data/virtual-envs /virtual-envs; fi
+
+# Fix permissions for the shared data dir
+chmod -R 755 /data
 
 # Wait for Environment Manager API to be ready
 echo "[$(date)] Waiting for API on port 9000..."

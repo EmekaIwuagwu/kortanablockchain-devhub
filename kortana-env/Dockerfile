@@ -14,7 +14,17 @@ RUN g++ -O2 -std=c++17 main.cpp allocator.cpp deployer.cpp url_manager.cpp \
     -o environment-manager -lpthread
 
 # Stage 2: Build Rust blockchain
-FROM rust:latest as rust-builder
+FROM ubuntu:22.04 as rust-builder
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    build-essential \
+    libssl-dev \
+    pkg-config
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /build
 RUN git clone https://github.com/EmekaIwuagwu/kortanablockchain-devhub.git
@@ -22,7 +32,10 @@ WORKDIR /build/kortanablockchain-devhub/kortana-blockchain-rust
 RUN cargo build --release
 
 # Stage 3: Runtime container
-FROM debian:bookworm-slim
+FROM ubuntu:22.04
+
+# Avoid tzdata interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -36,11 +49,15 @@ RUN apt-get update && apt-get install -y \
     g++ \
     build-essential \
     supervisor \
+    libssl3 \
     libssl-dev \
-    pkg-config
+    pkg-config \
+    screen \
+    lsof \
+    net-tools
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Ensure rust binaries can find libs
+ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
 
 # Copy C++ manager binary
 WORKDIR /app
