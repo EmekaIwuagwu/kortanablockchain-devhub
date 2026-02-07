@@ -18,9 +18,10 @@ done
 
 # 1. Allocate virtual environment
 echo "[$(date)] Allocating environment..."
+B_NAME=${BLOCKCHAIN_NAME:-kortana}
 curl -X POST http://localhost:9000/api/allocate \
   -H "Content-Type: application/json" \
-  -d "{\"rom_gb\": 2048, \"ram_gb\": 32, \"blockchain_name\": \"$BLOCKCHAIN_NAME\"}" > /tmp/env.json
+  -d "{\"rom_gb\": 2048, \"ram_gb\": 32, \"blockchain_name\": \"$B_NAME\"}" > /tmp/env.json
 
 ENV_ID=$(jq -r '.env_id' /tmp/env.json)
 PUBLIC_URL=$(jq -r '.public_url' /tmp/env.json)
@@ -43,4 +44,6 @@ curl -s http://localhost:8545 \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
 
-echo "[$(date)] ✅ Environment ready at $PUBLIC_URL"
+echo "[$(date)] ✅ Environment ready!"
+echo "Public URL (Custom Domain): $PUBLIC_URL"
+echo "Public URL (Direct Render): ${RENDER_EXTERNAL_URL}/rpc"
