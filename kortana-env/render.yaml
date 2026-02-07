@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: kortana-environment
+    runtime: docker
+    region: oregon
+    plan: starter
+    
+    envVars:
+      - key: DOMAIN
+        value: worchsester.xyz
+      - key: GITHUB_REPO
+        value: https://github.com/EmekaIwuagwu/kortanablockchain-devhub
+    
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
+    routes:
+      - path: /rpc
+        matchType: prefix
+        port: 8545
+      - path: /health
+        matchType: prefix
+        port: 9000
+    
+    healthCheckPath: /health
+    healthCheckInterval: 30
+    
+    autoDeploy: true
+    buildCommand: "true"
+    startCommand: "/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"

@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  kortana-environment:
+    build: .
+    container_name: kortana-virtual-env
+    ports:
+      - "443:443"
+      - "80:80"
+      - "8545:8545"
+      - "9000:9000"
+    environment:
+      - DOMAIN=worchsester.xyz
+      - GITHUB_REPO=https://github.com/EmekaIwuagwu/kortanablockchain-devhub
+      - BLOCKCHAIN_BRANCH=main
+      - BLOCKCHAIN_NAME=kortana-blockchain-rust
+      - LOG_LEVEL=debug
+    volumes:
+      - virtual-envs:/virtual-envs
+      - blockchain-data:/data
+      - logs:/logs
+    restart: unless-stopped
+    networks:
+      - kortana-network
+
+volumes:
+  virtual-envs:
+  blockchain-data:
+  logs:
+
+networks:
+  kortana-network:
+    driver: bridge
