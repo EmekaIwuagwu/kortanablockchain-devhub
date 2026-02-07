@@ -99,7 +99,19 @@ int main() {
             env_list.push_back({
                 {"env_id", env.env_id},
                 {"status", env.status},
-                {"public_url", env.public_url}
+                {"public_url", env.public_url},
+                {"resources", {
+                    {"rom", {
+                        {"allocated_gb", env.allocated_rom / (1024*1024*1024)}, 
+                        {"used_gb", env.used_rom / (1024*1024*1024)},
+                        {"free_gb", (env.allocated_rom - env.used_rom) / (1024*1024*1024)}
+                    }},
+                    {"ram", {
+                        {"allocated_gb", env.allocated_ram / (1024*1024*1024)}, 
+                        {"used_gb", env.used_ram / (1024*1024*1024)},
+                        {"free_gb", (env.allocated_ram - env.used_ram) / (1024*1024*1024)}
+                    }}
+                }}
             });
         }
         res.set_content(env_list.dump(), "application/json");
