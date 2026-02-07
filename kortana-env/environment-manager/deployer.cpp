@@ -15,12 +15,15 @@ int BlockchainDeployer::execute_command(const std::string& cmd) {
 }
 
 bool BlockchainDeployer::clone_repository(const std::string& env_id, const std::string& repo_url) {
-    std::string cmd = "mkdir -p /virtual-envs/" + env_id + "/blockchain && git clone " + repo_url + " /virtual-envs/" + env_id + "/blockchain";
+    // Instead of cloning from web (slow and needs build), copy from our pre-built template
+    std::string cmd = "mkdir -p /virtual-envs/" + env_id + " && cp -r /app/blockchain-template /virtual-envs/" + env_id + "/blockchain";
     return execute_command(cmd) == 0;
 }
 
 bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
-    std::string cmd = "cd /virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust && cargo build --release";
+    // Blockchain is already pre-compiled in Dockerfile. Just verify it exists.
+    std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain";
+    std::string cmd = "[ -f " + binary_path + " ]";
     return execute_command(cmd) == 0;
 }
 
