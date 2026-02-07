@@ -1,4 +1,3 @@
-```cpp
 #pragma once
 #include "models.h"
 #include <iostream>

@@ -7,6 +7,8 @@ This project provides a system for allocating and managing isolated virtual envi
 - **Blockchain Deployer**: Clones and compiles the Kortana blockchain.
 - **URL Manager**: Handles unique URL generation and reverse proxy configuration.
 - **Dockerized**: Entire system runs in a Docker container for consistency and 24/7 uptime on Render.
+- **State Persistence**: Environment data is persisted to disk, ensuring state is maintained across restarts.
+- **Auto-Recovery**: Environments that were running before a restart are automatically relaunched upon system startup.
 
 ## Components
 - `environment-manager/`: C++ source code for the manager.

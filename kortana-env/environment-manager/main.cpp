@@ -21,6 +21,29 @@ int main() {
     auto deployer = std::make_shared<BlockchainDeployer>();
     auto url_manager = std::make_shared<URLManager>(domain);
 
+    // Initialize next_port based on existing environments
+    int max_port = 8545;
+    for (const auto& env : allocator->list_environments()) {
+        if (env.rpc_port >= max_port) {
+            max_port = env.rpc_port + 1;
+        }
+    }
+    url_manager->set_base_port(max_port);
+    
+    // Recovery: Restart running environments
+    for (auto& env : allocator->list_environments()) {
+        if (env.status == "running") {
+            std::cout << "[SYSTEM] Recovering environment: " << env.env_id << " on port " << env.rpc_port << std::endl;
+            if (deployer->start_blockchain(env.env_id, env.rpc_port)) {
+                url_manager->configure_reverse_proxy(env.env_id, env.rpc_port, env.public_url);
+            } else {
+                std::cerr << "[ERROR] Failed to recover environment " << env.env_id << ": " << deployer->get_last_error() << std::endl;
+                env.status = "stopped";
+                allocator->update_environment(env);
+            }
+        }
+    }
+
     httplib::Server svr;
 
     svr.Post("/api/allocate", [&](const httplib::Request& req, httplib::Response& res) {
@@ -97,7 +120,7 @@ int main() {
         };
 
         if (!success) {
-            response["error"] = "Failed to launch blockchain process. Check system logs.";
+            response["error"] = deployer->get_last_error();
         }
 
         res.set_content(response.dump(), "application/json");
@@ -106,7 +129,14 @@ int main() {
     svr.Get("/api/list", [&](const httplib::Request& req, httplib::Response& res) {
         auto environments = allocator->list_environments();
         json env_list = json::array();
-        for (const auto& env : environments) {
+        for (auto env : environments) {
+            // Sync status with process manager
+            std::string actual_status = deployer->get_blockchain_status(env.env_id);
+            if (env.status == "running" && actual_status == "stopped") {
+                env.status = "stopped";
+                allocator->update_environment(env);
+            }
+
             env_list.push_back({
                 {"env_id", env.env_id},
                 {"status", env.status},
@@ -135,6 +165,13 @@ int main() {
     svr.Get(R"(/api/status/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
         std::string env_id = req.matches[1];
         auto env = allocator->get_resource_stats(env_id);
+        
+        // Sync status with process manager
+        std::string actual_status = deployer->get_blockchain_status(env_id);
+        if (env.status == "running" && actual_status == "stopped") {
+            env.status = "stopped";
+            allocator->update_environment(env);
+        }
 
         json response = {
             {"env_id", env_id},
