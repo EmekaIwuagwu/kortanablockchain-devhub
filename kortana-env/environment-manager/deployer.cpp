@@ -30,7 +30,7 @@ bool BlockchainDeployer::clone_repository(const std::string& env_id, const std::
 }
 
 bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
-    std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain";
+    std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain-rust";
     std::string cmd = "[ -f " + binary_path + " ]";
     if (execute_command(cmd) != 0) {
         last_error_ = "Blockchain binary not found at " + binary_path;
@@ -41,7 +41,7 @@ bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
 
 bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
     std::string log_file = "/logs/" + env_id + ".log";
-    std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain";
+    std::string binary_path = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust/target/release/kortana-blockchain-rust";
     std::string data_dir = "/virtual-envs/" + env_id + "/data";
     
     execute_command("mkdir -p " + data_dir);
