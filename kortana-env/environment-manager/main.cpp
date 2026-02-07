@@ -70,8 +70,11 @@ int main() {
         std::string env_id = j.at("env_id");
         int port = j.value("port", 8545);
 
+        auto env = allocator->get_resource_stats(env_id);
+        std::string name = env.env_id; // Using env_id which contains the prefix
+        
         bool success = deployer->start_blockchain(env_id, port);
-        std::string url = url_manager->generate_public_url(env_id, "kortana");
+        std::string url = url_manager->generate_public_url(env_id, name);
         url_manager->configure_reverse_proxy(env_id, port, url);
 
         if (success) {

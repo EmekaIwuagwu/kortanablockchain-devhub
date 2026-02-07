@@ -18,7 +18,7 @@ done
 
 # 1. Allocate virtual environment
 echo "[$(date)] Allocating environment..."
-B_NAME=${BLOCKCHAIN_NAME:-kortana}
+B_NAME=${BLOCKCHAIN_NAME:-poseidon}
 curl -X POST http://localhost:9000/api/allocate \
   -H "Content-Type: application/json" \
   -d "{\"rom_gb\": 2048, \"ram_gb\": 32, \"blockchain_name\": \"$B_NAME\"}" > /tmp/env.json

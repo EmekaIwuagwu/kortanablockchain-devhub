@@ -8,7 +8,12 @@ VirtualEnvironment EnvironmentAllocator::allocate_environment(uint64_t rom_gb, u
     std::lock_guard<std::mutex> lock(mutex_);
     
     VirtualEnvironment env;
-    env.env_id = generate_id(blockchain_name + "-testnet");
+    env.env_id = blockchain_name; // Use the direct name (e.g., poseidon)
+    
+    // If ID already exists, append a random number
+    if (environments_.count(env.env_id)) {
+        env.env_id = generate_id(blockchain_name);
+    }
     env.allocated_rom = rom_gb * 1024ULL * 1024ULL * 1024ULL;
     env.allocated_ram = ram_gb * 1024ULL * 1024ULL * 1024ULL;
     env.used_rom = 0;
