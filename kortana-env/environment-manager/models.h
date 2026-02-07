@@ -12,6 +12,7 @@ struct VirtualEnvironment {
     std::string base_path;
     std::string blockchain_path;
     int rpc_port;
+    int p2p_port;
     std::string public_url;
     std::string status;
     std::string created_at;

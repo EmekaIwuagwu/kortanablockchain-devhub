@@ -9,8 +9,11 @@ std::string URLManager::generate_public_url(const std::string& env_id, const std
 }
 
 int URLManager::assign_rpc_port(const std::string& env_id) {
-    // Basic port assignment logic
-    return next_port_++;
+    return next_rpc_port_++;
+}
+
+int URLManager::assign_p2p_port(const std::string& env_id) {
+    return next_p2p_port_++;
 }
 
 bool URLManager::configure_reverse_proxy(const std::string& env_id, int port, const std::string& url) {

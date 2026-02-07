@@ -63,7 +63,7 @@ bool BlockchainDeployer::compile_blockchain(const std::string& env_id) {
     return true;
 }
 
-bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
+bool BlockchainDeployer::start_blockchain(const std::string& env_id, int rpc_port, int p2p_port) {
     if (get_blockchain_status(env_id) == "running") {
         std::cout << "[INFO] Blockchain already running for " << env_id << std::endl;
         return true;
@@ -75,19 +75,21 @@ bool BlockchainDeployer::start_blockchain(const std::string& env_id, int port) {
     
     execute_command("mkdir -p " + data_dir);
 
-    std::cout << "[INFO] Forking process for " << env_id << " on port " << port << "..." << std::endl;
+    std::cout << "[INFO] Forking process for " << env_id << " (RPC: " << rpc_port << ", P2P: " << p2p_port << ")..." << std::endl;
     pid_t pid = fork();
     if (pid == 0) {
         std::string work_dir = "/virtual-envs/" + env_id + "/blockchain/kortana-blockchain-rust";
         // Correcting arguments: 
-        // 1. --testnet -> not supported (node IS testnet by default). 
-        // 2. --port -> should be --rpc-addr. 
-        // 3. --data-dir -> hardcoded in node to ./data/.
-        // 4. --log-level -> not supported.
-        std::string cmd = "cd " + work_dir + " && mkdir -p data && " + binary_path + " --rpc-addr 0.0.0.0:" + std::to_string(port) + " > " + log_file + " 2>&1";
+        // 1. --rpc-addr for RPC port
+        // 2. --p2p-addr for P2P port to prevent conflict and discovery
+        std::string cmd = "cd " + work_dir + " && mkdir -p data && " + binary_path + 
+                         " --rpc-addr 0.0.0.0:" + std::to_string(rpc_port) + 
+                         " --p2p-addr /ip4/0.0.0.0/tcp/" + std::to_string(p2p_port) + 
+                         " > " + log_file + " 2>&1";
         execl("/bin/sh", "sh", "-c", cmd.c_str(), (char *)NULL);
         exit(1);
-    } else if (pid > 0) {
+    }
+ else if (pid > 0) {
         process_map[env_id] = pid;
         return true;
     }

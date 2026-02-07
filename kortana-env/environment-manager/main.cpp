@@ -22,19 +22,20 @@ int main() {
     auto url_manager = std::make_shared<URLManager>(domain);
 
     // Initialize next_port based on existing environments
-    int max_port = 8545;
+    int max_rpc = 8545;
+    int max_p2p = 30333;
     for (const auto& env : allocator->list_environments()) {
-        if (env.rpc_port >= max_port) {
-            max_port = env.rpc_port + 1;
-        }
+        if (env.rpc_port >= max_rpc) max_rpc = env.rpc_port + 1;
+        if (env.p2p_port >= max_p2p) max_p2p = env.p2p_port + 1;
     }
-    url_manager->set_base_port(max_port);
+    url_manager->set_base_port(max_rpc);
+    url_manager->set_base_p2p_port(max_p2p);
     
     // Recovery: Restart running environments
     for (auto& env : allocator->list_environments()) {
         if (env.status == "running") {
-            std::cout << "[SYSTEM] Recovering environment: " << env.env_id << " on port " << env.rpc_port << std::endl;
-            if (deployer->start_blockchain(env.env_id, env.rpc_port)) {
+            std::cout << "[SYSTEM] Recovering environment: " << env.env_id << " (RPC: " << env.rpc_port << ", P2P: " << env.p2p_port << ")" << std::endl;
+            if (deployer->start_blockchain(env.env_id, env.rpc_port, env.p2p_port)) {
                 url_manager->configure_reverse_proxy(env.env_id, env.rpc_port, env.public_url);
             } else {
                 std::cerr << "[ERROR] Failed to recover environment " << env.env_id << ": " << deployer->get_last_error() << std::endl;
@@ -58,6 +59,7 @@ int main() {
             auto env = allocator->allocate_environment(rom, ram, name);
             env.public_url = url_manager->generate_public_url(env.env_id, name);
             env.rpc_port = url_manager->assign_rpc_port(env.env_id);
+            env.p2p_port = url_manager->assign_p2p_port(env.env_id);
             allocator->update_environment(env);
 
             json response = {
@@ -135,13 +137,12 @@ int main() {
 
             std::string name = env.env_id; 
             
-            bool success = deployer->start_blockchain(env_id, port);
+            bool success = deployer->start_blockchain(env_id, env.rpc_port, env.p2p_port);
             std::string url = url_manager->generate_public_url(env_id, name);
-            url_manager->configure_reverse_proxy(env_id, port, url);
+            url_manager->configure_reverse_proxy(env_id, env.rpc_port, url);
 
             if (success) {
                 env.status = "running";
-                env.rpc_port = port;
                 env.public_url = url;
                 allocator->update_environment(env);
             }

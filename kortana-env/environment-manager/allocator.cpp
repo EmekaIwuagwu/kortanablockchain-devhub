@@ -22,7 +22,8 @@ void EnvironmentAllocator::save_to_disk() {
             {"base_path", env.base_path},
             {"created_at", env.created_at},
             {"public_url", env.public_url},
-            {"rpc_port", env.rpc_port}
+            {"rpc_port", env.rpc_port},
+            {"p2p_port", env.p2p_port}
         });
     }
     std::ofstream file("/data/environments.json");
@@ -51,6 +52,7 @@ void EnvironmentAllocator::load_from_disk() {
             env.created_at = item.at("created_at").get<std::string>();
             env.public_url = item.value("public_url", ""); // Use value for optional fields
             env.rpc_port = item.value("rpc_port", 0); // Use value for optional fields
+            env.p2p_port = item.value("p2p_port", 0);
             environments_[env.env_id] = env;
         }
     } catch (const json::exception& e) {
