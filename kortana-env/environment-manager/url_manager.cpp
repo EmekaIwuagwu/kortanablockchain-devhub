@@ -3,7 +3,7 @@
 #include <cstdlib>
 
 std::string URLManager::generate_public_url(const std::string& env_id, const std::string& blockchain_name) {
-    return "https://" + env_id + "." + domain_ + "/rpc";
+    return "https://" + domain_ + "/env/" + env_id + "/rpc";
 }
 
 int URLManager::assign_rpc_port(const std::string& env_id) {
