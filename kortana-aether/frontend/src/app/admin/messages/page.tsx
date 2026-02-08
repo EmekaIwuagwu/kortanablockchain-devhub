@@ -209,21 +209,21 @@ function AdminMessagesContent() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-gray-50/50 relative">
-                                <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                                    style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/cubes.png')` }}></div>
+                            <div className="flex-1 overflow-y-auto p-10 space-y-4 font-outfit relative"
+                                style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')` }}>
+                                <div className="absolute inset-0 opacity-[0.06] pointer-events-none"></div>
                                 {messages.map((msg, i) => {
                                     const isMe = msg.senderAddress.toLowerCase() === adminAddress.toLowerCase();
                                     return (
                                         <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} relative z-10`}>
-                                            <div className={`max-w-[70%] p-6 rounded-[2.5rem] shadow-xl border ${isMe
-                                                    ? 'bg-[#0A1929] text-white border-transparent rounded-br-none'
-                                                    : 'bg-white text-[#0A1929] border-gray-100 rounded-bl-none'
+                                            <div className={`max-w-[75%] p-2 px-4 rounded-xl shadow-sm relative ${isMe
+                                                    ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none'
+                                                    : 'bg-white text-[#111b21] rounded-tl-none'
                                                 }`}>
-                                                <p className="text-[15px] font-bold leading-relaxed mb-3">{msg.content}</p>
-                                                <div className="flex items-center justify-end space-x-2 opacity-50">
-                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    {isMe && <CheckCheck size={12} className="text-[#00E676]" />}
+                                                <p className="text-[14.5px] leading-relaxed mb-1">{msg.content}</p>
+                                                <div className="flex items-center justify-end space-x-2 opacity-60">
+                                                    <span className="text-[10px] text-[#667781]">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {isMe && <span className="text-[#53bdeb] font-bold text-xs leading-none">✓✓</span>}
                                                 </div>
                                             </div>
                                         </div>

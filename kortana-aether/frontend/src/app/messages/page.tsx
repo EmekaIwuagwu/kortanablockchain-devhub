@@ -270,21 +270,21 @@ function MessagesContent() {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-gray-50/50 font-outfit relative">
-                                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                                        style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/cubes.png')` }}></div>
+                                <div className="flex-1 overflow-y-auto p-10 space-y-4 font-outfit relative"
+                                    style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')` }}>
+                                    <div className="absolute inset-0 opacity-[0.06] pointer-events-none"></div>
                                     {messages.map((msg, i) => {
                                         const isMe = msg.senderAddress.toLowerCase() === address?.toLowerCase();
                                         return (
                                             <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} relative z-10`}>
-                                                <div className={`max-w-[75%] p-4 px-6 rounded-[2rem] shadow-xl border ${isMe
-                                                        ? 'bg-[#0A1929] text-white border-transparent rounded-br-none'
-                                                        : 'bg-white text-[#0A1929] border-gray-100 rounded-bl-none'
+                                                <div className={`max-w-[75%] p-2 px-4 rounded-xl shadow-sm relative ${isMe
+                                                        ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none'
+                                                        : 'bg-white text-[#111b21] rounded-tl-none'
                                                     }`}>
-                                                    <p className="text-[15px] font-medium leading-relaxed mb-1">{msg.content}</p>
-                                                    <div className={`text-[8px] font-black uppercase tracking-widest text-right flex items-center justify-end space-x-1 opacity-60 ${isMe ? 'text-gray-400' : 'text-gray-400'}`}>
-                                                        <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                        {isMe && <span className="text-[#00E676] text-xs">✓✓</span>}
+                                                    <p className="text-[14.5px] leading-relaxed mb-1">{msg.content}</p>
+                                                    <div className="flex items-center justify-end space-x-1 opacity-60">
+                                                        <span className="text-[10px] text-[#667781]">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        {isMe && <span className="text-[#53bdeb] font-bold text-xs">✓✓</span>}
                                                     </div>
                                                 </div>
                                             </div>
