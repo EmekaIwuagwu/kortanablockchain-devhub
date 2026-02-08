@@ -34,6 +34,7 @@ export const connectDB = async () => {
         const { default: Investment } = await import('./Investment.js');
         const { default: YieldPayout } = await import('./YieldPayout.js');
         const { default: User } = await import('./User.js');
+        const { default: Message } = await import('./Message.js');
 
         // Define Associations
         Investment.belongsTo(Property, { foreignKey: 'propertyAddress', targetKey: 'address', as: 'property' });
@@ -44,6 +45,10 @@ export const connectDB = async () => {
 
         Investment.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
         User.hasMany(Investment, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'investments' });
+
+        // Message associations
+        Message.belongsTo(User, { foreignKey: 'senderAddress', targetKey: 'walletAddress', as: 'sender' });
+        Message.belongsTo(User, { foreignKey: 'receiverAddress', targetKey: 'walletAddress', as: 'receiver' });
 
         // Sync models
         await sequelize.sync({ alter: true });

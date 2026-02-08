@@ -12,7 +12,9 @@ import {
     PieChart,
     PlusCircle,
     Bell,
-    Search
+    Search,
+    FileText,
+    MessageSquare
 } from 'lucide-react';
 import { LogoText } from '@/components/Logo';
 
@@ -20,6 +22,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter();
     const pathname = usePathname();
     const [isMounted, setIsMounted] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const adminAddress = '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9';
 
     useEffect(() => {
         setIsMounted(true);
@@ -29,12 +33,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
     }, [pathname, router]);
 
+    useEffect(() => {
+        if (pathname !== '/admin/login') {
+            fetchUnreadCount();
+            const interval = setInterval(fetchUnreadCount, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [pathname]);
+
+    const fetchUnreadCount = async () => {
+        try {
+            const response = await fetch(`http://localhost:3001/api/messages/unread-count?address=${adminAddress}`);
+            const data = await response.json();
+            setUnreadCount(data.count || 0);
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
+
     if (!isMounted) return null;
     if (pathname === '/admin/login') return <>{children}</>;
 
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         { name: 'Users / Investors', href: '/admin/users', icon: Users },
+        { name: 'Communications', href: '/admin/messages', icon: MessageSquare },
+        { name: 'Transactions', href: '/admin/transactions', icon: FileText },
         { name: 'Onboard Asset', href: '/admin/properties/add', icon: PlusCircle },
         { name: 'Analytics', href: '#', icon: PieChart },
         { name: 'Settings', href: '#', icon: Settings },
@@ -69,7 +93,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 }`}
                         >
                             <item.icon size={20} className={pathname === item.href ? 'text-white' : 'text-gray-500 group-hover:text-[#DC143C] transition-colors'} />
-                            <span>{item.name}</span>
+                            <div className="flex-1 flex justify-between items-center">
+                                <span>{item.name}</span>
+                                {item.name === 'Communications' && unreadCount > 0 && (
+                                    <span className="bg-white text-[#DC143C] text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </div>
                         </Link>
                     ))}
                 </nav>

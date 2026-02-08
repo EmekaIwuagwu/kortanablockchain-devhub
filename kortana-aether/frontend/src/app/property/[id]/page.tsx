@@ -33,7 +33,8 @@ export default function PropertyDetail() {
                     yield: `${parseFloat(p.yield)}%`,
                     images: p.images,
                     tokenPriceNum: parseFloat(p.valuationUSD) / (parseFloat(p.totalSupply) / 10 ** 18),
-                    yieldNum: parseFloat(p.yield)
+                    yieldNum: parseFloat(p.yield),
+                    sellerAddress: p.sellerAddress
                 };
 
                 setProperty(mapped);
@@ -167,9 +168,23 @@ export default function PropertyDetail() {
 
                             <button
                                 onClick={() => setIsModalOpen(true)}
-                                className="w-full bg-[#DC143C] text-white font-bold py-5 rounded-xl text-lg hover:bg-[#B22222] transition-colors shadow-xl shadow-[#DC143C]/30 transform active:scale-[0.98] transition-transform"
+                                className="w-full bg-[#DC143C] text-white font-bold py-5 rounded-xl text-lg hover:bg-[#B22222] transition-colors shadow-xl shadow-[#DC143C]/30 transform active:scale-[0.98] transition-transform mb-4"
                             >
                                 Invest Now
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    if (property.sellerAddress) {
+                                        window.location.href = `/messages?partner=${property.sellerAddress}`;
+                                    } else {
+                                        window.location.href = `/messages?partner=0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9`; // Default to admin
+                                    }
+                                }}
+                                className="w-full bg-[#0A1929] text-white font-bold py-5 rounded-xl text-lg hover:bg-gray-800 transition-colors shadow-xl transform active:scale-[0.98] transition-transform flex items-center justify-center space-x-3"
+                            >
+                                <span className="text-xl">💬</span>
+                                <span>Message Seller</span>
                             </button>
 
                             <p className="text-center text-xs text-gray-400 mt-6 leading-relaxed">

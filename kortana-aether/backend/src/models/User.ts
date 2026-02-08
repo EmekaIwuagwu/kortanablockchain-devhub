@@ -7,7 +7,7 @@ class User extends Model {
     declare name: string;
     declare email: string;
     declare kycStatus: string; // PENDING, APPROVED, REJECTED
-    declare role: string; // USER, ADMIN
+    declare role: string; // USER, ADMIN, BUYER, SELLER
 }
 
 User.init({

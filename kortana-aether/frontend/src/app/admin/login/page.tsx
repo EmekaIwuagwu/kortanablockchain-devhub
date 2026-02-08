@@ -18,15 +18,27 @@ export default function AdminLogin() {
         setLoading(true);
         setError('');
 
-        // Simple hardcoded check for demo, can be expanded to API call
-        // In a real scenario, this would call /api/admin/login
-        if (username === 'admin' && password === 'kortana2026') {
-            localStorage.setItem('admin_token', 'session_active_' + Date.now());
-            router.push('/admin/dashboard');
-        } else {
-            setError('Invalid credentials. Access denied.');
+        try {
+            const response = await fetch('http://localhost:3001/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('admin_token', data.token);
+                router.push('/admin/dashboard');
+            } else {
+                setError(data.message || 'Authentication failed. Access denied.');
+            }
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError('Connection failed. Please ensure the backend is running.');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (

@@ -12,8 +12,27 @@ import { usePathname } from 'next/navigation';
 const Header = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const { isConnected, address } = useAccount();
     const pathname = usePathname();
+
+    useEffect(() => {
+        if (isConnected && address) {
+            fetchUnreadCount();
+            const interval = setInterval(fetchUnreadCount, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [isConnected, address]);
+
+    const fetchUnreadCount = async () => {
+        try {
+            const response = await fetch(`http://localhost:3001/api/messages/unread-count?address=${address}`);
+            const data = await response.json();
+            setUnreadCount(data.count || 0);
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
 
     // Determine default text color based on pathname (simplified logic)
     // Pages with dark heroes: /, /how-it-works, /property/[id]
@@ -65,9 +84,14 @@ const Header = () => {
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`font-medium text-sm tracking-wide transition-colors relative group ${textColorClass} ${hoverColorClass}`}
+                            className={`font-medium text-sm tracking-wide transition-colors relative group flex items-center ${textColorClass} ${hoverColorClass}`}
                         >
                             {item.name}
+                            {item.name === 'Messages' && unreadCount > 0 && (
+                                <span className="ml-2 bg-[#DC143C] text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-[#DC143C]/20">
+                                    {unreadCount}
+                                </span>
+                            )}
                             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#DC143C] group-hover:w-full transition-all duration-300"></span>
                         </Link>
                     ))}
@@ -104,6 +128,14 @@ const Header = () => {
                                 <>
                                     <Link href="/portfolio" className="text-2xl font-bold text-[#0A1929]" onClick={() => setIsOpen(false)}>Portfolio</Link>
                                     <Link href="/golden-visa" className="text-2xl font-bold text-[#0A1929]" onClick={() => setIsOpen(false)}>Golden Visa</Link>
+                                    <Link href="/messages" className="text-2xl font-bold text-[#0A1929] flex items-center justify-between" onClick={() => setIsOpen(false)}>
+                                        Messages
+                                        {unreadCount > 0 && (
+                                            <span className="bg-[#DC143C] text-white text-xs font-black min-w-6 h-6 px-2 rounded-full flex items-center justify-center">
+                                                {unreadCount}
+                                            </span>
+                                        )}
+                                    </Link>
                                 </>
                             )}
                         </nav>

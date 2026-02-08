@@ -95,7 +95,8 @@ router.post('/seed', async (req, res) => {
                 images: JSON.stringify(['https://images.unsplash.com/photo-1515263487990-61b07816b324?auto=format&fit=crop&w=800&q=80']),
                 type: 'Residential',
                 yield: 5.8,
-                goldenVisaEligible: false
+                goldenVisaEligible: false,
+                sellerAddress: '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9'
             }
         ];
 

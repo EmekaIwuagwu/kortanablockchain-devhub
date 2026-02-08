@@ -15,6 +15,7 @@ class Property extends Model {
     public type!: string; // Residential, Commercial, High Yield
     public yield!: number; // Expected yield %
     public goldenVisaEligible!: boolean;
+    public sellerAddress!: string;
 }
 
 Property.init(
@@ -75,6 +76,10 @@ Property.init(
         goldenVisaEligible: {
             type: DataTypes.BOOLEAN,
             defaultValue: false,
+        },
+        sellerAddress: {
+            type: DataTypes.STRING,
+            allowNull: true,
         }
     },
     {

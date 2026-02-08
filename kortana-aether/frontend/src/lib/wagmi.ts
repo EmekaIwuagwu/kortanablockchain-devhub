@@ -6,7 +6,7 @@ const kortana = {
     name: 'Kortana',
     nativeCurrency: { name: 'Dinar', symbol: 'DNR', decimals: 18 },
     rpcUrls: {
-        default: { http: ['https://rpc.kortana.org'] },
+        default: { http: ['https://poseidon-rpc.kortana.worchsester.xyz/'] },
     },
     blockExplorers: {
         default: { name: 'Kortana Explorer', url: 'https://explorer.kortana.org' },

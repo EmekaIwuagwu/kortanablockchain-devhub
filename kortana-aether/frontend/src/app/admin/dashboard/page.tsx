@@ -1,3 +1,16 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import {
+    TrendingUp,
+    Home,
+    DollarSign,
+    Zap,
+    Globe,
+    Clock,
+    Plus
+} from 'lucide-react';
+import Link from 'next/link';
 import {
     BarChart,
     Bar,

@@ -10,7 +10,8 @@ import {
     Wallet,
     DollarSign,
     Filter,
-    Clock
+    Clock,
+    MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -174,6 +175,11 @@ export default function UsersManagement() {
                                                         <ShieldAlert size={18} />
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => window.location.href = `/admin/messages?partner=${user.walletAddress}`}
+                                                    className="p-2 hover:bg-gray-100 text-gray-300 hover:text-[#DC143C] rounded-lg transition-colors" title="Message User">
+                                                    <MessageSquare size={18} />
+                                                </button>
                                                 <button className="p-2 hover:bg-gray-100 text-gray-300 hover:text-[#0A1929] rounded-lg transition-colors">
                                                     <MoreHorizontal size={18} />
                                                 </button>
