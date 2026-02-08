@@ -9,9 +9,11 @@ import {
     Zap,
     Globe,
     CheckCircle2,
-    Clock
+    Clock,
+    Plus
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
     <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300">
@@ -172,66 +174,74 @@ export default function AdminDashboard() {
             </div>
 
             {/* Property Management Table */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden mt-12">
-                <div className="p-10 border-b border-gray-100 flex justify-between items-center">
+            <div className="bg-white rounded-[3rem] border border-gray-100 shadow-xl shadow-gray-200/20 overflow-hidden mt-12">
+                <div className="p-12 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-white to-gray-50/50">
                     <div>
-                        <h3 className="text-2xl font-bold text-[#0A1929]">Managed Assets</h3>
-                        <p className="text-gray-400 text-sm font-medium mt-1">Execute yield distributions and manage asset status</p>
+                        <h3 className="text-2xl font-black text-[#0A1929]">Tokenized Assets</h3>
+                        <p className="text-gray-400 text-sm font-bold mt-1 uppercase tracking-widest flex items-center">
+                            <Clock size={14} className="mr-2" /> Real-time Inventory Management
+                        </p>
                     </div>
-                    <button className="flex items-center space-x-2 bg-[#0A1929] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#DC143C] transition-all">
-                        <ArrowUpRight size={18} />
-                        <span>Export Report</span>
-                    </button>
+                    <Link href="/admin/properties/add" className="flex items-center space-x-3 bg-[#DC143C] text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-[#B22222] transition-all hover:scale-[1.05] active:scale-95 shadow-xl shadow-[#DC143C]/20">
+                        <Plus size={20} />
+                        <span>Tokenize New Asset</span>
+                    </Link>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left min-w-[1000px]">
-                        <thead className="bg-gray-50/50 text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+                        <thead className="bg-[#0A1929] text-gray-500 text-[10px] font-black uppercase tracking-[0.2em]">
                             <tr>
-                                <th className="p-10">Asset Details</th>
-                                <th className="p-10">Contract</th>
-                                <th className="p-10">Valuation</th>
-                                <th className="p-10">APY</th>
-                                <th className="p-10 text-right">Operations</th>
+                                <th className="p-10">Asset Entity</th>
+                                <th className="p-10">Registry Address</th>
+                                <th className="p-10">Market Valuation</th>
+                                <th className="p-10">Yield / Status</th>
+                                <th className="p-10 text-right">Operational Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-50">
                             {properties.map((p, i) => (
-                                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                <tr key={i} className="hover:bg-gray-50/80 transition-all group">
                                     <td className="p-10">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center font-bold text-[#DC143C] text-lg">
-                                                {p.symbol}
+                                        <div className="flex items-center space-x-6">
+                                            <div className="w-20 h-20 rounded-3xl overflow-hidden shadow-md group-hover:scale-105 transition-transform">
+                                                <img src={p.images?.[0] || 'https://via.placeholder.com/80'} alt="" className="w-full h-full object-cover" />
                                             </div>
                                             <div>
-                                                <div className="font-extrabold text-[#0A1929]">{p.title}</div>
-                                                <div className="text-xs text-gray-400 font-bold uppercase mt-0.5">{p.type}</div>
+                                                <div className="font-black text-lg text-[#0A1929] group-hover:text-[#DC143C] transition-colors">{p.title}</div>
+                                                <div className="flex items-center space-x-2 mt-1">
+                                                    <span className="w-2 h-2 rounded-full bg-[#00E676]"></span>
+                                                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{p.type} • {p.symbol}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-10">
-                                        <div className="font-mono text-[10px] text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                                            {p.address.substring(0, 12)}...{p.address.substring(34)}
+                                        <div className="font-mono text-[10px] text-gray-400 bg-gray-100/50 border border-gray-100 px-4 py-2.5 rounded-xl inline-block">
+                                            {p.address.substring(0, 16)}...
                                         </div>
                                     </td>
                                     <td className="p-10">
-                                        <div className="font-extrabold text-[#0A1929]">${parseFloat(p.valuationUSD).toLocaleString()}</div>
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">USD Valuation</div>
+                                        <div className="font-black text-xl text-[#0A1929]">${(parseFloat(p.valuationUSD) / 1000).toFixed(1)}K</div>
+                                        <div className="text-[10px] text-gray-400 font-bold uppercase mt-1">Kortana Value</div>
                                     </td>
                                     <td className="p-10">
-                                        <div className="font-extrabold text-[#00E676]">{p.yield}%</div>
-                                        <div className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Target APY</div>
+                                        <div className="font-black text-[#00E676] text-lg">{p.yield}% APY</div>
+                                        <span className="px-3 py-1 bg-green-50 text-[10px] font-black text-green-600 rounded-lg uppercase border border-green-100">Live</span>
                                     </td>
                                     <td className="p-10 text-right">
-                                        <button
-                                            onClick={() => handleDistributeYield(p.address)}
-                                            disabled={distributing === p.address}
-                                            className={`px-6 py-3 rounded-xl font-bold text-xs transition-all ${distributing === p.address
+                                        <div className="flex items-center justify-end space-x-2">
+                                            <button
+                                                onClick={() => handleDistributeYield(p.address)}
+                                                disabled={distributing === p.address}
+                                                className={`px-8 py-3.5 rounded-2xl font-black text-xs transition-all flex items-center space-x-2 ${distributing === p.address
                                                     ? 'bg-gray-100 text-gray-400'
-                                                    : 'bg-[#DC143C]/10 text-[#DC143C] hover:bg-[#DC143C] hover:text-white shadow-sm'
-                                                }`}
-                                        >
-                                            {distributing === p.address ? 'Processing...' : 'Execute Payout'}
-                                        </button>
+                                                    : 'bg-[#0A1929] text-white hover:bg-[#DC143C] shadow-lg hover:shadow-[#DC143C]/20'
+                                                    }`}
+                                            >
+                                                <Zap size={14} className={distributing === p.address ? '' : 'text-[#FACD15]'} />
+                                                <span>{distributing === p.address ? 'SYNCING...' : 'DISBURSE YIELD'}</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -59,10 +59,7 @@ const Header = () => {
                         ...(isConnected ? [
                             { name: 'Portfolio', href: '/portfolio' },
                             { name: 'Golden Visa', href: '/golden-visa' },
-                            { name: 'Messages', href: '/messages' },
-                            ...(address?.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9' ? [
-                                { name: 'Admin', href: '/admin' }
-                            ] : [])
+                            { name: 'Messages', href: '/messages' }
                         ] : [])
                     ].map((item) => (
                         <Link
