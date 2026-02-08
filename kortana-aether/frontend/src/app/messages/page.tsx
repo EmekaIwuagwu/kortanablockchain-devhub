@@ -270,17 +270,26 @@ function MessagesContent() {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30 font-outfit">
-                                    {messages.map((msg, i) => (
-                                        <div key={i} className={`flex ${msg.senderAddress.toLowerCase() === address?.toLowerCase() ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[70%] p-4 rounded-2xl shadow-sm ${msg.senderAddress.toLowerCase() === address?.toLowerCase() ? 'bg-[#0A1929] text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'}`}>
-                                                <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
-                                                <div className={`text-[9px] font-black uppercase tracking-widest mt-2 ${msg.senderAddress.toLowerCase() === address?.toLowerCase() ? 'text-gray-400' : 'text-gray-300'} text-right`}>
-                                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-gray-50/50 font-outfit relative">
+                                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                                        style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/cubes.png')` }}></div>
+                                    {messages.map((msg, i) => {
+                                        const isMe = msg.senderAddress.toLowerCase() === address?.toLowerCase();
+                                        return (
+                                            <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} relative z-10`}>
+                                                <div className={`max-w-[75%] p-4 px-6 rounded-[2rem] shadow-xl border ${isMe
+                                                        ? 'bg-[#0A1929] text-white border-transparent rounded-br-none'
+                                                        : 'bg-white text-[#0A1929] border-gray-100 rounded-bl-none'
+                                                    }`}>
+                                                    <p className="text-[15px] font-medium leading-relaxed mb-1">{msg.content}</p>
+                                                    <div className={`text-[8px] font-black uppercase tracking-widest text-right flex items-center justify-end space-x-1 opacity-60 ${isMe ? 'text-gray-400' : 'text-gray-400'}`}>
+                                                        <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        {isMe && <span className="text-[#00E676] text-xs">✓✓</span>}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     <div ref={messagesEndRef} />
                                 </div>
 

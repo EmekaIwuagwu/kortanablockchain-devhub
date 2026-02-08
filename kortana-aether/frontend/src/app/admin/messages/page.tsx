@@ -209,23 +209,26 @@ function AdminMessagesContent() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-gray-50/50">
-                                {messages.map((msg, i) => (
-                                    <div key={i} className={`flex ${msg.senderAddress.toLowerCase() === adminAddress.toLowerCase() ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-[60%] group relative ${msg.senderAddress.toLowerCase() === adminAddress.toLowerCase() ? 'items-end' : 'items-start'}`}>
-                                            <div className={`p-6 rounded-3xl shadow-lg border ${msg.senderAddress.toLowerCase() === adminAddress.toLowerCase()
-                                                ? 'bg-[#0A1929] text-white border-transparent rounded-tr-none'
-                                                : 'bg-white text-gray-800 border-gray-100 rounded-tl-none'
+                            <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-gray-50/50 relative">
+                                <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                                    style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/cubes.png')` }}></div>
+                                {messages.map((msg, i) => {
+                                    const isMe = msg.senderAddress.toLowerCase() === adminAddress.toLowerCase();
+                                    return (
+                                        <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} relative z-10`}>
+                                            <div className={`max-w-[70%] p-6 rounded-[2.5rem] shadow-xl border ${isMe
+                                                    ? 'bg-[#0A1929] text-white border-transparent rounded-br-none'
+                                                    : 'bg-white text-[#0A1929] border-gray-100 rounded-bl-none'
                                                 }`}>
-                                                <p className="text-sm font-bold leading-relaxed">{msg.content}</p>
-                                                <div className="flex items-center justify-end space-x-2 mt-3 opacity-50">
+                                                <p className="text-[15px] font-bold leading-relaxed mb-3">{msg.content}</p>
+                                                <div className="flex items-center justify-end space-x-2 opacity-50">
                                                     <span className="text-[9px] font-black uppercase tracking-[0.2em]">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    {msg.senderAddress.toLowerCase() === adminAddress.toLowerCase() && <CheckCheck size={12} className="text-[#00E676]" />}
+                                                    {isMe && <CheckCheck size={12} className="text-[#00E676]" />}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 <div ref={messagesEndRef} />
                             </div>
 
