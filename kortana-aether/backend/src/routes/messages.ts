@@ -125,15 +125,39 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ message: 'Missing fields' });
     }
 
+    const sAddress = senderAddress.toLowerCase();
+    const rAddress = receiverAddress.toLowerCase();
+    const adminAddress = (process.env.ADMIN_WALLET_ADDRESS || '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9').toLowerCase();
+
     try {
+        // Ensure both users exist in the registry to satisfy foreign key constraints
+        await User.findOrCreate({
+            where: { walletAddress: sAddress },
+            defaults: {
+                walletAddress: sAddress,
+                name: sAddress === adminAddress ? 'Platform Admin' : 'Investor',
+                role: sAddress === adminAddress ? 'ADMIN' : 'USER'
+            }
+        });
+
+        await User.findOrCreate({
+            where: { walletAddress: rAddress },
+            defaults: {
+                walletAddress: rAddress,
+                name: rAddress === adminAddress ? 'Platform Admin' : 'Counterparty',
+                role: rAddress === adminAddress ? 'ADMIN' : 'USER'
+            }
+        });
+
         const message = await Message.create({
-            senderAddress: senderAddress.toLowerCase(),
-            receiverAddress: receiverAddress.toLowerCase(),
+            senderAddress: sAddress,
+            receiverAddress: rAddress,
             content,
             isRead: false
         });
         res.json({ message });
     } catch (error: any) {
+        console.error('Error sending message:', error);
         res.status(500).json({ message: 'Failed to send message', error: error.message });
     }
 });
