@@ -4,6 +4,7 @@ import sequelize from './index.js';
 class YieldPayout extends Model {
     public id!: number;
     public propertyAddress!: string;
+    public userAddress!: string;
     public amountDinar!: string;
     public distributionDate!: Date;
     public txHash!: string;
@@ -17,6 +18,10 @@ YieldPayout.init({
         primaryKey: true,
     },
     propertyAddress: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    userAddress: {
         type: DataTypes.STRING,
         allowNull: false,
     },

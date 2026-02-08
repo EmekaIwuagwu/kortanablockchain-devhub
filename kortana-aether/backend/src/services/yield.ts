@@ -24,7 +24,7 @@ class YieldService {
 
         try {
             // 1. Get Property Data
-            const property = await Property.findOne({ where: { address: propertyAddress } });
+            const property: any = await Property.findOne({ where: { address: propertyAddress } });
             if (!property) throw new Error('Property not found');
 
             // 2. Get All Confirmed Investments
@@ -42,7 +42,7 @@ class YieldService {
 
             // 3. Calculate Total Monthly Yield in Dinar
             // Valuation * Yield % / 12
-            const annualYieldUsd = parseFloat(property.valuationUSD) * (parseFloat(property.yield) / 100);
+            const annualYieldUsd = parseFloat(property.valuationUSD.toString()) * (parseFloat(property.yield.toString()) / 100);
             const monthlyYieldUsd = annualYieldUsd / 12;
 
             // Assuming 1 USD = 1 DNR for this calculation (simplified)
@@ -51,19 +51,20 @@ class YieldService {
             console.log(`📊 Monthly Yield Pool: ${totalMonthlyYieldDinar.toFixed(2)} DNR`);
 
             // 4. Distribute to each investor proportionally
-            const totalSupply = parseFloat(property.totalSupply) / 10 ** 18;
+            const totalSupply = parseFloat(property.totalSupply.toString()) / 10 ** 18;
 
             for (const investment of investments) {
-                const investorShare = parseFloat(investment.tokenAmount) / totalSupply;
+                const inv: any = investment;
+                const investorShare = parseFloat(inv.tokenAmount.toString()) / totalSupply;
                 const payoutAmount = totalMonthlyYieldDinar * investorShare;
 
                 if (payoutAmount > 0) {
                     const payoutStr = payoutAmount.toFixed(18);
-                    console.log(`💸 Sending ${payoutAmount.toFixed(4)} DNR to ${investment.userAddress}...`);
+                    console.log(`💸 Sending ${payoutAmount.toFixed(4)} DNR to ${inv.userAddress}...`);
 
                     try {
                         const tx = await this.signer.sendTransaction({
-                            to: investment.userAddress,
+                            to: inv.userAddress,
                             value: ethers.parseEther(payoutStr)
                         });
 
@@ -73,14 +74,16 @@ class YieldService {
                         // Record payout in DB
                         await YieldPayout.create({
                             propertyAddress,
+                            userAddress: inv.userAddress,
                             amountDinar: ethers.parseEther(payoutStr).toString(),
                             txHash: tx.hash,
                             status: 'SUCCESS'
                         });
                     } catch (payoutError) {
-                        console.error(`❌ Failed to pay ${investment.userAddress}:`, payoutError);
+                        console.error(`❌ Failed to pay ${inv.userAddress}:`, payoutError);
                         await YieldPayout.create({
                             propertyAddress,
+                            userAddress: inv.userAddress,
                             amountDinar: ethers.parseEther(payoutStr).toString(),
                             status: 'FAILED'
                         });

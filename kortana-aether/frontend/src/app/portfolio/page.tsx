@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAccount } from 'wagmi';
+import { ethers } from 'ethers';
 
 const DashboardCard = ({ title, value, subtext, icon, trend }: { title: string, value: string, subtext: string, icon: string, trend?: string }) => (
     <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
@@ -30,28 +31,36 @@ const DashboardCard = ({ title, value, subtext, icon, trend }: { title: string, 
 export default function Portfolio() {
     const { address, isConnected } = useAccount();
     const [investments, setInvestments] = useState<any[]>([]);
+    const [payouts, setPayouts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchInvestments = async () => {
+        const fetchData = async () => {
             if (!address) {
                 setLoading(false);
                 return;
             }
 
             try {
-                const response = await fetch(`http://localhost:3001/api/investments/user/${address}`);
-                const data = await response.json();
-                setInvestments(data.investments || []);
+                // Fetch Investments
+                const invResponse = await fetch(`http://localhost:3001/api/investments/user/${address}`);
+                const invData = await invResponse.json();
+                setInvestments(invData.investments || []);
+
+                // Fetch Payouts
+                const payResponse = await fetch(`http://localhost:3001/api/investments/payouts/user/${address}`);
+                const payData = await payResponse.json();
+                setPayouts(payData.payouts || []);
+
             } catch (error) {
-                console.error('Error fetching investments:', error);
+                console.error('Error fetching data:', error);
             } finally {
                 setLoading(false);
             }
         };
 
         if (isConnected) {
-            fetchInvestments();
+            fetchData();
         } else {
             setLoading(false);
         }
@@ -60,6 +69,7 @@ export default function Portfolio() {
     const stats = {
         totalValue: investments.reduce((acc, inv) => acc + parseFloat(inv.tokenAmount) * (inv.property?.valuationUSD / (inv.property?.totalSupply / 10 ** 18)), 0),
         monthlyIncome: investments.reduce((acc, inv) => acc + (parseFloat(inv.tokenAmount) * (inv.property?.valuationUSD / (inv.property?.totalSupply / 10 ** 18)) * (inv.property?.yield / 100)) / 12, 0),
+        totalEarned: payouts.reduce((acc, p) => acc + parseFloat(ethers.formatEther(p.amountDinar)), 0),
         propertiesOwned: new Set(investments.map(inv => inv.propertyAddress)).size
     };
 
@@ -102,7 +112,7 @@ export default function Portfolio() {
                     />
                     <DashboardCard
                         title="Monthly Income"
-                        value={`${stats.monthlyIncome.toLocaleString()} DNR`}
+                        value={`${stats.monthlyIncome.toFixed(2)} DNR`}
                         subtext="Next payout: Mar 1st"
                         icon="chart"
                     />
@@ -113,9 +123,9 @@ export default function Portfolio() {
                         icon="home"
                     />
                     <DashboardCard
-                        title="Transactions"
-                        value={investments.length.toString()}
-                        subtext="Total count"
+                        title="Total Earned"
+                        value={`${stats.totalEarned.toFixed(4)} DNR`}
+                        subtext="Realized rental income"
                         icon="pie"
                     />
                 </div>
@@ -165,6 +175,43 @@ export default function Portfolio() {
                                 }) : (
                                     <tr>
                                         <td colSpan={6} className="p-20 text-center text-gray-400 font-medium">No active holdings found. Start investing in the marketplace!</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Earnings History */}
+                <div className="mt-16 bg-white rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100/50 overflow-hidden">
+                    <div className="p-8 border-b border-gray-100">
+                        <h3 className="text-2xl font-bold text-[#0A1929]">Earnings History</h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left min-w-[800px]">
+                            <thead className="bg-gray-50/50 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-8">Asset</th>
+                                    <th className="p-8">Amount</th>
+                                    <th className="p-8">Date</th>
+                                    <th className="p-8">Tx Hash</th>
+                                    <th className="p-8 text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {payouts.length > 0 ? payouts.map((p, i) => (
+                                    <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                        <td className="p-8 font-bold text-[#0A1929]">{p.property?.title || 'Unknown Property'}</td>
+                                        <td className="p-8 text-[#00E676] font-bold">+{parseFloat(ethers.formatEther(p.amountDinar)).toFixed(4)} DNR</td>
+                                        <td className="p-8 text-gray-500">{new Date(p.distributionDate).toLocaleDateString()}</td>
+                                        <td className="p-8 truncate max-w-[150px] font-mono text-xs text-gray-400">{p.txHash}</td>
+                                        <td className="p-8 text-right">
+                                            <span className="px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">Received</span>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="p-20 text-center text-gray-400 font-medium">No earnings recorded yet. Payouts are distributed monthly.</td>
                                     </tr>
                                 )}
                             </tbody>

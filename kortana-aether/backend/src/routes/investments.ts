@@ -4,17 +4,31 @@ import Property from '../models/Property.js';
 
 const router = Router();
 
-// GET /api/investments/user/:address
+// GET /api// Get investments by user address
 router.get('/user/:address', async (req, res) => {
     try {
         const investments = await Investment.findAll({
             where: { userAddress: req.params.address },
-            include: [{ model: Property, as: 'property' }] // Note: We need to define association
+            include: [{ model: Property, as: 'property' }]
         });
         res.json({ investments });
-    } catch (error) {
-        console.error('Error fetching user investments:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get yield history by user address
+router.get('/payouts/user/:address', async (req, res) => {
+    try {
+        const { default: YieldPayout } = await import('../models/YieldPayout.js');
+        const payouts = await YieldPayout.findAll({
+            where: { userAddress: req.params.address },
+            include: [{ model: Property, as: 'property' }],
+            order: [['distributionDate', 'DESC']]
+        });
+        res.json({ payouts });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
     }
 });
 
