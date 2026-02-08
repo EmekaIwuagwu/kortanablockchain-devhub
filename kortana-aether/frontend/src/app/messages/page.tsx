@@ -70,9 +70,10 @@ function MessagesContent() {
                     role: data.user.role
                 });
             } else {
+                const isAdmin = partnerAddress.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9';
                 setActivePartnerData({
-                    name: partnerAddress.substring(0, 8) + '...',
-                    role: 'USER'
+                    name: isAdmin ? 'Platform Admin' : 'User',
+                    role: isAdmin ? 'ADMIN' : 'USER'
                 });
             }
         } catch (error) {
@@ -198,8 +199,8 @@ function MessagesContent() {
                                         onClick={() => setActivePartner(conv.partner)}
                                         className={`p-4 hover:bg-white cursor-pointer transition-colors border-b border-gray-100 flex items-center space-x-4 ${activePartner === conv.partner ? 'bg-white border-l-4 border-l-[#DC143C]' : ''}`}
                                     >
-                                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-bold uppercase">
-                                            {conv.partner.substring(2, 4)}
+                                        <div className={`w-10 h-10 ${conv.partnerRole === 'ADMIN' ? 'bg-[#DC143C]' : 'bg-[#0A1929]'} text-white rounded-[0.8rem] flex items-center justify-center font-bold shadow-lg shrink-0`}>
+                                            {conv.partnerRole === 'ADMIN' ? 'AD' : 'US'}
                                         </div>
                                         <div className="flex-1 overflow-hidden">
                                             <div className="flex justify-between items-center">
@@ -210,10 +211,9 @@ function MessagesContent() {
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${conv.partnerRole === 'ADMIN' ? 'bg-red-100 text-red-600' :
-                                                    conv.partnerRole === 'SELLER' ? 'bg-blue-100 text-blue-600' :
-                                                        'bg-green-100 text-green-600'
+                                                    'bg-green-100 text-green-600'
                                                     }`}>
-                                                    {conv.partnerRole}
+                                                    {conv.partnerRole === 'ADMIN' ? 'Admin' : 'User'}
                                                 </span>
                                                 <div className="text-xs text-gray-400 truncate flex-1">{conv.lastMessage}</div>
                                             </div>
@@ -245,18 +245,17 @@ function MessagesContent() {
                                 {/* Chat Header */}
                                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
                                     <div className="flex items-center space-x-4">
-                                        <div className="w-10 h-10 bg-[#0A1929] text-white rounded-full flex items-center justify-center font-bold">
-                                            {activePartner.substring(2, 4).toUpperCase()}
+                                        <div className={`w-10 h-10 ${activePartnerData?.role === 'ADMIN' ? 'bg-[#DC143C]' : 'bg-[#0A1929]'} text-white rounded-[0.8rem] flex items-center justify-center font-bold shadow-lg`}>
+                                            {activePartnerData?.role === 'ADMIN' ? 'AD' : 'US'}
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-[#0A1929] flex items-center space-x-2">
                                                 <span>{activePartnerData?.name || 'Loading Terminal...'}</span>
                                                 {activePartnerData && (
                                                     <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${activePartnerData.role === 'ADMIN' ? 'bg-red-100 text-red-600' :
-                                                        activePartnerData.role === 'SELLER' ? 'bg-blue-100 text-blue-600' :
-                                                            'bg-green-100 text-green-600'
+                                                        'bg-green-100 text-green-600'
                                                         }`}>
-                                                        {activePartnerData.role}
+                                                        {activePartnerData.role === 'ADMIN' ? 'Admin' : 'User'}
                                                     </span>
                                                 )}
                                             </h3>
@@ -278,8 +277,8 @@ function MessagesContent() {
                                         return (
                                             <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} relative z-10`}>
                                                 <div className={`max-w-[75%] p-2 px-4 rounded-xl shadow-sm relative ${isMe
-                                                        ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none'
-                                                        : 'bg-white text-[#111b21] rounded-tl-none'
+                                                    ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none'
+                                                    : 'bg-white text-[#111b21] rounded-tl-none'
                                                     }`}>
                                                     <p className="text-[14.5px] leading-relaxed mb-1">{msg.content}</p>
                                                     <div className="flex items-center justify-end space-x-1 opacity-60">

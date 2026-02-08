@@ -135,7 +135,7 @@ router.post('/', async (req, res) => {
             where: { walletAddress: sAddress },
             defaults: {
                 walletAddress: sAddress,
-                name: sAddress === adminAddress ? 'Platform Admin' : 'Investor',
+                name: sAddress === adminAddress ? 'Platform Admin' : 'User',
                 role: sAddress === adminAddress ? 'ADMIN' : 'USER'
             }
         });
@@ -144,7 +144,7 @@ router.post('/', async (req, res) => {
             where: { walletAddress: rAddress },
             defaults: {
                 walletAddress: rAddress,
-                name: rAddress === adminAddress ? 'Platform Admin' : 'Counterparty',
+                name: rAddress === adminAddress ? 'Platform Admin' : 'User',
                 role: rAddress === adminAddress ? 'ADMIN' : 'USER'
             }
         });

@@ -73,7 +73,17 @@ router.get('/:address', async (req, res) => {
         const user = await User.findOne({
             where: { walletAddress: req.params.address.toLowerCase() }
         });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user) {
+            const adminAddress = (process.env.ADMIN_WALLET_ADDRESS || '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9').toLowerCase();
+            const isAdmin = req.params.address.toLowerCase() === adminAddress;
+            return res.json({
+                user: {
+                    walletAddress: req.params.address.toLowerCase(),
+                    name: isAdmin ? 'Platform Admin' : 'User',
+                    role: isAdmin ? 'ADMIN' : 'USER'
+                }
+            });
+        }
         res.json({ user });
     } catch (error) {
         res.status(500).json({ message: 'Internal Server Error' });
