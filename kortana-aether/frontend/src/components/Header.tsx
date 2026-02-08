@@ -12,7 +12,7 @@ import { usePathname } from 'next/navigation';
 const Header = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    const { isConnected } = useAccount();
+    const { isConnected, address } = useAccount();
     const pathname = usePathname();
 
     // Determine default text color based on pathname (simplified logic)
@@ -59,7 +59,10 @@ const Header = () => {
                         ...(isConnected ? [
                             { name: 'Portfolio', href: '/portfolio' },
                             { name: 'Golden Visa', href: '/golden-visa' },
-                            { name: 'Messages', href: '/messages' }
+                            { name: 'Messages', href: '/messages' },
+                            ...(address?.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9' ? [
+                                { name: 'Admin', href: '/admin' }
+                            ] : [])
                         ] : [])
                     ].map((item) => (
                         <Link
