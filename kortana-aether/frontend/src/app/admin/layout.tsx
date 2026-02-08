@@ -34,9 +34,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-        { name: 'Manage Properties', href: '/admin/dashboard', icon: Building2 }, // Reusing dashboard for list for now
-        { name: 'Add Property', href: '/admin/properties/add', icon: PlusCircle },
-        { name: 'Users / Investors', href: '#', icon: Users },
+        { name: 'Users / Investors', href: '/admin/users', icon: Users },
+        { name: 'Onboard Asset', href: '/admin/properties/add', icon: PlusCircle },
         { name: 'Analytics', href: '#', icon: PieChart },
         { name: 'Settings', href: '#', icon: Settings },
     ];
@@ -65,8 +64,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             key={item.name}
                             href={item.href}
                             className={`flex items-center space-x-4 px-6 py-4 rounded-2xl transition-all duration-300 font-bold text-sm group ${pathname === item.href
-                                    ? 'bg-[#DC143C] text-white shadow-xl shadow-[#DC143C]/20 translate-x-1'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                ? 'bg-[#DC143C] text-white shadow-xl shadow-[#DC143C]/20 translate-x-1'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <item.icon size={20} className={pathname === item.href ? 'text-white' : 'text-gray-500 group-hover:text-[#DC143C] transition-colors'} />

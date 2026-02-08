@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 
 import propertiesRoutes from './routes/properties.js';
 import investmentsRoutes from './routes/investments.js';
+import usersRoutes from './routes/users.js';
 import { connectDB } from './models/index.js';
 import blockchainService from './services/blockchain.js';
 
@@ -29,6 +30,7 @@ app.use(express.json());
 // Routes
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/investments', investmentsRoutes);
+app.use('/api/users', usersRoutes);
 
 // Basic route
 app.get('/health', (req, res) => {
