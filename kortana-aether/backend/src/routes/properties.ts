@@ -115,4 +115,31 @@ router.post('/seed', async (req, res) => {
     }
 });
 
+// POST /api/properties
+router.post('/', async (req, res) => {
+    try {
+        const property = await Property.create(req.body);
+        res.status(201).json(property);
+    } catch (error: any) {
+        console.error('Error creating property:', error);
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Distribute Yield for a property
+router.post('/yield-distribute', async (req, res) => {
+    const { propertyAddress } = req.body;
+    if (!propertyAddress) {
+        return res.status(400).json({ message: 'propertyAddress is required' });
+    }
+
+    try {
+        // Run in background
+        yieldService.distributeYield(propertyAddress);
+        res.json({ message: 'Yield distribution started in background' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
