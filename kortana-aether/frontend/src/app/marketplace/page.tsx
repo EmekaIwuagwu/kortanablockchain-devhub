@@ -5,8 +5,6 @@ import Header from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import PropertyCard from '@/components/PropertyCard';
 import { Search, SlidersHorizontal, MapPin } from 'lucide-react';
-import { useState } from 'react';
-
 import { useState, useEffect } from 'react';
 
 export default function Marketplace() {
