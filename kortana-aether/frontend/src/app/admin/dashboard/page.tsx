@@ -1,21 +1,18 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
 import {
-    TrendingUp,
-    ArrowUpRight,
-    Home,
-    DollarSign,
-    Zap,
-    Globe,
-    CheckCircle2,
-    Clock,
-    Plus
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell
+} from 'recharts';
+import { formatEther } from 'viem';
 
-const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
+const StatCard = ({ title, value, icon: Icon, trend, color, prefix = "" }: any) => (
     <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300">
         <div className="flex justify-between items-start mb-6">
             <div className={`p-4 rounded-2xl ${color}`}>
@@ -30,29 +27,57 @@ const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
         </div>
         <div>
             <p className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-2">{title}</p>
-            <h3 className="text-3xl font-extrabold text-[#0A1929]">{value}</h3>
+            <h3 className="text-3xl font-extrabold text-[#0A1929]">{prefix}{value}</h3>
         </div>
     </div>
 );
 
+const MOCK_MONTHLY_DATA = [
+    { name: 'Jan', value: 4000 },
+    { name: 'Feb', value: 3000 },
+    { name: 'Mar', value: 2000 },
+    { name: 'Apr', value: 2780 },
+    { name: 'May', value: 1890 },
+    { name: 'Jun', value: 2390 },
+    { name: 'Jul', value: 3490 },
+];
+
+const COLORS = ['#DC143C', '#2563EB', '#8B5CF6', '#F59E0B'];
+
 export default function AdminDashboard() {
     const [properties, setProperties] = useState<any[]>([]);
+    const [stats, setStats] = useState<any>(null);
+    const [typeData, setTypeData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [distributing, setDistributing] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchProperties = async () => {
+        const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/properties');
-                const data = await response.json();
-                setProperties(data.properties || []);
+                const [propRes, statsRes] = await Promise.all([
+                    fetch('http://localhost:3001/api/properties'),
+                    fetch('http://localhost:3001/api/properties/admin/stats')
+                ]);
+
+                const propData = await propRes.json();
+                const statsData = await statsRes.json();
+
+                setProperties(propData.properties || []);
+                setStats(statsData.stats);
+
+                // Format type distribution for PieChart
+                const formattedType = statsData.typeDistribution.map((t: any) => ({
+                    name: t.type,
+                    value: parseInt(t.count)
+                }));
+                setTypeData(formattedType);
             } catch (error) {
-                console.error('Error fetching properties:', error);
+                console.error('Error fetching admin data:', error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProperties();
+        fetchData();
     }, []);
 
     const handleDistributeYield = async (propertyAddress: string) => {
@@ -72,15 +97,29 @@ export default function AdminDashboard() {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="w-12 h-12 border-4 border-[#DC143C] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-10">
+        <div className="space-y-10 pb-20">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-[#0A1929] mb-2">Platform Overview</h1>
-                    <p className="text-gray-400 font-medium">Monitoring real-time liquidity and asset distribution</p>
+                    <h1 className="text-4xl font-black text-[#0A1929] mb-2 tracking-tight">System Oversight</h1>
+                    <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em]">Real-time Network Feed // Node: Aether-001</p>
                 </div>
-                <div className="text-sm font-bold text-gray-400 bg-white px-6 py-3 rounded-xl border border-gray-100 shadow-sm">
-                    KORTANA TESTNET: <span className="text-[#00E676] ml-2">● OPERATIONAL</span>
+                <div className="flex items-center space-x-4">
+                    <div className="text-right">
+                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Network Status</div>
+                        <div className="text-sm font-black text-[#00E676] flex items-center justify-end">
+                            <span className="w-2 h-2 bg-[#00E676] rounded-full mr-2 animate-pulse"></span>
+                            PROTOCOL SYNCED
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -88,87 +127,100 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <StatCard
                     title="Total TVL"
-                    value="$24.8M"
+                    value={stats?.totalTVL ? (stats.totalTVL / 1000000).toFixed(1) + "M" : "0.0M"}
+                    prefix="$"
                     icon={DollarSign}
-                    trend="12.4"
+                    trend="14.8"
                     color="bg-blue-600"
                 />
                 <StatCard
-                    title="Active Properties"
-                    value={properties.length.toString()}
+                    title="Registry Count"
+                    value={stats?.activeProperties.toString() || "0"}
                     icon={Home}
                     color="bg-[#DC143C]"
                 />
                 <StatCard
-                    title="Total Investors"
-                    value="1,284"
+                    title="Network Nodes"
+                    value={stats?.totalInvestors.toString() || "0"}
                     icon={Globe}
-                    trend="5.2"
+                    trend="2.4"
                     color="bg-indigo-600"
                 />
                 <StatCard
-                    title="Yield Distributed"
-                    value="842.1k DNR"
+                    title="Disbursed Yield"
+                    value={stats?.totalYieldPaid ? parseFloat(formatEther(BigInt(stats.totalYieldPaid))).toFixed(1) + "k" : "0.0k"}
+                    prefix="Ð"
                     icon={Zap}
                     color="bg-amber-500"
                 />
             </div>
 
-            {/* Secondary Section: Analytics & Assets */}
+            {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Custom Analytic Chart (Visual Placeholder with CSS/SVG) */}
-                <div className="lg:col-span-2 bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
-                    <h3 className="text-2xl font-bold text-[#0A1929] mb-8">Asset Liquidity Trend</h3>
-                    <div className="h-64 flex items-end justify-between space-x-4">
-                        {[40, 65, 45, 80, 55, 90, 75, 40, 60, 85, 95, 80].map((h, i) => (
-                            <div key={i} className="flex-1 group relative">
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#0A1929] text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {h}%
-                                </div>
-                                <div
-                                    className="w-full bg-[#DC143C]/20 group-hover:bg-[#DC143C] transition-all rounded-t-lg"
-                                    style={{ height: `${h}%` }}
-                                ></div>
-                            </div>
-                        ))}
+                <div className="lg:col-span-2 bg-white p-12 rounded-[3.5rem] border border-gray-100 shadow-xl shadow-gray-200/20 relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-10">
+                        <h3 className="text-2xl font-black text-[#0A1929]">Liquidity Velocity</h3>
+                        <select className="bg-gray-50 border-none rounded-xl text-[10px] font-black uppercase tracking-widest px-4 py-2 outline-none cursor-pointer">
+                            <option>Last 30 Days</option>
+                            <option>Last 6 Months</option>
+                        </select>
                     </div>
-                    <div className="mt-6 flex justify-between text-gray-400 text-xs font-bold uppercase tracking-widest">
-                        <span>Jan</span>
-                        <span>Mar</span>
-                        <span>May</span>
-                        <span>Jul</span>
-                        <span>Sep</span>
-                        <span>Nov</span>
+                    <div className="h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={MOCK_MONTHLY_DATA}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                <XAxis
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 800 }}
+                                    dy={10}
+                                />
+                                <YAxis hide />
+                                <Tooltip
+                                    cursor={{ fill: '#F8FAFC' }}
+                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 800, fontSize: '12px' }}
+                                />
+                                <Bar dataKey="value" fill="#DC143C" radius={[8, 8, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Pie Chart Representation */}
-                <div className="bg-[#0A1929] p-10 rounded-[2.5rem] shadow-xl text-white relative flex flex-col items-center justify-center text-center">
-                    <h3 className="text-xl font-bold mb-8">Portfolio Allocation</h3>
-                    <div className="relative w-48 h-48 mb-8">
-                        {/* CSS-only Donut Chart */}
-                        <div className="w-full h-full rounded-full border-[1.5rem] border-[#DC143C]" style={{ clipPath: 'polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 0)' }}></div>
-                        <div className="absolute inset-0 w-full h-full rounded-full border-[1.5rem] border-blue-500 rotate-[120deg]" style={{ clipPath: 'polygon(50% 50%, 100% 0, 100% 100%, 0 100%, 0 0)' }}></div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-extrabold">85%</span>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase">Occupied</span>
-                        </div>
+                <div className="bg-[#0A1929] p-12 rounded-[3.5rem] shadow-2xl shadow-gray-200/20 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-[4rem]"></div>
+                    <h3 className="text-xl font-black mb-10 relative z-10">Asset Diversification</h3>
+                    <div className="h-64 relative z-10">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={typeData.length > 0 ? typeData : [{ name: 'Empty', value: 1 }]}
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={8}
+                                    dataKey="value"
+                                >
+                                    {(typeData.length > 0 ? typeData : [{ name: 'Empty', value: 1 }]).map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#0A1929', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                    itemStyle={{ color: '#fff', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase' }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
-                    <div className="space-y-4 w-full">
-                        <div className="flex justify-between items-center text-xs font-bold">
-                            <div className="flex items-center space-x-2">
-                                <span className="w-2 h-2 rounded-full bg-[#DC143C]"></span>
-                                <span>Residential</span>
+                    <div className="mt-8 space-y-4">
+                        {typeData.map((item, index) => (
+                            <div key={item.name} className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5 group hover:border-[#DC143C]/50 transition-all cursor-default">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">{item.name}</span>
+                                </div>
+                                <span className="text-xs font-black">{item.value}</span>
                             </div>
-                            <span>65%</span>
-                        </div>
-                        <div className="flex justify-between items-center text-xs font-bold">
-                            <div className="flex items-center space-x-2">
-                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                <span>Commercial</span>
-                            </div>
-                            <span>35%</span>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </div>

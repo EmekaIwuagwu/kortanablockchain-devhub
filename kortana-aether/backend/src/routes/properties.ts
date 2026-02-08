@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import Property from '../models/Property.js';
+import Investment from '../models/Investment.js';
+import YieldPayout from '../models/YieldPayout.js';
 import yieldService from '../services/yield.js';
+import { fn, col } from 'sequelize';
 
 const router = Router();
 
@@ -139,6 +142,47 @@ router.post('/yield-distribute', async (req, res) => {
         res.json({ message: 'Yield distribution started in background' });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/properties/admin/stats
+router.get('/admin/stats', async (req, res) => {
+    try {
+        const totalProperties = await Property.count();
+        const totalTVL = await Property.sum('valuationUSD');
+
+        const totalInvestors = await Investment.count({
+            distinct: true,
+            col: 'userAddress'
+        });
+
+        const totalYieldData = await YieldPayout.findAll({
+            attributes: [
+                [fn('SUM', col('amountDinar')), 'totalPaid']
+            ],
+            where: { status: 'SUCCESS' }
+        });
+
+        const totalYieldPaid = totalYieldData[0]?.getDataValue('totalPaid') || '0';
+
+        // Distribution by type
+        const typeDistribution = await Property.findAll({
+            attributes: ['type', [fn('COUNT', col('id')), 'count']],
+            group: ['type']
+        });
+
+        res.json({
+            stats: {
+                totalTVL: totalTVL || 0,
+                activeProperties: totalProperties,
+                totalInvestors: totalInvestors,
+                totalYieldPaid: totalYieldPaid
+            },
+            typeDistribution
+        });
+    } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
