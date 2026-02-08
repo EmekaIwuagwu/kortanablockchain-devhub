@@ -20,6 +20,34 @@ function MessagesContent() {
     const [searchAddress, setSearchAddress] = useState('');
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
+    // Authentic WhatsApp Tail Styling
+    const whatsappStyles = (
+        <style>{`
+            .whatsapp-bubble-sent::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: -8px;
+                width: 0;
+                height: 0;
+                border: 8px solid transparent;
+                border-top-color: #d9fdd3;
+                border-left-color: #d9fdd3;
+            }
+            .whatsapp-bubble-received::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -8px;
+                width: 0;
+                height: 0;
+                border: 8px solid transparent;
+                border-top-color: #ffffff;
+                border-right-color: #ffffff;
+            }
+        `}</style>
+    );
+
     const handleNewChat = () => {
         if (!searchAddress.startsWith('0x') || searchAddress.length !== 42) {
             alert('Please enter a valid wallet address');
@@ -193,38 +221,36 @@ function MessagesContent() {
                                     </button>
                                 </div>
                             ) : (
-                                conversations.map((conv, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => setActivePartner(conv.partner)}
-                                        className={`p-4 hover:bg-white cursor-pointer transition-colors border-b border-gray-100 flex items-center space-x-4 ${activePartner === conv.partner ? 'bg-white border-l-4 border-l-[#DC143C]' : ''}`}
-                                    >
-                                        <div className={`w-10 h-10 ${conv.partnerRole === 'ADMIN' ? 'bg-[#DC143C]' : 'bg-[#0A1929]'} text-white rounded-[0.8rem] flex items-center justify-center font-bold shadow-lg shrink-0`}>
-                                            {conv.partnerRole === 'ADMIN' ? 'AD' : 'US'}
-                                        </div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <div className="flex justify-between items-center">
-                                                <div className="font-bold text-[#0A1929] truncate w-24">
-                                                    {conv.partnerName}
+                                conversations.map((conv, i) => {
+                                    const isAdmin = conv.partner.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9';
+                                    return (
+                                        <div
+                                            key={i}
+                                            onClick={() => setActivePartner(conv.partner)}
+                                            className={`p-4 hover:bg-white cursor-pointer transition-colors border-b border-gray-100 flex items-center space-x-4 ${activePartner === conv.partner ? 'bg-white border-l-4 border-l-[#DC143C]' : ''}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] text-white shadow-sm ${isAdmin ? 'bg-[#DC143C]' : 'bg-[#0A1929]'}`}>
+                                                {isAdmin ? 'AD' : 'US'}
+                                            </div>
+                                            <div className="flex-1 overflow-hidden">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="font-bold text-[#0A1929] truncate w-24 text-xs uppercase tracking-tight">
+                                                        {isAdmin ? 'Platform Admin' : 'User'}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 font-medium">{new Date(conv.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                                 </div>
-                                                <div className="text-[10px] text-gray-400">{new Date(conv.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${conv.partnerRole === 'ADMIN' ? 'bg-red-100 text-red-600' :
-                                                    'bg-green-100 text-green-600'
-                                                    }`}>
-                                                    {conv.partnerRole === 'ADMIN' ? 'Admin' : 'User'}
-                                                </span>
-                                                <div className="text-xs text-gray-400 truncate flex-1">{conv.lastMessage}</div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-[11px] text-gray-500 truncate flex-1">{conv.lastMessage}</div>
+                                                    {conv.unreadCount > 0 && (
+                                                        <div className="ml-2 w-4 h-4 bg-[#DC143C] text-white rounded-full flex items-center justify-center text-[8px] font-bold">
+                                                            {conv.unreadCount}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        {conv.unreadCount > 0 && (
-                                            <div className="w-5 h-5 bg-[#DC143C] text-white rounded-full flex items-center justify-center text-[10px] font-bold">
-                                                {conv.unreadCount}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                         <div className="p-6 border-t border-gray-100 bg-white">
@@ -243,27 +269,19 @@ function MessagesContent() {
                         {activePartner ? (
                             <>
                                 {/* Chat Header */}
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
-                                    <div className="flex items-center space-x-4">
-                                        <div className={`w-10 h-10 ${activePartnerData?.role === 'ADMIN' ? 'bg-[#DC143C]' : 'bg-[#0A1929]'} text-white rounded-[0.8rem] flex items-center justify-center font-bold shadow-lg`}>
-                                            {activePartnerData?.role === 'ADMIN' ? 'AD' : 'US'}
+                                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-[#f0f2f5] z-10">
+                                    <div className="flex items-center space-x-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm ${activePartner.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9' ? 'bg-[#DC143C]' : 'bg-[#0A1929]'}`}>
+                                            {activePartner.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9' ? 'AD' : 'US'}
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-[#0A1929] flex items-center space-x-2">
-                                                <span>{activePartnerData?.name || 'Loading Terminal...'}</span>
-                                                {activePartnerData && (
-                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${activePartnerData.role === 'ADMIN' ? 'bg-red-100 text-red-600' :
-                                                        'bg-green-100 text-green-600'
-                                                        }`}>
-                                                        {activePartnerData.role === 'ADMIN' ? 'Admin' : 'User'}
-                                                    </span>
-                                                )}
+                                            <h3 className="font-bold text-[#111b21] text-sm uppercase tracking-tight">
+                                                {activePartner.toLowerCase() === '0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9' ? 'Platform Admin' : 'User'}
                                             </h3>
-                                            <span className="text-[10px] text-gray-400 font-mono italic">{activePartner}</span>
+                                            <span className="text-[10px] text-gray-400 font-mono tracking-tighter">{activePartner}</span>
                                         </div>
                                     </div>
-                                    <div className="flex space-x-4 text-gray-400">
-                                        <Bell size={20} className="hover:text-[#DC143C] cursor-pointer" />
+                                    <div className="flex items-center space-x-6 text-[#54656f]">
                                         <MoreHorizontal size={20} className="hover:text-[#0A1929] cursor-pointer" />
                                     </div>
                                 </div>
@@ -271,14 +289,15 @@ function MessagesContent() {
                                 {/* Messages */}
                                 <div className="flex-1 overflow-y-auto p-10 space-y-4 font-outfit relative"
                                     style={{ backgroundColor: '#efeae2', backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')` }}>
+                                    {whatsappStyles}
                                     <div className="absolute inset-0 opacity-[0.06] pointer-events-none"></div>
                                     {messages.map((msg, i) => {
                                         const isMe = msg.senderAddress.toLowerCase() === address?.toLowerCase();
                                         return (
                                             <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'} relative z-10`}>
                                                 <div className={`max-w-[75%] p-2 px-4 rounded-xl shadow-sm relative ${isMe
-                                                    ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none'
-                                                    : 'bg-white text-[#111b21] rounded-tl-none'
+                                                    ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none whatsapp-bubble-sent'
+                                                    : 'bg-white text-[#111b21] rounded-tl-none whatsapp-bubble-received'
                                                     }`}>
                                                     <p className="text-[14.5px] leading-relaxed mb-1">{msg.content}</p>
                                                     <div className="flex items-center justify-end space-x-1 opacity-60">
