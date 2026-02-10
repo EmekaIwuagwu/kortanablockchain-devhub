@@ -121,6 +121,7 @@ a:hover {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  table-layout: fixed;
 }
 
 .data-table th {
@@ -143,6 +144,9 @@ a:hover {
 .data-table td {
   padding: 1rem;
   border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Utils */
