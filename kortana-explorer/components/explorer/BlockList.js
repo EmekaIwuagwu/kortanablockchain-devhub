@@ -14,14 +14,14 @@ const BlockList = ({ blocks = [] }) => {
                 <tbody>
                     {blocks.map((block) => (
                         <tr key={block.number}>
-                            <td style={{ width: '150px' }}>
+                            <td>
                                 <div className="flex items-center gap-3">
                                     <div style={{ padding: '10px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.05)' }}>
                                         <Box size={20} className="text-accent" />
                                     </div>
-                                    <div style={{ minWidth: '150px' }}>
-                                        <Link href={`/block/${block.hash || block.number}`} className="font-heading" style={{ color: 'white', display: 'block', fontSize: '0.95rem' }}>
-                                            {block.hash ? `${block.hash.substring(0, 14)}...` : `Block #${block.number}`}
+                                    <div style={{ minWidth: '120px' }}>
+                                        <Link href={`/block/${block.hash || block.number}`} className="font-heading" style={{ color: 'white', display: 'block', fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {block.hash ? `${block.hash.substring(0, 12)}...` : `Block #${block.number}`}
                                         </Link>
                                         <div className="text-dim text-small flex items-center gap-1">
                                             <span className="text-accent">#{block.number}</span>
@@ -33,7 +33,7 @@ const BlockList = ({ blocks = [] }) => {
                             <td>
                                 <div className="text-small text-dim">Validated By</div>
                                 <Link href={`/address/${block.miner}`} className="text-accent text-small">
-                                    {block.miner?.substring(0, 16)}...
+                                    {block.miner?.substring(0, 12)}...{block.miner?.substring(38)}
                                 </Link>
                             </td>
                             <td style={{ textAlign: 'right' }}>

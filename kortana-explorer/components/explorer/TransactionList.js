@@ -28,16 +28,15 @@ const TransactionList = ({ transactions = [] }) => {
                                 </div>
                             </td>
                             <td>
-                                <div className="flex items-center gap-2">
-                                    <div>
-                                        <div className="text-small text-dim">From</div>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-small text-dim" style={{ minWidth: '35px' }}>From</div>
                                         <Link href={`/address/${tx.from}`} className="text-accent text-small">
                                             {tx.from?.substring(0, 8)}...{tx.from?.substring(38)}
                                         </Link>
                                     </div>
-                                    <ArrowRight size={14} className="text-dim" />
-                                    <div>
-                                        <div className="text-small text-dim">To</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-small text-dim" style={{ minWidth: '35px' }}>To</div>
                                         <Link href={`/address/${tx.to}`} className="text-accent text-small">
                                             {tx.to?.substring(0, 8)}...{tx.to?.substring(38)}
                                         </Link>
