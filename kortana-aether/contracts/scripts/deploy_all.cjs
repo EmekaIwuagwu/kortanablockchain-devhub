@@ -13,9 +13,8 @@ async function main() {
         console.log("Using Gas Price:", gasPrice.toString());
 
         const txConfig = {
-            gasLimit: 25000000,
-            type: 0, // Force Legacy
-            gasPrice: gasPrice
+            gasLimit: 12000000,
+            gasPrice: 5000000000n // 5 Gwei
         };
 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -120,8 +119,11 @@ async function main() {
             });
 
             console.log(`Approving EscrowManager to spend tokens for ${prop.title}...`);
-            const approveTx = await token.approve(escrowManagerAddress, initialSupply, txConfig);
+            // Approve maximum amount to avoid running out of allowance
+            const maxApproval = hre.ethers.MaxUint256;
+            const approveTx = await token.approve(escrowManagerAddress, maxApproval, txConfig);
             await approveTx.wait();
+            console.log(`✓ EscrowManager approved for unlimited token transfers`);
             await sleep(2000);
         }
 

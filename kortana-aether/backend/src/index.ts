@@ -10,11 +10,15 @@ import usersRoutes from './routes/users.js';
 import authRoutes from './routes/auth.js';
 import uploadRoutes from './routes/uploads.js';
 import transactionRoutes from './routes/transactions.js';
-import messagesRoutes from './routes/messages.js';
+import marketRoutes from './routes/market.js';
+import goldenVisaRoutes from './routes/goldenVisa.js';
 import { connectDB } from './models/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import blockchainService from './services/blockchain.js';
+import cron from 'node-cron';
+import yieldService from './services/yield.js';
+import Property from './models/Property.js';
 
 // Load environment variables
 dotenv.config();
@@ -25,6 +29,22 @@ const PORT = process.env.PORT || 3001;
 // Database Connection
 connectDB().then(() => {
     blockchainService.startListening();
+
+    // Automated Yield Distribution: Every 1st of the month at midnight
+    cron.schedule('0 0 1 * *', async () => {
+        console.log('⏳ Running automated monthly yield distribution...');
+        try {
+            const properties = await Property.findAll();
+            for (const prop of properties) {
+                if (prop.address) {
+                    await yieldService.distributeYield(prop.address);
+                }
+            }
+            console.log('✅ Automated yield distribution completed.');
+        } catch (error) {
+            console.error('❌ Automated yield distribution failed:', error);
+        }
+    });
 });
 
 // Middleware
@@ -44,7 +64,8 @@ app.use('/api/investments', investmentsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/transactions', transactionRoutes);
-app.use('/api/messages', messagesRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/golden-visa', goldenVisaRoutes);
 
 // Basic route
 app.get('/health', (req, res) => {

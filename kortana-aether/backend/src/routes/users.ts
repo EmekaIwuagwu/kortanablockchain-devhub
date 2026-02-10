@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import User from '../models/User.js';
 import Investment from '../models/Investment.js';
+import Document from '../models/Document.js';
+import GoldenVisaApplication from '../models/GoldenVisaApplication.js';
+import { ethers } from 'ethers';
 
 const router = Router();
 
@@ -8,10 +11,11 @@ const router = Router();
 router.get('/', async (req, res) => {
     try {
         const users = await User.findAll({
-            include: [{
-                model: Investment,
-                as: 'investments'
-            }]
+            include: [
+                { model: Investment, as: 'investments' },
+                { model: Document, as: 'documents' },
+                { model: GoldenVisaApplication, as: 'goldenVisa' }
+            ]
         });
 
         // Enhance with stats
@@ -87,6 +91,45 @@ router.get('/:address', async (req, res) => {
         res.json({ user });
     } catch (error) {
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// POST /api/users/faucet (Testnet Faucet)
+router.post('/faucet', async (req, res) => {
+    const { walletAddress } = req.body;
+    if (!walletAddress) return res.status(400).json({ message: 'Address required' });
+
+    console.log(`[Faucet] Processing request for: ${walletAddress}`);
+
+    try {
+        const rpcUrl = process.env.KORTANA_RPC_URL || 'https://poseidon-rpc.kortana.worchsester.xyz/';
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+        if (!process.env.ADMIN_PRIVATE_KEY) {
+            throw new Error('ADMIN_PRIVATE_KEY is not defined in .env');
+        }
+
+        const wallet = new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY, provider);
+
+        // 1. Send 1000 DNR
+        console.log(`[Faucet] Sending 1000 DNR...`);
+        const tx = await wallet.sendTransaction({
+            to: walletAddress,
+            value: ethers.parseEther("1000"),
+            gasLimit: 21000 // Standard ETH transfer gas
+        });
+        await tx.wait();
+        console.log(`[Faucet] DNR sent: ${tx.hash}`);
+
+        res.json({
+            message: 'Airdrop Success! 1000 DNR sent to your wallet.',
+            dnrHash: tx.hash
+        });
+    } catch (error: any) {
+        console.error('[Faucet] Error:', error);
+        res.status(500).json({
+            error: error.message
+        });
     }
 });
 

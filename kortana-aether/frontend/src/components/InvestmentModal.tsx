@@ -2,38 +2,47 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, ExternalLink, Wallet } from 'lucide-react';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import contracts from '@/config/contracts.json';
-import abis from '@/config/abis.json';
 
 interface InvestmentModalProps {
     isOpen: boolean;
     onClose: () => void;
+    mode?: 'FRACTIONAL' | 'RESIDENCY';
+    initialAmount?: number;
     property: {
         id: string;
         title: string;
         tokenPrice: number; // in DNR
         yield: number;
+        sellerAddress?: string;
     };
 }
 
-export const InvestmentModal = ({ isOpen, onClose, property }: InvestmentModalProps) => {
-    const { isConnected } = useAccount();
+export const InvestmentModal = ({ isOpen, onClose, property, mode = 'FRACTIONAL', initialAmount }: InvestmentModalProps) => {
+    const { isConnected, address } = useAccount();
     const { openConnectModal } = useConnectModal();
     const [step, setStep] = useState(1);
-    const [amount, setAmount] = useState<number>(property.tokenPrice || 100);
+    const [amount, setAmount] = useState<number>(initialAmount || (mode === 'RESIDENCY' ? 5000 : property.tokenPrice));
     const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        if (initialAmount) setAmount(initialAmount);
+        else setAmount(mode === 'RESIDENCY' ? 5000 : property.tokenPrice);
+    }, [isOpen, mode, initialAmount]);
+
+    // FOCUS: Pure DNR Transfer (No smart contracts needed for simple testing)
     const {
         data: hash,
-        writeContractAsync,
-        isPending: isWritePending
-    } = useWriteContract();
+        sendTransactionAsync,
+        isPending: isSendPending
+    } = useSendTransaction();
 
     const {
+        data: receipt,
         isLoading: isConfirming,
         isSuccess: isConfirmed
     } = useWaitForTransactionReceipt({
@@ -41,10 +50,10 @@ export const InvestmentModal = ({ isOpen, onClose, property }: InvestmentModalPr
     });
 
     useEffect(() => {
-        if (isConfirmed) {
+        if (isConfirmed && receipt) {
             setStep(3);
         }
-    }, [isConfirmed]);
+    }, [isConfirmed, receipt]);
 
     if (!isOpen) return null;
 
@@ -57,43 +66,40 @@ export const InvestmentModal = ({ isOpen, onClose, property }: InvestmentModalPr
         setError(null);
 
         try {
-            // Find property contract address
-            const propertyConfig = contracts.properties.find(p => p.id.toString() === property.id);
-            if (!propertyConfig) throw new Error("Property contract not found: " + property.id);
+            // Calculate total DNR to pay (Base + 1% Fee as shown in UI)
+            const amountWei = parseEther((amount * 1.01).toFixed(18).toString());
+            const platformTarget = (property.sellerAddress || contracts.platformAddress || "0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9");
 
-            // Calculate amounts (Assuming 1 Token = X Dinar)
-            // Here assuming 1:1 ratio for simplicity or calculate based on price
-            // tokenAmount = investment / price_per_token
-            // If tokenPrice is 500 DNR, and you invest 1000 DNR, you get 2 Tokens.
-            const tokenAmount = amount / property.tokenPrice;
-
-            // Convert to wei (18 decimals)
-            const tokenAmountWei = parseEther(tokenAmount.toString());
-            const dinarAmountWei = parseEther(amount.toString());
-
-            const tx = await writeContractAsync({
-                address: contracts.escrowManager as `0x${string}`,
-                abi: abis.EscrowManager,
-                functionName: 'initiateEscrow',
-                args: [
-                    contracts.platformAddress, // Seller (Platform)
-                    propertyConfig.address,    // Property Token Address
-                    tokenAmountWei,            // Amount of tokens to buy
-                    dinarAmountWei             // Amount of Dinar to pay
-                ],
-                value: dinarAmountWei // Send Dinar (native coin)
+            // Direct DNR Transfer
+            const txHash = await sendTransactionAsync({
+                to: platformTarget as `0x${string}`,
+                value: amountWei,
             });
 
-            // Transaction sent, wait for confirmation via hook
-            setStep(2); // Mining step (optional, currently straight to success or loading)
-
+            // Update local DB for tracking (non-blocking)
+            if (mode === 'RESIDENCY') {
+                try {
+                    await fetch(`http://localhost:3001/api/golden-visa/deposit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userAddress: address?.toLowerCase(),
+                            propertyId: property.id,
+                            amount: amount,
+                            txHash: txHash || 'pending'
+                        })
+                    });
+                } catch (apiErr) {
+                    console.error("Non-critical DB update error:", apiErr);
+                }
+            }
         } catch (err: any) {
-            console.error(err);
-            setError(err.message || 'Transaction failed');
+            console.error("Transfer Error:", err);
+            setError(err.message || 'Transaction failed. Ensure you have enough DNR.');
         }
     };
 
-    const isLoading = isWritePending || isConfirming;
+    const isLoading = isSendPending || isConfirming;
 
     return (
         <AnimatePresence>
@@ -113,93 +119,118 @@ export const InvestmentModal = ({ isOpen, onClose, property }: InvestmentModalPr
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
                         className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden"
                     >
-                        {/* Header */}
                         <div className="flex justify-between items-center p-8 border-b border-gray-100">
-                            <h3 className="text-xl font-bold text-[#0A1929]">{step === 3 ? 'Investment Successful' : 'Invest in Asset'}</h3>
+                            <h3 className="text-xl font-bold text-[#0A1929]">
+                                {step === 3 ? 'Transaction Successful' : 'Secure DNR Payment'}
+                            </h3>
                             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X size={20} /></button>
                         </div>
 
-                        {/* Content */}
                         <div className="p-8">
-                            {step < 3 && (
+                            {step < 3 ? (
                                 <div className="space-y-6">
                                     <div className="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                        <div className="w-12 h-12 bg-gray-200 rounded-lg mr-4 bg-cover bg-center" style={{ backgroundImage: `url(https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=100&h=100&fit=crop)` }}></div>
+                                        <div className="w-12 h-12 bg-blue-600 text-white rounded-lg mr-4 flex items-center justify-center">
+                                            <Wallet size={24} />
+                                        </div>
                                         <div>
                                             <h4 className="font-bold text-[#0A1929]">{property.title}</h4>
-                                            <p className="text-sm text-gray-500">{property.yield}% APY • Fixed Income</p>
+                                            <p className="text-sm text-gray-500">
+                                                Net DNR Settlement Plan
+                                            </p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Investment Amount (DNR)</label>
+                                        <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">
+                                            Investment (DNR)
+                                        </label>
                                         <div className="relative">
                                             <input
                                                 type="number"
                                                 value={amount}
                                                 onChange={(e) => setAmount(Number(e.target.value))}
-                                                className="w-full text-4xl font-bold text-[#0A1929] bg-transparent border-b-2 border-gray-200 focus:border-[#DC143C] py-2 focus:outline-none transition-colors"
-                                                min={property.tokenPrice}
+                                                className="w-full text-4xl font-black text-[#0A1929] bg-transparent border-b-2 border-gray-200 focus:border-[#DC143C] py-2 focus:outline-none transition-colors"
                                             />
                                             <span className="absolute right-0 bottom-4 text-xl font-bold text-gray-400">DNR</span>
                                         </div>
-                                        <p className="text-xs text-gray-400 mt-2">Min. Investment: {property.tokenPrice} DNR</p>
                                     </div>
 
-                                    <div className="bg-[#DC143C]/5 p-6 rounded-xl space-y-3">
+                                    <div className="bg-[#DC143C]/5 p-6 rounded-2xl space-y-3">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Projected Monthly Income</span>
-                                            <span className="font-bold text-[#00E676]">+{((amount * property.yield / 100) / 12).toFixed(2)} DNR</span>
+                                            <span className="text-gray-600 font-medium">Network Fee (Included)</span>
+                                            <span className="font-black text-[#0A1929]">{(amount * 0.01).toFixed(2)} DNR</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Platform Fee (1%)</span>
-                                            <span className="font-bold text-[#0A1929]">{(amount * 0.01).toFixed(2)} DNR</span>
+                                        <div className="border-t border-[#DC143C]/10 pt-3 flex justify-between font-black text-lg text-[#0A1929]">
+                                            <span>Total Payment</span>
+                                            <span>{(amount * 1.01).toLocaleString()} DNR</span>
                                         </div>
-                                        <div className="border-t border-[#DC143C]/10 pt-3 flex justify-between font-bold text-lg text-[#0A1929]">
-                                            <span>Total</span>
-                                            <span>{(amount * 1.01).toFixed(2)} DNR</span>
-                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col space-y-4">
+                                        <button
+                                            onClick={handleInvest}
+                                            disabled={isLoading}
+                                            className="w-full bg-[#0A1929] text-white font-black py-5 rounded-2xl text-xs uppercase tracking-[0.2em] hover:bg-[#DC143C] transition-all shadow-xl disabled:opacity-70 flex justify-center items-center"
+                                        >
+                                            {isLoading ? 'Awaiting Network...' : 'Confirm DNR Payment'}
+                                        </button>
+
+                                        <button
+                                            onClick={async () => {
+                                                setError("Requesting DNR Faucet...");
+                                                const res = await fetch('http://localhost:3001/api/users/faucet', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ walletAddress: address })
+                                                });
+                                                if (res.ok) {
+                                                    setError("1,000 DNR added! Reloading...");
+                                                    setTimeout(() => window.location.reload(), 2000);
+                                                } else {
+                                                    setError("Faucet failed.");
+                                                }
+                                            }}
+                                            className="text-[10px] font-black uppercase text-[#DC143C] text-center"
+                                        >
+                                            Get Test DNR (Faucet)
+                                        </button>
                                     </div>
 
                                     {error && (
-                                        <div className="bg-red-50 text-red-500 p-4 rounded-xl flex items-start text-sm">
-                                            <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
+                                        <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm flex items-center">
+                                            <AlertTriangle size={16} className="mr-2" />
                                             {error}
                                         </div>
                                     )}
-
-                                    <button
-                                        onClick={handleInvest}
-                                        disabled={isLoading}
-                                        className="w-full bg-[#DC143C] text-white font-bold py-4 rounded-xl text-lg hover:bg-[#B22222] transition-colors shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
-                                    >
-                                        {isLoading ? (
-                                            <div className="flex items-center space-x-2">
-                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                <span>{isWritePending ? 'Confirm in Wallet...' : 'Confirming on Blockchain...'}</span>
-                                            </div>
-                                        ) : (
-                                            !isConnected ? 'Connect Wallet' : 'Confirm Investment'
-                                        )}
-                                    </button>
                                 </div>
-                            )}
-
-                            {step === 3 && (
+                            ) : (
                                 <div className="text-center py-6">
-                                    <div className="w-20 h-20 bg-[#00E676] text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#00E676]/30 animate-scale-up">
-                                        <CheckCircle size={40} strokeWidth={3} />
+                                    <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+                                        <CheckCircle size={40} />
                                     </div>
-                                    <h2 className="text-2xl font-bold text-[#0A1929] mb-2">Successfully Invested!</h2>
-                                    <p className="text-gray-500 mb-8">You have successfully purchased {amount} DNR worth of ownership tokens.</p>
+                                    <h2 className="text-2xl font-black text-[#0A1929] mb-2">Payment Confirmed!</h2>
+                                    <p className="text-gray-500 mb-8 font-medium">
+                                        Your {amount.toLocaleString()} DNR has been sent to the settlement address.
+                                    </p>
 
-                                    <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-600 mb-8 truncate font-mono">
-                                        Tx Hash: {hash}
+                                    <div className="bg-gray-50 p-4 rounded-xl text-[10px] text-gray-400 mb-8 truncate font-mono">
+                                        Tx: {hash}
                                     </div>
 
-                                    <button onClick={onClose} className="w-full bg-[#0A1929] text-white font-bold py-4 rounded-xl hover:bg-gray-800 transition-colors">
-                                        View in Portfolio
-                                    </button>
+                                    <div className="space-y-4">
+                                        <a
+                                            href={`https://explorer-testnet.kortana.worchsester.xyz/tx/${hash}`}
+                                            target="_blank"
+                                            className="w-full bg-[#00E676] text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest hover:bg-green-600 transition-colors flex items-center justify-center space-x-2"
+                                        >
+                                            <ExternalLink size={14} />
+                                            <span>Blockchain Receipt</span>
+                                        </a>
+                                        <button onClick={onClose} className="w-full bg-[#0A1929] text-white font-black py-5 rounded-2xl text-[10px] uppercase tracking-widest">
+                                            Return to Portal
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>

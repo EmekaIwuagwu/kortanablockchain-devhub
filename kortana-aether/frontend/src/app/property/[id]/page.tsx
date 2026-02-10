@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useParams } from 'next/navigation';
 import { InvestmentModal } from '@/components/InvestmentModal';
+import { TrendingUp, Globe, ShoppingBag } from 'lucide-react';
 
 export default function PropertyDetail() {
     const params = useParams();
@@ -12,6 +13,8 @@ export default function PropertyDetail() {
     const [property, setProperty] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [mode, setMode] = useState<'FRACTIONAL' | 'RESIDENCY'>('FRACTIONAL');
+    const [investAmount, setInvestAmount] = useState<number>(0);
 
     useEffect(() => {
         const fetchProperty = async () => {
@@ -58,11 +61,14 @@ export default function PropertyDetail() {
             <InvestmentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
+                mode={mode}
+                initialAmount={investAmount}
                 property={{
                     id: id,
                     title: property.title,
                     tokenPrice: property.tokenPriceNum,
-                    yield: property.yieldNum
+                    yield: property.yieldNum,
+                    sellerAddress: property.sellerAddress
                 }}
             />
 
@@ -143,52 +149,104 @@ export default function PropertyDetail() {
                     {/* Right Column: Investment Card */}
                     <div className="relative">
                         <div className="sticky top-32 bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-gray-200 border border-gray-100">
+                            <div className="mb-8">
+                                <label className="block text-xs font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Select Your Path</label>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button
+                                        onClick={() => setMode('FRACTIONAL')}
+                                        className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${mode === 'FRACTIONAL' ? 'border-[#DC143C] bg-[#DC143C]/5' : 'border-gray-50 bg-gray-50/50 grayscale hover:grayscale-0'}`}
+                                    >
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#DC143C]">
+                                                <TrendingUp size={20} />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-xs font-black text-[#0A1929] uppercase">Asset Fractional</div>
+                                                <div className="text-[10px] text-gray-400 font-bold">Standard Yield Investment</div>
+                                            </div>
+                                        </div>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${mode === 'FRACTIONAL' ? 'border-[#DC143C]' : 'border-gray-300'}`}>
+                                            {mode === 'FRACTIONAL' && <div className="w-2.5 h-2.5 bg-[#DC143C] rounded-full" />}
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setMode('RESIDENCY')}
+                                        className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${mode === 'RESIDENCY' ? 'border-[#DC143C] bg-[#DC143C]/5' : 'border-gray-50 bg-gray-50/50 grayscale hover:grayscale-0'}`}
+                                    >
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#0A1929]">
+                                                <Globe size={20} />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="text-xs font-black text-[#0A1929] uppercase">Residency Path</div>
+                                                <div className="text-[10px] text-gray-400 font-bold">Golden Visa Qualification</div>
+                                            </div>
+                                        </div>
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${mode === 'RESIDENCY' ? 'border-[#DC143C]' : 'border-gray-300'}`}>
+                                            {mode === 'RESIDENCY' && <div className="w-2.5 h-2.5 bg-[#DC143C] rounded-full" />}
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="text-center mb-8 pb-8 border-b border-gray-100">
-                                <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Current Token Price</span>
-                                <div className="text-5xl font-extrabold text-[#0A1929] mt-4">{property.tokenPrice}</div>
+                                <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">{mode === 'FRACTIONAL' ? 'Market Token Price' : 'Residency Milestone Amount'}</span>
+                                <div className="text-5xl font-extrabold text-[#0A1929] mt-4">
+                                    {mode === 'FRACTIONAL' ? property.tokenPrice : `${investAmount.toLocaleString()} DNR`}
+                                </div>
                             </div>
 
                             <div className="space-y-6 mb-10">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Investment Amount (DNR)</label>
+                                    <label className="block text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">{mode === 'FRACTIONAL' ? 'Investment Amount' : 'Deposit Amount'} (DNR)</label>
                                     <div className="relative">
                                         <input
                                             type="number"
+                                            value={investAmount}
+                                            onChange={(e) => setInvestAmount(Number(e.target.value))}
                                             className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-6 py-4 text-xl font-bold text-[#0A1929] focus:outline-none focus:border-[#DC143C] focus:ring-1 focus:ring-[#DC143C] transition-all"
                                             placeholder="0.00"
                                         />
                                         <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-gray-400">DNR</span>
                                     </div>
                                 </div>
-                                <div className="flex justify-between text-sm text-gray-500 bg-gray-50 p-4 rounded-xl">
-                                    <span>Estimated Tokens:</span>
-                                    <span className="font-bold text-[#0A1929]">0 Tokens</span>
-                                </div>
+
+                                {mode === 'RESIDENCY' && (
+                                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                                        {(() => {
+                                            const threshold = property.location.includes('Portugal') ? 500000 :
+                                                property.location.includes('Greece') ? 250000 : 450000;
+                                            const progress = Math.min(100, (investAmount / threshold) * 100);
+                                            return (
+                                                <>
+                                                    <div className="flex justify-between text-xs font-black uppercase text-blue-600 mb-2">
+                                                        <span>Threshold Progress</span>
+                                                        <span>{progress.toFixed(1)}%</span>
+                                                    </div>
+                                                    <div className="w-full h-1.5 bg-blue-200/30 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-blue-600" style={{ width: `${progress}%` }} />
+                                                    </div>
+                                                    <p className="mt-2 text-[10px] text-blue-400 font-bold uppercase tracking-tighter">
+                                                        Goal: {threshold.toLocaleString()} DNR for {property.location.split(',')[1] || 'Residency'}
+                                                    </p>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
                             </div>
 
                             <button
                                 onClick={() => setIsModalOpen(true)}
-                                className="w-full bg-[#DC143C] text-white font-bold py-5 rounded-xl text-lg hover:bg-[#B22222] transition-colors shadow-xl shadow-[#DC143C]/30 transform active:scale-[0.98] transition-transform mb-4"
+                                className="w-full bg-[#DC143C] text-white font-black py-5 rounded-2xl text-xs uppercase tracking-[0.2em] hover:bg-[#B22222] transition-all shadow-xl shadow-[#DC143C]/30 transform active:scale-[0.98] flex items-center justify-center space-x-2"
                             >
-                                Invest Now
+                                <ShoppingBag size={18} />
+                                <span>{mode === 'FRACTIONAL' ? 'Authorize Investment' : 'Submit Residency Deposit'}</span>
                             </button>
 
-                            <button
-                                onClick={() => {
-                                    if (property.sellerAddress) {
-                                        window.location.href = `/messages?partner=${property.sellerAddress}`;
-                                    } else {
-                                        window.location.href = `/messages?partner=0x28e514ce1a0554b83f6d5eeee11b07d0e294d9f9`; // Default to admin
-                                    }
-                                }}
-                                className="w-full bg-[#0A1929] text-white font-bold py-5 rounded-xl text-lg hover:bg-gray-800 transition-colors shadow-xl transform active:scale-[0.98] transition-transform flex items-center justify-center space-x-3"
-                            >
-                                <span className="text-xl">💬</span>
-                                <span>Message Seller</span>
-                            </button>
-
-                            <p className="text-center text-xs text-gray-400 mt-6 leading-relaxed">
-                                By investing you agree to the <a href="#" className="underline hover:text-[#DC143C]">Terms of Service</a> & <a href="#" className="underline hover:text-[#DC143C]">Risk Disclosure</a>.
+                            <p className="text-center text-[10px] text-gray-400 mt-6 font-black uppercase tracking-widest leading-relaxed">
+                                Assets are held in a <span className="text-[#0A1929]">Legal SPV</span> & secured on-chain
                             </p>
                         </div>
                     </div>
