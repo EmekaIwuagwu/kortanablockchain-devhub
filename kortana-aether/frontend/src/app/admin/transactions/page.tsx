@@ -113,7 +113,7 @@ export default function TransactionsRegistry() {
                                         </td>
                                         <td className="p-8">
                                             <a
-                                                href={`https://explorer.kortana.worchsester.xyz/tx/${tx.txHash}`}
+                                                href={`https://explorer-testnet.kortana.worchsester.xyz/tx/${tx.txHash}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center space-x-2 text-gray-400 hover:text-[#DC143C] transition-colors font-mono text-[11px]"

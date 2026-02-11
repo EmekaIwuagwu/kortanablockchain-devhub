@@ -70,7 +70,7 @@ export const Footer = () => {
                             <li><Link href="/about" className="text-gray-400 hover:text-[#DC143C] transition-colors text-sm">About Us</Link></li>
                             <li><Link href="/how-it-works" className="text-gray-400 hover:text-[#DC143C] transition-colors text-sm">How it Works</Link></li>
                             <li><Link href="/faq" className="text-gray-400 hover:text-[#DC143C] transition-colors text-sm">FAQ & Support</Link></li>
-                            <li><Link href="/messages" className="text-gray-400 hover:text-[#DC143C] transition-colors text-sm">Contact Us</Link></li>
+                            <li><a href="mailto:support@aether.finance" className="text-gray-400 hover:text-[#DC143C] transition-colors text-sm">Contact Us</a></li>
                         </ul>
                     </div>
 

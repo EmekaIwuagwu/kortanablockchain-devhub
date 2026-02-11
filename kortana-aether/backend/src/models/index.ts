@@ -34,7 +34,10 @@ export const connectDB = async () => {
         const { default: Investment } = await import('./Investment.js');
         const { default: YieldPayout } = await import('./YieldPayout.js');
         const { default: User } = await import('./User.js');
-        const { default: Message } = await import('./Message.js');
+        const { default: Document } = await import('./Document.js');
+        const { default: Order } = await import('./Order.js');
+        const { default: GoldenVisaApplication } = await import('./GoldenVisaApplication.js');
+        const { default: GoldenVisaDeposit } = await import('./GoldenVisaDeposit.js');
 
         // Define Associations
         Investment.belongsTo(Property, { foreignKey: 'propertyAddress', targetKey: 'address', as: 'property' });
@@ -46,12 +49,26 @@ export const connectDB = async () => {
         Investment.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
         User.hasMany(Investment, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'investments' });
 
-        // Message associations
-        Message.belongsTo(User, { foreignKey: 'senderAddress', targetKey: 'walletAddress', as: 'sender' });
-        Message.belongsTo(User, { foreignKey: 'receiverAddress', targetKey: 'walletAddress', as: 'receiver' });
+        Document.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
+        User.hasMany(Document, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'documents' });
+
+        Order.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
+        User.hasMany(Order, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'orders' });
+
+        Order.belongsTo(Property, { foreignKey: 'propertyAddress', targetKey: 'address', as: 'property' });
+        Property.hasMany(Order, { foreignKey: 'propertyAddress', sourceKey: 'address', as: 'orders' });
+
+        GoldenVisaApplication.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
+        User.hasOne(GoldenVisaApplication, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'goldenVisa' });
+
+        GoldenVisaDeposit.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
+        User.hasMany(GoldenVisaDeposit, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'goldenVisaDeposits' });
+
+        GoldenVisaDeposit.belongsTo(Property, { foreignKey: 'propertyId', as: 'property' });
+        Property.hasMany(GoldenVisaDeposit, { foreignKey: 'propertyId', as: 'goldenVisaDeposits' });
 
         // Sync models
-        await sequelize.sync({ alter: true });
+        await sequelize.sync({ alter: false });
         console.log('✅ Database models synchronized.');
     } catch (error: any) {
         console.error('❌ Unable to connect to the database:', error);

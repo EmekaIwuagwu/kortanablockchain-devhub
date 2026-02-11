@@ -126,6 +126,23 @@ export default function AdminDashboard() {
                     <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.2em]">Real-time Network Feed // Node: Aether-001</p>
                 </div>
                 <div className="flex items-center space-x-4">
+                    <button
+                        onClick={async () => {
+                            if (confirm('Are you sure you want to trigger global yield distribution for all properties?')) {
+                                try {
+                                    const response = await fetch('http://localhost:3001/api/properties/yield-distribute-all', { method: 'POST' });
+                                    const data = await response.json();
+                                    alert(data.message);
+                                } catch (e) {
+                                    alert('Failed to trigger global distribution');
+                                }
+                            }
+                        }}
+                        className="bg-white border-2 border-[#FACD15] text-[#0A1929] px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#FACD15] transition-all flex items-center space-x-2 shadow-sm"
+                    >
+                        <Zap size={14} className="text-[#FACD15] group-hover:text-[#0A1929]" />
+                        <span>Global Disburse Yield</span>
+                    </button>
                     <div className="text-right">
                         <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Network Status</div>
                         <div className="text-sm font-black text-[#00E676] flex items-center justify-end">

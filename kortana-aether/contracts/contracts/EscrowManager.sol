@@ -60,8 +60,14 @@ contract EscrowManager is Ownable, ReentrancyGuard {
         require(msg.value == dinarAmount, "Incorrect Dinar amount sent");
         require(tokenAmount > 0, "Token amount must be greater than 0");
 
-        // Transfer tokens from seller/platform to this contract
-        IERC20(propertyToken).transferFrom(seller, address(this), tokenAmount);
+        // Optional: Transfer property tokens from seller to escrow if provided
+        if (propertyToken != address(0) && tokenAmount > 0) {
+            IERC20(propertyToken).transferFrom(
+                seller,
+                address(this),
+                tokenAmount
+            );
+        }
 
         escrowId = _nextEscrowId++;
         escrows[escrowId] = Escrow({

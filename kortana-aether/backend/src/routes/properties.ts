@@ -146,6 +146,22 @@ router.post('/yield-distribute', async (req, res) => {
     }
 });
 
+// Distribute Yield for ALL properties
+router.post('/yield-distribute-all', async (req, res) => {
+    try {
+        const properties = await Property.findAll();
+        for (const prop of properties) {
+            // Run distribution for each property with an address
+            if (prop.address) {
+                yieldService.distributeYield(prop.address);
+            }
+        }
+        res.json({ message: 'Global yield distribution triggered for all properties' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/properties/admin/stats
 router.get('/admin/stats', async (req, res) => {
     try {

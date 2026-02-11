@@ -1,27 +1,27 @@
 {
   "network": "kortana_testnet",
   "platformAddress": "0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9",
-  "escrowManager": "0x02A9C676d21863F5778D9A623fD62b70BBc32e23",
-  "propertyRegistry": "0xCb4211481D5647446728f4fBD88Bf69e025A3C07",
+  "escrowManager": "0x341f64F97De07e3B6d47D244B5a0A8B7a6292267",
+  "propertyRegistry": "0x59A68F2390Aafde7a3B888FB29d708D696De440c",
   "properties": [
     {
       "id": 1,
       "title": "Modern Villa in Cascais",
-      "address": "0x1692Ec0372a1c95798411b7B6D6B62eEf8230592",
+      "address": "0xb18398735D57570394678934157D5Bfb2a3e2B37",
       "symbol": "MVC"
     },
     {
       "id": 2,
       "title": "Acropolis View Apartment",
-      "address": "0x58F3359F31d132eF628A1643811Fc778F4b9c789",
+      "address": "0x95CeDFdaDc102ca6154A91e24fc5cF2ce8978f1C",
       "symbol": "AVA"
     },
     {
       "id": 3,
       "title": "Adriatic Coastal Suite",
-      "address": "0x7C4586B9ABD8cfF7A2387aa395b827c22DDf02b2",
+      "address": "0xD2b11E74C57041C56a808326Edd08524cfBb9D46",
       "symbol": "ACS"
     }
   ],
-  "timestamp": "2026-02-08T07:25:29.785Z"
+  "timestamp": "2026-02-10T06:23:08.983Z"
 }

@@ -80,7 +80,7 @@ export default function Home() {
 
         <NetworkCharts />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+        <div className="responsive-grid">
           <BlockList blocks={blocks} />
           <TransactionList transactions={transactions} />
         </div>

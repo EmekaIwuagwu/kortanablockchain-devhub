@@ -7,12 +7,20 @@ const router = Router();
 // GET /api// Get investments by user address
 router.get('/user/:address', async (req, res) => {
     try {
+        const { Op } = await import('sequelize');
+        const searchAddr = req.params.address;
+
         const investments = await Investment.findAll({
-            where: { userAddress: req.params.address },
+            where: {
+                userAddress: {
+                    [Op.like]: searchAddr
+                }
+            },
             include: [{ model: Property, as: 'property' }]
         });
         res.json({ investments });
     } catch (error: any) {
+        console.error('Error in GET /api/investments/user/:address:', error);
         res.status(500).json({ error: error.message });
     }
 });
