@@ -122,8 +122,9 @@ impl KortanaNetwork {
                                 }
                             }
                         }
+                        }
                         _ => {}
-                    },
+                    }
                     _ => {}
                 }
             }
