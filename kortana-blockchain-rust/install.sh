@@ -40,13 +40,17 @@ if [[ $EUID -eq 0 ]]; then
     # Create Swap if less than 2GB RAM
     TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
     if [ "$TOTAL_RAM" -lt 2000 ]; then
-        echo -e "${YELLOW}Detected low RAM (${TOTAL_RAM}MB). Creating 2GB Swap file...${NC}"
-        fallocate -l 2G /swapfile
-        chmod 600 /swapfile
-        mkswap /swapfile
-        swapon /swapfile
-        echo '/swapfile none swap sw 0 0' >> /etc/fstab
-        echo -e "${GREEN}✅ Swap file created successfully.${NC}"
+        if [ ! -f /swapfile ]; then
+            echo -e "${YELLOW}Detected low RAM (${TOTAL_RAM}MB). Creating 2GB Swap file...${NC}"
+            fallocate -l 2G /swapfile
+            chmod 600 /swapfile
+            mkswap /swapfile
+            swapon /swapfile
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
+            echo -e "${GREEN}✅ Swap file created successfully.${NC}"
+        else
+            echo -e "${GREEN}✅ Swap file already exists and is configured.${NC}"
+        fi
     else
         echo -e "${GREEN}✅ Sufficient RAM detected (${TOTAL_RAM}MB). skipping swap creation.${NC}"
     fi
