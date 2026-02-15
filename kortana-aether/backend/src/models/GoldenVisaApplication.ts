@@ -12,10 +12,14 @@ interface GoldenVisaAttributes {
     wealthSource: string | null;
     investmentBudget: string | null;
     summary: string | null;
+    currentPortugal: number;
+    currentGreece: number;
+    currentSpain: number;
+    currentMontenegro: number;
     status: 'ELIGIBILITY' | 'PROFILE' | 'DOCUMENTS' | 'SUBMITTED' | 'PROCESSING' | 'APPROVED_IN_PRINCIPLE' | 'COMPLETED';
 }
 
-interface GoldenVisaCreationAttributes extends Optional<GoldenVisaAttributes, 'id' | 'firstName' | 'lastName' | 'email' | 'nationality' | 'occupation' | 'wealthSource' | 'investmentBudget' | 'summary' | 'status'> { }
+interface GoldenVisaCreationAttributes extends Optional<GoldenVisaAttributes, 'id' | 'firstName' | 'lastName' | 'email' | 'nationality' | 'occupation' | 'wealthSource' | 'investmentBudget' | 'summary' | 'status' | 'currentPortugal' | 'currentGreece' | 'currentSpain' | 'currentMontenegro'> { }
 
 class GoldenVisaApplication extends Model<GoldenVisaAttributes, GoldenVisaCreationAttributes> implements GoldenVisaAttributes {
     public id!: number;
@@ -28,6 +32,10 @@ class GoldenVisaApplication extends Model<GoldenVisaAttributes, GoldenVisaCreati
     public wealthSource!: string | null;
     public investmentBudget!: string | null;
     public summary!: string | null;
+    public currentPortugal!: number;
+    public currentGreece!: number;
+    public currentSpain!: number;
+    public currentMontenegro!: number;
     public status!: 'ELIGIBILITY' | 'PROFILE' | 'DOCUMENTS' | 'SUBMITTED' | 'PROCESSING' | 'APPROVED_IN_PRINCIPLE' | 'COMPLETED';
 
     public readonly createdAt!: Date;
@@ -43,7 +51,6 @@ GoldenVisaApplication.init({
     userAddress: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
     },
     firstName: {
         type: DataTypes.STRING,
@@ -76,6 +83,26 @@ GoldenVisaApplication.init({
     summary: {
         type: DataTypes.TEXT,
         allowNull: true,
+    },
+    currentPortugal: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    currentGreece: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    currentSpain: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    currentMontenegro: {
+        type: DataTypes.FLOAT,
+        allowNull: false,
+        defaultValue: 0,
     },
     status: {
         type: DataTypes.ENUM('ELIGIBILITY', 'PROFILE', 'DOCUMENTS', 'SUBMITTED', 'PROCESSING', 'APPROVED_IN_PRINCIPLE', 'COMPLETED'),

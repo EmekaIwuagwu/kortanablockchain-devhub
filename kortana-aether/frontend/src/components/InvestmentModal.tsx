@@ -28,11 +28,47 @@ export const InvestmentModal = ({ isOpen, onClose, property, mode = 'FRACTIONAL'
     const [step, setStep] = useState(1);
     const [amount, setAmount] = useState<number>(initialAmount || (mode === 'RESIDENCY' ? 5000 : property.tokenPrice));
     const [error, setError] = useState<string | null>(null);
+    const [applications, setApplications] = useState<any[]>([]);
+    const [selectedRepoId, setSelectedRepoId] = useState<string>('');
+    const [appsLoading, setAppsLoading] = useState(false);
 
     useEffect(() => {
         if (initialAmount) setAmount(initialAmount);
         else setAmount(mode === 'RESIDENCY' ? 5000 : property.tokenPrice);
-    }, [isOpen, mode, initialAmount]);
+
+        if (isOpen && mode === 'RESIDENCY' && address) {
+            fetchApps();
+        }
+    }, [isOpen, mode, initialAmount, address]);
+
+    const fetchApps = async () => {
+        setAppsLoading(true);
+        try {
+            const res = await fetch(`http://localhost:3001/api/golden-visa/list/${address}`);
+            const data = await res.json();
+            const list = data.applications || [];
+            setApplications(list);
+            if (list.length > 0) {
+                setSelectedRepoId(list[0].id.toString());
+            } else {
+                // If no apps, maybe create one?
+                const newRes = await fetch('http://localhost:3001/api/golden-visa/new', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userAddress: address })
+                });
+                const newData = await newRes.json();
+                if (newData.application) {
+                    setApplications([newData.application]);
+                    setSelectedRepoId(newData.application.id.toString());
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching apps:', err);
+        } finally {
+            setAppsLoading(false);
+        }
+    };
 
     // FOCUS: Pure DNR Transfer (No smart contracts needed for simple testing)
     const {
@@ -68,7 +104,12 @@ export const InvestmentModal = ({ isOpen, onClose, property, mode = 'FRACTIONAL'
         try {
             // Calculate total DNR to pay (Base + 1% Fee as shown in UI)
             const amountWei = parseEther((amount * 1.01).toFixed(18).toString());
-            const platformTarget = (property.sellerAddress || contracts.platformAddress || "0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9");
+
+            // Cleanup target address (fix too-long addresses if they exist in DB)
+            let platformTarget = (property.sellerAddress || contracts.platformAddress || "0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9");
+            if (platformTarget.length > 42 && platformTarget.startsWith('0x')) {
+                platformTarget = platformTarget.substring(0, 42);
+            }
 
             // Direct DNR Transfer
             const txHash = await sendTransactionAsync({
@@ -85,6 +126,7 @@ export const InvestmentModal = ({ isOpen, onClose, property, mode = 'FRACTIONAL'
                         body: JSON.stringify({
                             userAddress: address?.toLowerCase(),
                             propertyId: property.id,
+                            applicationId: selectedRepoId,
                             amount: amount,
                             txHash: txHash || 'pending'
                         })
@@ -143,7 +185,7 @@ export const InvestmentModal = ({ isOpen, onClose, property, mode = 'FRACTIONAL'
 
                                     <div>
                                         <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">
-                                            Investment (DNR)
+                                            {mode === 'RESIDENCY' ? 'Residency Deposit (DNR)' : 'Investment (DNR)'}
                                         </label>
                                         <div className="relative">
                                             <input
@@ -155,6 +197,25 @@ export const InvestmentModal = ({ isOpen, onClose, property, mode = 'FRACTIONAL'
                                             <span className="absolute right-0 bottom-4 text-xl font-bold text-gray-400">DNR</span>
                                         </div>
                                     </div>
+
+                                    {mode === 'RESIDENCY' && applications.length > 0 && (
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">
+                                                Link to Application
+                                            </label>
+                                            <select
+                                                value={selectedRepoId}
+                                                onChange={(e) => setSelectedRepoId(e.target.value)}
+                                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-[#0A1929] focus:outline-none focus:border-[#DC143C]"
+                                            >
+                                                {applications.map(app => (
+                                                    <option key={app.id} value={app.id}>
+                                                        Application #{app.id} ({app.status})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     <div className="bg-[#DC143C]/5 p-6 rounded-2xl space-y-3">
                                         <div className="flex justify-between text-sm">

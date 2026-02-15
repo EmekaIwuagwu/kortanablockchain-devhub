@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { Op } from 'sequelize';
 import Property from '../models/Property.js';
 import Investment from '../models/Investment.js';
+import GoldenVisaDeposit from '../models/GoldenVisaDeposit.js';
 import YieldPayout from '../models/YieldPayout.js';
 import yieldService from '../services/yield.js';
 import { fn, col } from 'sequelize';
@@ -10,8 +12,85 @@ const router = Router();
 // GET /api/properties
 router.get('/', async (req, res) => {
     try {
-        const properties = await Property.findAll();
-        // Parse images JSON for frontend
+        const { page = '1', limit = '9', userAddress, excludeInvested = 'true', type, search } = req.query;
+        const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+        const pageSize = parseInt(limit as string);
+
+        let whereClause: any = {};
+        const andClauses: any[] = [];
+
+        // 1. User Interaction Filtering
+        if (userAddress && excludeInvested === 'true') {
+            const addrLower = (userAddress as string).toLowerCase();
+            console.log(`[DEBUG] Filtering properties for user: ${addrLower}`);
+
+            const userInvestments = await Investment.findAll({
+                where: { userAddress: addrLower },
+                attributes: ['propertyAddress']
+            });
+            const investedAddresses = userInvestments.map(i => (i.propertyAddress || '').toLowerCase()).filter(a => a !== '');
+
+            const userDeposits = await GoldenVisaDeposit.findAll({
+                where: { userAddress: addrLower },
+                attributes: ['propertyId']
+            });
+            const depositedIds = userDeposits.map(d => d.propertyId).filter(id => id != null);
+
+            console.log(`[DEBUG] Found ${investedAddresses.length} investments and ${depositedIds.length} deposits for exclusion.`);
+
+            if (investedAddresses.length > 0) {
+                // Use Op.and to combine filters safely
+                andClauses.push({
+                    address: {
+                        [Op.notIn]: investedAddresses
+                    }
+                });
+            }
+            if (depositedIds.length > 0) {
+                andClauses.push({
+                    id: {
+                        [Op.notIn]: depositedIds
+                    }
+                });
+            }
+        }
+
+        // 2. Type Filtering
+        if (type && type !== 'All Properties') {
+            if (type === 'Golden Visa') {
+                andClauses.push({ goldenVisaEligible: true });
+            } else if (type === 'High Yield (>8%)') {
+                andClauses.push({ yield: { [Op.gt]: 8 } });
+            } else if (type === 'Residential') {
+                andClauses.push({ type: { [Op.in]: ['Residential', 'High Yield'] } });
+            } else {
+                andClauses.push({ type: type as string });
+            }
+        }
+
+        // 3. Search Filtering
+        if (search) {
+            andClauses.push({
+                [Op.or]: [
+                    { title: { [Op.like]: `%${search}%` } },
+                    { location: { [Op.like]: `%${search}%` } }
+                ]
+            });
+        }
+
+        if (andClauses.length > 0) {
+            whereClause = { [Op.and]: andClauses };
+        }
+
+        // Fetch properties with pagination and filtering in DB
+        const { count, rows: properties } = await Property.findAndCountAll({
+            where: whereClause,
+            limit: pageSize,
+            offset: offset,
+            order: [['createdAt', 'DESC']]
+        });
+
+        // Parse images JSON
         const parsedProperties = properties.map(p => {
             const data = p.toJSON();
             try {
@@ -21,7 +100,13 @@ router.get('/', async (req, res) => {
             }
             return data;
         });
-        res.json({ properties: parsedProperties, total: parsedProperties.length });
+
+        res.json({
+            properties: parsedProperties,
+            total: count,
+            page: parseInt(page as string),
+            totalPages: Math.ceil(count / pageSize)
+        });
     } catch (error) {
         console.error('Error fetching properties:', error);
         res.status(500).json({ message: 'Internal Server Error' });

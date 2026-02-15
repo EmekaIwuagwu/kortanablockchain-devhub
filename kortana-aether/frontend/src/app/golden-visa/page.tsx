@@ -19,7 +19,8 @@ import {
     ArrowRight,
     ShoppingBag,
     History,
-    TrendingUp
+    TrendingUp,
+    Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAccount } from 'wagmi';
@@ -46,6 +47,7 @@ export default function GoldenVisa() {
     const [investments, setInvestments] = useState<any[]>([]);
     const [userDocuments, setUserDocuments] = useState<any[]>([]);
     const [residencyDeposits, setResidencyDeposits] = useState<any[]>([]);
+    const [allApplications, setAllApplications] = useState<any[]>([]);
 
     const [formData, setFormData] = useState({
         firstName: '',
@@ -75,6 +77,7 @@ export default function GoldenVisa() {
     const initData = async () => {
         setLoading(true);
         try {
+            await fetchApplicationsList();
             await fetchApplication();
             await fetchInvestments();
             await fetchUserDocuments();
@@ -85,28 +88,58 @@ export default function GoldenVisa() {
         }
     };
 
+    const fetchApplicationsList = async () => {
+        try {
+            const res = await fetch(`http://localhost:3001/api/golden-visa/list/${address}`);
+            const data = await res.json();
+            setAllApplications(data.applications || []);
+        } catch (err) {
+            console.error('Error fetching applications list:', err);
+        }
+    };
+
+    const startNewApplication = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`http://localhost:3001/api/golden-visa/new`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userAddress: address })
+            });
+            if (res.ok) {
+                await initData();
+            }
+        } catch (err) {
+            console.error('Error starting new application:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const switchApplication = (app: any) => {
+        setAppData(app);
+        setStatus(app.status);
+        const deposits = app.goldenVisaDeposits || [];
+        setResidencyDeposits(deposits);
+        setFormData({
+            firstName: app.firstName || '',
+            lastName: app.lastName || '',
+            email: app.email || '',
+            nationality: app.nationality || '',
+            occupation: app.occupation || '',
+            wealthSource: app.wealthSource || '',
+            investmentBudget: app.investmentBudget || '',
+            summary: app.summary || ''
+        });
+        updateEligibility(investments, deposits);
+    };
+
     const fetchApplication = async () => {
         try {
             const res = await fetch(`http://localhost:3001/api/golden-visa/${address}`);
             const data = await res.json();
             if (data.application) {
-                setAppData(data.application);
-                setStatus(data.application.status);
-                const deposits = data.application.goldenVisaDeposits || [];
-                setResidencyDeposits(deposits);
-                setFormData({
-                    firstName: data.application.firstName || '',
-                    lastName: data.application.lastName || '',
-                    email: data.application.email || '',
-                    nationality: data.application.nationality || '',
-                    occupation: data.application.occupation || '',
-                    wealthSource: data.application.wealthSource || '',
-                    investmentBudget: data.application.investmentBudget || '',
-                    summary: data.application.summary || ''
-                });
-
-                // Trigger eligibility check after setting data
-                updateEligibility(investments, deposits);
+                switchApplication(data.application);
             }
         } catch (error) {
             console.error('App fetch error:', error);
@@ -160,14 +193,17 @@ export default function GoldenVisa() {
     };
 
     const updateStatus = async (newStatus: AppStatus) => {
+        if (!appData?.id) return;
         try {
-            const res = await fetch(`http://localhost:3001/api/golden-visa/${address}`, {
+            const res = await fetch(`http://localhost:3001/api/golden-visa/id/${appData.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             });
             if (res.ok) {
                 setStatus(newStatus);
+                setAppData((prev: any) => prev ? { ...prev, status: newStatus } : null);
+                await fetchApplicationsList();
             }
         } catch (error) {
             console.error('Status update error:', error);
@@ -176,15 +212,21 @@ export default function GoldenVisa() {
 
     const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!appData?.id) return;
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:3001/api/golden-visa/${address}`, {
+            const res = await fetch(`http://localhost:3001/api/golden-visa/id/${appData.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...formData, status: 'DOCUMENTS' })
             });
             if (res.ok) {
                 setStatus('DOCUMENTS');
+                const updated = await res.json();
+                if (updated.application) {
+                    setAppData(updated.application);
+                }
+                await fetchApplicationsList();
             }
         } catch (error) {
             console.error('Form submit error:', error);
@@ -323,9 +365,20 @@ export default function GoldenVisa() {
                         <p className="text-gray-500 max-w-sm mx-auto leading-relaxed font-medium">
                             Your application is currently under **Legal Review**. Our compliance team is verifying your documentation against EU standards.
                         </p>
-                        <div className="mt-10 p-6 bg-amber-50 border border-amber-100 rounded-3xl inline-flex items-center space-x-3">
-                            <History size={20} className="text-amber-500" />
-                            <span className="text-xs font-black uppercase text-amber-600 tracking-widest">Expected Turnaround: 24-48 Hours</span>
+
+                        <div className="flex flex-col items-center space-y-6 mt-10">
+                            <div className="p-6 bg-amber-50 border border-amber-100 rounded-3xl inline-flex items-center space-x-3">
+                                <History size={20} className="text-amber-500" />
+                                <span className="text-xs font-black uppercase text-amber-600 tracking-widest">Expected Turnaround: 24-48 Hours</span>
+                            </div>
+
+                            {/* Dev/Demo Bypass */}
+                            <button
+                                onClick={() => updateStatus('APPROVED_IN_PRINCIPLE')}
+                                className="text-[10px] font-black text-gray-300 hover:text-[#DC143C] transition-colors border border-dashed border-gray-200 px-4 py-2 rounded-lg"
+                            >
+                                [DEV] SIMULATE LEGAL APPROVAL
+                            </button>
                         </div>
                     </motion.div>
                 );
@@ -339,7 +392,21 @@ export default function GoldenVisa() {
                                 <FileCheck size={32} />
                             </div>
                             <h3 className="text-3xl font-black text-green-600 mb-2">Approved in Principle</h3>
-                            <p className="text-green-700/70 font-medium max-w-xs mx-auto">Congratulations! Your eligibility has been verified. You may now proceed with your final investment.</p>
+                            <p className="text-green-700/70 font-medium max-w-xs mx-auto mb-6">Congratulations! Your eligibility has been verified. You may now proceed with your final investment to secure your residency.</p>
+
+                            {residencyDeposits.length > 0 && (
+                                <div className="bg-white/50 p-6 rounded-2xl border border-green-200 inline-block text-left w-full max-w-sm">
+                                    <h4 className="text-[10px] font-black uppercase text-green-800 mb-3 tracking-widest">Linked Assets ({residencyDeposits.length})</h4>
+                                    <div className="space-y-2">
+                                        {residencyDeposits.map((dep, i) => (
+                                            <div key={i} className="flex justify-between items-center text-xs font-bold text-green-700">
+                                                <span>{dep.property?.title}</span>
+                                                <span>€{dep.amount.toLocaleString()}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <Link href="/marketplace">
@@ -436,6 +503,44 @@ export default function GoldenVisa() {
                     </div>
 
                     <div className="lg:col-span-4 space-y-8">
+                        {/* Application History */}
+                        <section className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-[10px] font-black text-[#0A1929] uppercase tracking-widest flex items-center">
+                                    <Globe size={14} className="mr-2 text-[#DC143C]" />
+                                    Application History ({allApplications.length})
+                                </h3>
+                                <button
+                                    onClick={startNewApplication}
+                                    className="p-2 bg-gray-50 rounded-full hover:bg-[#DC143C] hover:text-white transition-all group"
+                                    title="Start New Application"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                            <div className="space-y-3 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
+                                {allApplications.map((app, i) => (
+                                    <div
+                                        key={app.id}
+                                        onClick={() => switchApplication(app)}
+                                        className={`p-4 rounded-2xl border cursor-pointer transition-all ${appData?.id === app.id ? 'bg-[#0A1929] border-[#0A1929] text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-600 hover:border-[#DC143C]'}`}
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.1em]">
+                                                {app.status.replace(/_/g, ' ')}
+                                            </span>
+                                            <span className="text-[8px] opacity-60 font-bold uppercase">
+                                                {new Date(app.createdAt).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="text-[11px] font-bold truncate">
+                                            {app.firstName ? `${app.firstName} ${app.lastName}` : `Draft Application #${app.id}`}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
                         {/* Financial Progress Section */}
                         <section className="bg-[#0A1929] text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-40 h-40 bg-[#DC143C]/20 blur-[60px] rounded-full -mr-20 -mt-20"></div>
@@ -465,7 +570,7 @@ export default function GoldenVisa() {
                             </div>
                         </section>
 
-                        {/* Payment History */}
+                        {/* Payment Ledger */}
                         <section className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm">
                             <h3 className="text-[10px] font-black text-[#0A1929] uppercase tracking-widest mb-6 flex items-center">
                                 <History size={14} className="mr-2 text-[#DC143C]" />

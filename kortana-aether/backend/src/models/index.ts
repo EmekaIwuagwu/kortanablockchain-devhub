@@ -58,8 +58,9 @@ export const connectDB = async () => {
         Order.belongsTo(Property, { foreignKey: 'propertyAddress', targetKey: 'address', as: 'property' });
         Property.hasMany(Order, { foreignKey: 'propertyAddress', sourceKey: 'address', as: 'orders' });
 
+        // Golden Visa Persistence Fixes
         GoldenVisaApplication.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
-        User.hasOne(GoldenVisaApplication, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'goldenVisa' });
+        User.hasMany(GoldenVisaApplication, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'goldenVisaApplications' });
 
         GoldenVisaDeposit.belongsTo(User, { foreignKey: 'userAddress', targetKey: 'walletAddress', as: 'user' });
         User.hasMany(GoldenVisaDeposit, { foreignKey: 'userAddress', sourceKey: 'walletAddress', as: 'goldenVisaDeposits' });
@@ -67,9 +68,12 @@ export const connectDB = async () => {
         GoldenVisaDeposit.belongsTo(Property, { foreignKey: 'propertyId', as: 'property' });
         Property.hasMany(GoldenVisaDeposit, { foreignKey: 'propertyId', as: 'goldenVisaDeposits' });
 
+        GoldenVisaDeposit.belongsTo(GoldenVisaApplication, { foreignKey: 'applicationId', as: 'application' });
+        GoldenVisaApplication.hasMany(GoldenVisaDeposit, { foreignKey: 'applicationId', as: 'goldenVisaDeposits' });
+
         // Sync models
-        await sequelize.sync({ alter: false });
-        console.log('✅ Database models synchronized.');
+        await sequelize.sync({ alter: true });
+        console.log('✅ Database models synchronized with schema changes.');
     } catch (error: any) {
         console.error('❌ Unable to connect to the database:', error);
         // Do not exit if it's just a sync error, but log it

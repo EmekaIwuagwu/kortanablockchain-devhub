@@ -5,6 +5,7 @@ interface GoldenVisaDepositAttributes {
     id: number;
     userAddress: string;
     propertyId: number;
+    applicationId: number | null;
     amount: number;
     txHash: string;
 }
@@ -15,6 +16,7 @@ class GoldenVisaDeposit extends Model<GoldenVisaDepositAttributes, GoldenVisaDep
     public id!: number;
     public userAddress!: string;
     public propertyId!: number;
+    public applicationId!: number | null;
     public amount!: number;
     public txHash!: string;
 
@@ -35,6 +37,10 @@ GoldenVisaDeposit.init({
     propertyId: {
         type: DataTypes.INTEGER,
         allowNull: false,
+    },
+    applicationId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
     },
     amount: {
         type: DataTypes.FLOAT,

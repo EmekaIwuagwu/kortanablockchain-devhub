@@ -65,6 +65,7 @@ export default function Portfolio() {
     const { address, isConnected } = useAccount();
     const [investments, setInvestments] = useState<any[]>([]);
     const [payouts, setPayouts] = useState<any[]>([]);
+    const [gvApplications, setGvApplications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -84,6 +85,11 @@ export default function Portfolio() {
                 const payResponse = await fetch(`http://localhost:3001/api/investments/payouts/user/${address}`);
                 const payData = await payResponse.json();
                 setPayouts(payData.payouts || []);
+
+                // Fetch Golden Visa Applications (with deposits)
+                const gvResponse = await fetch(`http://localhost:3001/api/golden-visa/list/${address}`);
+                const gvData = await gvResponse.json();
+                setGvApplications(gvData.applications || []);
 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -116,9 +122,17 @@ export default function Portfolio() {
         }, 0);
 
         const totalEarned = payouts.reduce((acc, p) => acc + parseFloat(ethers.formatEther(p.amountDinar)), 0);
-        const propertiesCount = new Set(investments.map(inv => inv.propertyAddress)).size;
 
-        return { totalValue, monthlyYield, totalEarned, propertiesCount };
+        // Count residency assets
+        const gvDeposits = gvApplications.flatMap(app => app.goldenVisaDeposits || []);
+        const residencyTotal = gvDeposits.reduce((acc, dep) => acc + parseFloat(dep.amount), 0);
+
+        const propertiesCount = new Set([
+            ...investments.map(inv => inv.propertyAddress),
+            ...gvDeposits.map(dep => dep.propertyId)
+        ]).size;
+
+        return { totalValue: totalValue + residencyTotal, monthlyYield, totalEarned, propertiesCount, residencyTotal };
     }, [investments, payouts]);
 
     // Allocation Data
@@ -376,56 +390,103 @@ export default function Portfolio() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {investments.length > 0 ? (
-                                        investments.map((inv, i) => {
-                                            const valuation = parseFloat(inv.property?.valuationUSD || 0);
-                                            const supply = parseFloat(inv.property?.totalSupply || 1) / 10 ** 18;
-                                            const marketValue = parseFloat(inv.tokenAmount) * (valuation / (supply || 1));
+                                    {investments.length > 0 || gvApplications.some(app => app.goldenVisaDeposits?.length > 0) ? (
+                                        <>
+                                            {/* Standard Investments */}
+                                            {investments.map((inv, i) => {
+                                                const valuation = parseFloat(inv.property?.valuationUSD || 0);
+                                                const supply = parseFloat(inv.property?.totalSupply || 1) / 10 ** 18;
+                                                const marketValue = parseFloat(inv.tokenAmount) * (valuation / (supply || 1));
 
-                                            return (
+                                                return (
+                                                    <motion.tr
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        transition={{ delay: i * 0.1 }}
+                                                        key={`inv-${i}`}
+                                                        className="hover:bg-[#F8FAFC] transition-all group"
+                                                    >
+                                                        <td className="p-10">
+                                                            <div className="flex items-center space-x-6">
+                                                                <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md group-hover:scale-110 transition-transform text-xs">
+                                                                    <img src={JSON.parse(inv.property?.images || '[]')[0] || 'https://via.placeholder.com/80'} alt="" className="w-full h-full object-cover" />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-black text-lg text-[#0A1929] group-hover:text-[#DC143C] transition-colors">{inv.property?.title}</div>
+                                                                    <div className="flex items-center space-x-2 mt-1">
+                                                                        <span className="text-[8px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-black">FRACTIONAL</span>
+                                                                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{inv.property?.location}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-10 text-center">
+                                                            <div className="font-black text-[#0A1929] text-xl">{parseInt(inv.tokenAmount).toLocaleString()}</div>
+                                                            <div className="text-[10px] text-gray-400 font-black uppercase tracking-tighter mt-1">{inv.property?.symbol} UNITS</div>
+                                                        </td>
+                                                        <td className="p-10 text-center">
+                                                            <div className="font-black text-[#0A1929] text-xl">€{marketValue.toLocaleString()}</div>
+                                                            <div className="text-[10px] text-gray-400 font-black uppercase tracking-tighter mt-1">Live NAV</div>
+                                                        </td>
+                                                        <td className="p-10 text-center">
+                                                            <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-xl font-black text-sm">
+                                                                {inv.property?.yield}% APY
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-10 text-right">
+                                                            <Link href={`/property/${inv.property?.id}`} className="inline-flex items-center space-x-2 bg-white border border-gray-100 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0A1929] hover:bg-[#0A1929] hover:text-white transition-all shadow-sm">
+                                                                <span>Control</span>
+                                                                <ArrowUpRight size={14} />
+                                                            </Link>
+                                                        </td>
+                                                    </motion.tr>
+                                                )
+                                            })}
+
+                                            {/* Residency Deposits */}
+                                            {gvApplications.flatMap(app => (app.golden_visa_deposits || app.goldenVisaDeposits || []).map((dep: any, i: number) => (
                                                 <motion.tr
                                                     initial={{ opacity: 0 }}
                                                     animate={{ opacity: 1 }}
-                                                    transition={{ delay: i * 0.1 }}
-                                                    key={i}
-                                                    className="hover:bg-[#F8FAFC] transition-all group"
+                                                    key={`gv-${app.id}-${i}`}
+                                                    className="hover:bg-red-50/30 transition-all group"
                                                 >
                                                     <td className="p-10">
                                                         <div className="flex items-center space-x-6">
                                                             <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md group-hover:scale-110 transition-transform">
-                                                                <img src={JSON.parse(inv.property?.images || '[]')[0] || 'https://via.placeholder.com/80'} alt="" className="w-full h-full object-cover" />
+                                                                <img src={JSON.parse(dep.property?.images || '[]')[0] || 'https://via.placeholder.com/80'} alt="" className="w-full h-full object-cover" />
                                                             </div>
                                                             <div>
-                                                                <div className="font-black text-lg text-[#0A1929] group-hover:text-[#DC143C] transition-colors">{inv.property?.title}</div>
+                                                                <div className="font-black text-lg text-[#0A1929] group-hover:text-[#DC143C] transition-colors">{dep.property?.title}</div>
                                                                 <div className="flex items-center space-x-2 mt-1">
-                                                                    <Globe size={10} className="text-gray-300" />
-                                                                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{inv.property?.location}, {inv.property?.country}</span>
+                                                                    <span className="text-[8px] bg-[#DC143C]/10 text-[#DC143C] px-2 py-0.5 rounded-full font-black">RESIDENCY</span>
+                                                                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Application #{app.id}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="p-10 text-center">
-                                                        <div className="font-black text-[#0A1929] text-xl">{parseInt(inv.tokenAmount).toLocaleString()}</div>
-                                                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-tighter mt-1">{inv.property?.symbol} UNITS</div>
+                                                        <div className="font-black text-[#0A1929] text-xl">1</div>
+                                                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-tighter mt-1">DEPOSIT UNIT</div>
                                                     </td>
                                                     <td className="p-10 text-center">
-                                                        <div className="font-black text-[#0A1929] text-xl">€{marketValue.toLocaleString()}</div>
-                                                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-tighter mt-1">Live NAV</div>
+                                                        <div className="font-black text-[#DC143C] text-xl">€{parseFloat(dep.amount).toLocaleString()}</div>
+                                                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-tighter mt-1">Locked Capital</div>
                                                     </td>
                                                     <td className="p-10 text-center">
-                                                        <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-xl font-black text-sm">
-                                                            {inv.property?.yield}% APY
+                                                        <div className="inline-flex items-center px-4 py-2 bg-amber-50 text-amber-600 rounded-xl font-black text-xs uppercase">
+                                                            Residency Path
                                                         </div>
                                                     </td>
                                                     <td className="p-10 text-right">
-                                                        <Link href={`/property/${inv.property?.id}`} className="inline-flex items-center space-x-2 bg-white border border-gray-100 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0A1929] hover:bg-[#0A1929] hover:text-white transition-all shadow-sm">
-                                                            <span>Control</span>
+                                                        <Link href="/golden-visa" className="inline-flex items-center space-x-2 bg-white border border-gray-100 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0A1929] hover:bg-[#DC143C] hover:text-white transition-all shadow-sm">
+                                                            <span>Manage Visa</span>
                                                             <ArrowUpRight size={14} />
                                                         </Link>
                                                     </td>
                                                 </motion.tr>
-                                            )
-                                        })
+                                            )))}
+                                        </>
                                     ) : (
                                         <tr>
                                             <td colSpan={5} className="p-32 text-center">
