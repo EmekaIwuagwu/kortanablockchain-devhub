@@ -1,0 +1,142 @@
+﻿cargo :     Checking kortana-blockchain-rust v0.1.0 
+(C:\Users\emi\Desktop\blockchains\kortanablockchain-
+devhub\kortana-blockchain-rust)
+At line:1 char:1
++ cargo check 2>&1 | out-file -encoding utf8 
+compile_err.txt; cat compi ...
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Ch 
+   ecking ko...lockchain-rust):String) [], RemoteE  
+  xception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: unused import: `Keccak256`
+  --> src\rpc\mod.rs:44:20
+   |
+44 | use sha3::{Digest, Keccak256};
+   |                    ^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of 
+`#[warn(unused)]`) on by default
+
+error[E0308]: mismatched types
+   --> src\rpc\mod.rs:736:25
+    |
+736 |                         topics, 
+    |                         ^^^^^^ expected 
+`Option<Vec<Option<Value>>>`, found 
+`Option<Vec<Value>>`
+    |
+    = note: expected enum `std::option::Option<Vec<s
+td::option::Option<serde_json::Value>>>`
+               found enum 
+`std::option::Option<Vec<serde_json::Value>>`
+
+warning: unused variable: `value`
+   --> src\vm\evm.rs:535:25
+    |
+535 |                     let value = 
+Self::u256_to_u128(self.stack.pop()?);
+    |                         ^^^^^
+    |
+    = note: `#[warn(unused_variables)]` (part of 
+`#[warn(unused)]`) on by default
+help: if this is intentional, prefix it with an 
+underscore
+    |
+535 |                     let _value = 
+Self::u256_to_u128(self.stack.pop()?);
+    |                         +
+help: you might have meant to pattern match on the 
+similarly named constant `MIN_GAS_PRICE`
+    |
+535 -                     let value = 
+Self::u256_to_u128(self.stack.pop()?);
+535 +                     let 
+parameters::MIN_GAS_PRICE = 
+Self::u256_to_u128(self.stack.pop()?);
+    |
+
+warning: unused variable: `res`
+   --> src\vm\evm.rs:874:17
+    |
+874 |         let mut res = [0u8; 32];
+    |                 ^^^ help: if this is 
+intentional, prefix it with an underscore: `_res`
+
+warning: unused variable: `temp`
+   --> src\vm\evm.rs:875:17
+    |
+875 |         let mut temp = [0u32; 16]; // 16-bit 
+chunks for multiplication
+    |                 ^^^^ help: if this is 
+intentional, prefix it with an underscore: `_temp`
+
+warning: unused variable: `carry`
+   --> src\vm\evm.rs:886:21
+    |
+886 |             let mut carry = 0u32;
+    |                     ^^^^^
+    |
+help: if this is intentional, prefix it with an 
+underscore
+    |
+886 |             let mut _carry = 0u32;
+    |                     +
+help: you might have meant to pattern match on the 
+similarly named constant `BRANCHES`
+    |
+886 -             let mut carry = 0u32;
+886 +             let mut network::p2p::KortanaNetwo
+rk::run::{closure#0}::BRANCHES = 0u32;
+    |
+
+warning: unused variable: `result`
+   --> src\vm\evm.rs:897:17
+    |
+897 |         let mut result = [0u64; 4];
+    |                 ^^^^^^ help: if this is 
+intentional, prefix it with an underscore: `_result`
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:874:13
+    |
+874 |         let mut res = [0u8; 32];
+    |             ----^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:875:13
+    |
+875 |         let mut temp = [0u32; 16]; // 16-bit 
+chunks for multiplication
+    |             ----^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:886:17
+    |
+886 |             let mut carry = 0u32;
+    |                 ----^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:897:13
+    |
+897 |         let mut result = [0u64; 4];
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+For more information about this error, try `rustc 
+--explain E0308`.
+warning: `kortana-blockchain-rust` (lib) generated 
+10 warnings
+error: could not compile `kortana-blockchain-rust` 
+(lib) due to 1 previous error; 10 warnings emitted

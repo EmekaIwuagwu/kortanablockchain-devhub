@@ -260,3 +260,115 @@ Bytecode length: 3451, Gas: 10000000
 ========== [EVM DEBUG] Starting execution ==========
 Bytecode length: 3451, Gas: 10000000
 [EVM SUCCESS] Execution completed - Iterations: 105, Gas remaining: 9999682, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 405, Gas: 9947000
+[EVM SUCCESS] Execution completed - Iterations: 23, Gas remaining: 9926951, Return data: 369 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 92, Gas remaining: 9999711, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 979000
+[EVM SUCCESS] Execution completed - Iterations: 128, Gas remaining: 958739, Return data: 0 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 92, Gas remaining: 9999711, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 405, Gas: 7947000
+[EVM SUCCESS] Execution completed - Iterations: 23, Gas remaining: 7926951, Return data: 369 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 92, Gas remaining: 9999711, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 479000
+[EVM SUCCESS] Execution completed - Iterations: 128, Gas remaining: 458739, Return data: 0 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 92, Gas remaining: 9999711, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 5468, Gas: 7947000
+[EVM SUCCESS] Execution completed - Iterations: 847, Gas remaining: 7844083, Return data: 3451 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 335, Gas remaining: 9998929, Return data: 96 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 344, Gas remaining: 9998904, Return data: 96 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 105, Gas remaining: 9999682, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 206, Gas remaining: 9999441, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 979000
+[EVM SUCCESS] Execution completed - Iterations: 524, Gas remaining: 937089, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 206, Gas remaining: 9999441, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 206, Gas remaining: 9999441, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 405, Gas: 7947000
+[EVM SUCCESS] Execution completed - Iterations: 23, Gas remaining: 7926951, Return data: 369 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 92, Gas remaining: 9999711, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 479000
+[EVM SUCCESS] Execution completed - Iterations: 128, Gas remaining: 458739, Return data: 0 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 369, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 92, Gas remaining: 9999711, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 5468, Gas: 7947000
+[EVM SUCCESS] Execution completed - Iterations: 847, Gas remaining: 7844083, Return data: 3451 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 335, Gas remaining: 9998929, Return data: 96 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 344, Gas remaining: 9998904, Return data: 96 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 105, Gas remaining: 9999682, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 206, Gas remaining: 9999441, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 979000
+[EVM SUCCESS] Execution completed - Iterations: 524, Gas remaining: 937089, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 206, Gas remaining: 9999441, Return data: 32 bytes
+
+========== [EVM DEBUG] Starting execution ==========
+Bytecode length: 3451, Gas: 10000000
+[EVM SUCCESS] Execution completed - Iterations: 206, Gas remaining: 9999441, Return data: 32 bytes

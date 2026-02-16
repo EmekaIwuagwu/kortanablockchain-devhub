@@ -119,7 +119,12 @@ async fn main() {
 
     // 1. Initialize Storage
     print!("{}[1/5] Initializing Database... {}", CLR_YELLOW, CLR_RESET);
-    let storage = Arc::new(kortana_blockchain_rust::storage::Storage::new("./data/kortana.db"));
+    let db_dir = std::path::Path::new("data");
+    if !db_dir.exists() {
+        std::fs::create_dir_all(db_dir).expect("Failed to create data directory");
+    }
+    let db_path = db_dir.join("kortana.db");
+    let storage = Arc::new(kortana_blockchain_rust::storage::Storage::new(db_path.to_str().unwrap()));
     println!("{}OK{}", CLR_GREEN, CLR_RESET);
 
     // 2. Load or Initialize State

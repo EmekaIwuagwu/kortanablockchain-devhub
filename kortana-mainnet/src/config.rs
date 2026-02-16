@@ -31,7 +31,7 @@ impl NodeConfig {
     /// 
     /// Optional environment variables:
     /// - RPC_ADDR: RPC server address (default: "0.0.0.0:8545")
-    /// - P2P_ADDR: P2P network address (default: "/ip4/0.0.0.0/tcp/30333")
+    /// - P2P_ADDR: P2P network address (default: "/ip4/0.0.0.0/tcp/30334")
     /// - DB_PATH: Database directory (default: "./data/kortana.db")
     pub fn from_env() -> Result<Self> {
         // Load validator private key (REQUIRED for production)
@@ -55,7 +55,7 @@ impl NodeConfig {
             .unwrap_or_else(|_| "0.0.0.0:8545".to_string());
         
         let p2p_addr = env::var("P2P_ADDR")
-            .unwrap_or_else(|_| "/ip4/0.0.0.0/tcp/30333".to_string());
+            .unwrap_or_else(|_| "/ip4/0.0.0.0/tcp/30334".to_string());
         
         let db_path = env::var("DB_PATH")
             .unwrap_or_else(|_| "./data/kortana.db".to_string());
@@ -83,7 +83,7 @@ impl NodeConfig {
                 .expect("Hardcoded key should always decode"),
             rpc_addr: "0.0.0.0:8545".to_string(),
             p2p_addr: "/ip4/0.0.0.0/tcp/30333".to_string(),
-            db_path: "./data/kortana.db".to_string(),
+            db_path: "data/kortana.db".to_string(),
         }
     }
 }
