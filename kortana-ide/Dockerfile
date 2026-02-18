@@ -18,11 +18,10 @@ RUN dotnet publish backend/KortanaStudio.Backend.csproj -c Release -o /app/publi
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Install Node.js and Solidity Compiler (solc) for real compilation
-RUN apt-get update && apt-get install -y curl gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g solc \
+# Install Official Solidity Native Binary (Static Linux)
+RUN apt-get update && apt-get install -y wget ca-certificates \
+    && wget -O /usr/bin/solc https://github.com/ethereum/solidity/releases/download/v0.8.20/solc-static-linux \
+    && chmod +x /usr/bin/solc \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Backend

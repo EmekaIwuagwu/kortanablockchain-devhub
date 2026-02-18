@@ -71,7 +71,7 @@ namespace KortanaStudio.Backend.Services
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "solc",
-                    Arguments = $"--combined-json abi,bin {tempFile}",
+                    Arguments = $"--combined-json abi,bin,bin-runtime {tempFile}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -90,7 +90,7 @@ namespace KortanaStudio.Backend.Services
                      _logger.LogWarning($"solc failed: {error}");
                      return new CompilationResult { 
                          Status = "error", 
-                         Errors = new List<CompilationError> { new CompilationError { Severity = "error", Message = "Compiler Error: Check syntax or contract version." } } 
+                         Errors = new List<CompilationError> { new CompilationError { Severity = "error", Message = $"Solidity Error: {error}" } } 
                      };
                 }
 
@@ -104,10 +104,12 @@ namespace KortanaStudio.Backend.Services
                     string fullName = contractProperty.Name;
                     string name = fullName.Split(':').Last();
                     
+                    // CRITICAL FIX: ABI is returned as a JSON object/array, not a string in the combine-json output.
+                    // We must use GetRawText() to capture the actual JSON structure.
                     results.Add(new CompiledContract {
                         Name = name,
                         Bytecode = "0x" + contractProperty.Value.GetProperty("bin").GetString(),
-                        Abi = contractProperty.Value.GetProperty("abi").GetString() ?? "[]"
+                        Abi = contractProperty.Value.GetProperty("abi").GetRawText()
                     });
                 }
 
