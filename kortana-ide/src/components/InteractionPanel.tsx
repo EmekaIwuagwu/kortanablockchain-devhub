@@ -7,7 +7,7 @@ import { BlockchainService } from '../services/BlockchainService';
 
 const InteractionPanel: React.FC = () => {
     const { isConnected, address } = useSelector((state: RootState) => state.wallet);
-    const { lastDeployment } = useSelector((state: RootState) => state.deployment);
+    const lastDeployment = useSelector((state: RootState) => state.deployment.lastDeployment);
 
     const [inputs, setInputs] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -41,8 +41,19 @@ const InteractionPanel: React.FC = () => {
         );
     }
 
-    const { abi, address: contractAddress, contractName } = lastDeployment;
-    const functions = abi.filter((item: any) => item.type === 'function');
+    // Defensive ABI Parsing: C# backend might return ABI as a JSON string
+    let abi = lastDeployment.abi;
+    if (typeof abi === 'string') {
+        try {
+            abi = JSON.parse(abi);
+        } catch (e) {
+            console.error("Failed to parse ABI string", e);
+            abi = [];
+        }
+    }
+
+    const { address: contractAddress, contractName } = lastDeployment;
+    const functions = Array.isArray(abi) ? abi.filter((item: any) => item.type === 'function') : [];
 
     const handleCall = async (fn: any) => {
         const fnId = `${fn.name}-${fn.inputs.length}`;

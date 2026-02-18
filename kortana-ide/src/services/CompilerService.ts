@@ -57,7 +57,17 @@ export class CompilerService {
                 throw new Error(errorData.message || `HTTP Error ${response.status}`);
             }
 
-            return await response.json();
+            const result = await response.json();
+
+            // Production Normalization: C# backend might return ABI as a string; frontend expects object[]
+            if (result.contracts && Array.isArray(result.contracts)) {
+                result.contracts = result.contracts.map((c: any) => ({
+                    ...c,
+                    abi: typeof c.abi === 'string' ? JSON.parse(c.abi) : c.abi
+                }));
+            }
+
+            return result;
         } catch (error: any) {
             console.error('Compilation Service Error:', error);
 
