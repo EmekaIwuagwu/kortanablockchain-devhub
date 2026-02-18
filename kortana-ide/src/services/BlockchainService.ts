@@ -19,8 +19,17 @@ export class BlockchainService {
     }
 
     public async connectWallet(): Promise<string> {
+        const isElectron = typeof window.ipcRenderer !== 'undefined';
+
         if (typeof window.ethereum === 'undefined' || !window.ethereum) {
-            throw new Error('MetaMask is not available. Please use Private Key connection for Desktop App.');
+            if (isElectron) {
+                // Proactive Redirect: Open Web IDE where MetaMask lives
+                window.open('http://localhost:3000', '_blank');
+                throw new Error('REDIRECTING_TO_WEB');
+            }
+            const msg = 'MetaMask not detected. Please install the extension.';
+            alert(msg);
+            throw new Error(msg);
         }
 
         try {

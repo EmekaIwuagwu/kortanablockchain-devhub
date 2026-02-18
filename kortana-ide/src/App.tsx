@@ -17,10 +17,20 @@ import {
     AlertCircle,
     FilePlus,
     FolderPlus,
-    X
+    X,
+    Trash2
 } from 'lucide-react';
 import { RootState, AppDispatch } from './store';
-import { setSidebarTab, setActiveFile, openProject, saveActiveFile, createNewFile, closeFile, createNewProject } from './store/slices/editorSlice';
+import {
+    setSidebarTab,
+    setActiveFile,
+    openProject,
+    saveActiveFile,
+    createNewFile,
+    closeFile,
+    createNewProject,
+    deleteFile
+} from './store/slices/editorSlice';
 import { compileCode, setLanguage } from './store/slices/compilerSlice';
 import { resetStatus } from './store/slices/deploymentSlice';
 import { connectWallet, connectWithPrivateKey } from './store/slices/walletSlice';
@@ -36,12 +46,12 @@ const App: React.FC = () => {
     const { files, activeFileId, sidebarActiveTab, projectPath, projectLanguage } = useSelector((state: RootState) => state.editor);
     const { status: compilerStatus, selectedLanguage, lastResult } = useSelector((state: RootState) => state.compiler);
     const { lastDeployment } = useSelector((state: RootState) => state.deployment);
-    const { isConnected, address: walletAddress, isConnecting } = useSelector((state: RootState) => state.wallet);
+    const { isConnected, address: walletAddress, isConnecting, error: walletError } = useSelector((state: RootState) => state.wallet);
 
     const [isLoading, setIsLoading] = useState(true);
     const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
     const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
-    const [consoleTab, setConsoleTab] = useState<'output' | 'console' | 'problems'>('output');
+    const [consoleTab, setConsoleTab] = useState<'output' | 'console' | 'problems' | 'interact'>('output');
     const [menuOpen, setMenuOpen] = useState<string | null>(null);
     const activityBarRef = useRef<HTMLDivElement>(null);
     const [deployTab, setDeployTab] = useState<'compile' | 'interact'>('compile');
@@ -53,17 +63,20 @@ const App: React.FC = () => {
 
     // Initial Loading/Splash
     useEffect(() => {
+        console.log('[Renderer] App starting, isLoading true');
         const timer = setTimeout(() => {
+            console.log('[Renderer] Splashing finished');
             setIsLoading(false);
         }, 3000);
         return () => clearTimeout(timer);
     }, []);
 
     useEffect(() => {
-        if (lastDeployment && sidebarActiveTab === 'deploy') {
+        if (lastDeployment) {
             setDeployTab('interact');
+            setConsoleTab('interact'); // Also show in console area for better visibility
         }
-    }, [lastDeployment, sidebarActiveTab]);
+    }, [lastDeployment]);
 
     // Global click listener to close menus
     useEffect(() => {
@@ -74,8 +87,9 @@ const App: React.FC = () => {
 
     const handleCompile = async () => {
         if (activeFile) {
+            const lang = projectLanguage || (activeFile.name.endsWith('.sol') ? 'solidity' : 'quorlin');
             await dispatch(compileCode({
-                language: projectLanguage as any,
+                language: lang as any,
                 sourceCode: activeFile.content,
                 fileName: activeFile.name
             }));
@@ -109,6 +123,13 @@ const App: React.FC = () => {
         if (name) {
             const fileName = name.endsWith(ext) ? name : `${name}${ext}`;
             dispatch(createNewFile({ name: fileName, content: "" }));
+        }
+    };
+
+    const handleDeleteFile = (e: React.MouseEvent, fileId: string) => {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to delete this file? This action is irreversible.')) {
+            dispatch(deleteFile(fileId));
         }
     };
 
@@ -166,6 +187,14 @@ const App: React.FC = () => {
                         <span className="cursor-pointer px-2 py-1 rounded hover:bg-white/10">Selection</span>
                         <span className="cursor-pointer px-2 py-1 rounded hover:bg-white/10">View</span>
                         <span className="cursor-pointer px-2 py-1 rounded hover:bg-white/10">Go</span>
+                        {typeof window.ipcRenderer !== 'undefined' && (
+                            <button
+                                onClick={() => window.open('http://localhost:3000', '_blank')}
+                                className="ml-4 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-all text-[11px] font-bold border border-indigo-500/20 shadow-lg animate-pulse hover:animate-none"
+                            >
+                                Open Web IDE
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -176,9 +205,20 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <div className={`flex items-center space-x-2 px-3 py-0.5 rounded-full text-[10px] font-bold ${isConnected ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-vscode-error/10 text-vscode-error border border-vscode-error/20'}`}>
-                        <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-indigo-400 shadow-[0_0_8px_indigo]' : 'bg-vscode-error'} `} />
-                        <span>{isConnected ? 'MetaMask Linked' : 'No Provider'}</span>
+                    {/* Enhanced Wallet Status with Error Tooltip */}
+                    <div
+                        className={`flex items-center space-x-2 px-3 py-0.5 rounded-full text-[10px] font-bold cursor-help group relative ${isConnected ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-vscode-error/10 text-vscode-error border border-vscode-error/20'}`}
+                        title={walletError || ''}
+                    >
+                        <div className={`w-1 h-1 rounded-full ${isConnected ? 'bg-indigo-400 shadow-[0_0_8px_indigo]' : 'bg-vscode-error animate-pulse'} `} />
+                        <span>{isConnected ? 'MetaMask Linked' : isConnecting ? 'Authenticating...' : 'Provider Error'}</span>
+
+                        {walletError && (
+                            <div className="absolute top-full right-0 mt-2 w-64 bg-vscode-sidebar/95 backdrop-blur-xl border border-vscode-error/30 p-3 rounded-lg text-[10px] text-vscode-error shadow-2xl z-[200] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <div className="font-bold flex items-center mb-1"><AlertCircle size={10} className="mr-1" /> Security/Connection Exception</div>
+                                {walletError}
+                            </div>
+                        )}
                     </div>
                     {/* Native-like control dots (deco) */}
                     <div className="flex space-x-2">
@@ -241,7 +281,12 @@ const App: React.FC = () => {
                                                         ? <ShieldCheck size={14} className="mr-2 text-emerald-400" />
                                                         : <Cpu size={14} className="mr-2 text-amber-400" />
                                                     }
-                                                    <span className="text-[12px] truncate">{file.name}</span>
+                                                    <span className="text-[12px] truncate flex-grow">{file.name}</span>
+                                                    <Trash2
+                                                        size={12}
+                                                        className="opacity-0 group-hover:opacity-40 hover:text-red-400 hover:opacity-100 transition-all p-0.5 rounded"
+                                                        onClick={(e) => handleDeleteFile(e, file.id)}
+                                                    />
                                                 </div>
                                             ))}
                                     </>
@@ -333,6 +378,7 @@ const App: React.FC = () => {
                     <div className="h-48 bg-vscode-sidebar/90 border-t border-white/5 backdrop-blur-3xl flex flex-col z-10 shadow-2xl">
                         <div className="h-8 flex items-center px-4 text-[9px] font-bold text-vscode-muted uppercase tracking-[0.3em] bg-black/40 border-b border-white/5">
                             <div className={`px-4 h-full flex items-center cursor-pointer border-b ${consoleTab === 'output' ? 'text-white border-vscode-accent' : 'border-transparent hover:text-white'}`} onClick={() => setConsoleTab('output')}>Output</div>
+                            <div className={`px-4 h-full flex items-center cursor-pointer border-b ${consoleTab === 'interact' ? 'text-white border-vscode-accent' : 'border-transparent hover:text-white'}`} onClick={() => setConsoleTab('interact')}>Interaction</div>
                             <div className={`px-4 h-full flex items-center cursor-pointer border-b ${consoleTab === 'console' ? 'text-white border-vscode-accent' : 'border-transparent hover:text-white'}`} onClick={() => setConsoleTab('console')}>Console</div>
                             <div className={`px-4 h-full flex items-center cursor-pointer border-b ${consoleTab === 'problems' ? 'text-white border-vscode-accent' : 'border-transparent hover:text-white'}`} onClick={() => setConsoleTab('problems')}>Problems</div>
                         </div>
@@ -344,6 +390,11 @@ const App: React.FC = () => {
                                     <div className="text-emerald-400">[INFO] Compilation Pipeline linked to Kortana Mainnet.</div>
                                     {compilerStatus === 'compiling' && <div className="text-vscode-accent animate-pulse mt-2">Compiling source bytes...</div>}
                                     {compilerStatus === 'success' && <div className="text-emerald-500 font-bold mt-2">✓ Compilation Complete - 0 Errors, 0 Warnings</div>}
+                                </div>
+                            )}
+                            {consoleTab === 'interact' && (
+                                <div className="animate-fade-in h-full">
+                                    <InteractionPanel />
                                 </div>
                             )}
                             {consoleTab === 'console' && <div className="text-vscode-muted/50 italic animate-fade-in">Kortana Interactive Terminal (KIT) — Type help for commands...</div>}
@@ -376,7 +427,7 @@ const App: React.FC = () => {
                                 disabled={isConnected || isConnecting}
                                 className={`w-full py-2.5 rounded-lg text-[12px] font-bold transition-all shadow-lg hover:-translate-y-0.5 ${isConnected ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white border border-indigo-500'}`}
                             >
-                                {isConnecting ? 'Awaiting Interaction...' : isConnected ? `Connected: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : 'Link MetaMask Wallet'}
+                                {isConnecting ? 'Opening Bridge...' : isConnected ? `Connected: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : walletError === 'REDIRECTING_TO_WEB' ? 'Syncing Browser...' : 'Link MetaMask Wallet'}
                             </button>
 
                             {!isConnected && !isConnecting && (
@@ -467,6 +518,10 @@ const App: React.FC = () => {
             <DeploymentModal
                 isOpen={isDeployModalOpen}
                 onClose={() => setIsDeployModalOpen(false)}
+                onInteract={() => {
+                    setConsoleTab('interact');
+                    setIsDeployModalOpen(false);
+                }}
                 contractName={lastResult?.contracts[0]?.name || activeFile?.name.replace(/\.(sol|qrl)$/, '') || 'Contract'}
                 bytecode={lastResult?.contracts[0]?.bytecode || ''}
                 abi={lastResult?.contracts[0]?.abi || []}

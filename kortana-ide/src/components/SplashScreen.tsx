@@ -11,7 +11,7 @@ const SplashScreen: React.FC = () => {
                     <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500/10 to-violet-500/10 rounded-3xl blur-2xl opacity-30"></div>
 
                     <img
-                        src="/logo.png"
+                        src="./logo.png"
                         alt="Kortana Studio"
                         className="relative w-full max-h-[60vh] object-contain drop-shadow-[0_0_30px_rgba(99,102,241,0.3)] rounded-2xl"
                     />

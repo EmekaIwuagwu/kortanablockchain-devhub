@@ -1,6 +1,7 @@
 export const IDE_CONFIG = {
     COMPILER: {
-        BACKEND_URL: (import.meta as any).env.VITE_COMPILER_URL || 'https://compiler.kortana.org/api/v1/compile',
+        BACKEND_URL: (import.meta as any).env.VITE_COMPILER_URL ||
+            (typeof window !== 'undefined' ? `${window.location.origin}/api/v1/compile` : 'http://localhost:5160/api/v1/compile'),
         DEFAULT_VERSION: '0.8.19'
     },
     NETWORKS: {

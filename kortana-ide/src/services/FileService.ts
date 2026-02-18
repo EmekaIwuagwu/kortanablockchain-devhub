@@ -12,13 +12,13 @@ export class FileService {
 
     private constructor() {
         this.isWeb = typeof window.ipcRenderer === 'undefined';
-        if (this.isWeb) {
-            this.mockDirs.add('web-project-root');
-            this.mockDirs.add('web-project-root/contracts');
-            this.mockDirs.add('web-project-root/scripts');
-            this.mockFiles.set('web-project-root/contracts/MyToken.sol', '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MyToken {\n    string public name = "Kortana Web Token";\n}');
-            this.mockFiles.set('web-project-root/scripts/Deploy.qrl', 'contract Deploy {\n    function main() public {\n        // Deployment logic\n    }\n}');
-        }
+        // Always provide mock files as a "Sandbox" option, regardless of platform
+        this.mockDirs.add('web-project-root');
+        this.mockDirs.add('web-project-root/contracts');
+        this.mockDirs.add('web-project-root/scripts');
+        this.mockFiles.set('web-project-root/contracts/MyToken.sol', '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MyToken {\n    string public name = "Kortana Web Token";\n}');
+        // The following line was malformed in the provided edit. Assuming the intent was to keep the original mock file for Deploy.qrl.
+        this.mockFiles.set('web-project-root/scripts/Deploy.qrl', 'contract Deploy {\n    function main() public {\n        // Deployment logic\n    }\n}');
     }
 
     public static getInstance(): FileService {

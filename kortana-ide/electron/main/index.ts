@@ -27,8 +27,9 @@ async function createWindow() {
         height: 900,
         minWidth: 1024,
         minHeight: 768,
-        frame: true, // Keep frame but hide native menu
+        frame: true,
         backgroundColor: '#0f1115',
+        show: true, // Force show to diagnose blank screen
         webPreferences: {
             preload,
             nodeIntegration: false,
@@ -36,18 +37,29 @@ async function createWindow() {
         },
     });
 
-    // Remove native menu for a custom look
     Menu.setApplicationMenu(null);
 
+    // Allow opening the Web IDE in the system browser
+    win.webContents.setWindowOpenHandler(({ url }) => {
+        shell.openExternal(url);
+        return { action: 'deny' };
+    });
+
     if (url) {
+        console.log('[Main] Loading Dev Server:', url);
         win.loadURL(url);
     } else {
-        win.loadFile(indexHtml);
+        console.log('[Main] Loading File:', indexHtml);
+        win.loadFile(indexHtml).catch(err => console.error('[Main] Load error:', err));
     }
 
-    win.webContents.setWindowOpenHandler(({ url }) => {
-        if (url.startsWith('https:')) shell.openExternal(url);
-        return { action: 'deny' };
+    win.webContents.on('did-fail-load', (e, code, desc) => {
+        console.error(`[Main] Page failed to load: ${code} ${desc}`);
+    });
+
+    // Catch renderer crashes
+    win.webContents.on('render-process-gone', (event, detailed) => {
+        console.error(`[Main] Renderer process gone: ${detailed.reason} (${detailed.exitCode})`);
     });
 }
 
@@ -124,9 +136,12 @@ ipcMain.handle('compiler:compile', async (_, payload: any) => {
         status: 'success',
         timestamp: new Date().toISOString(),
         contracts: [{
-            name: payload.name || 'Contract',
-            abi: [],
-            bytecode: '0x123'
+            name: payload.fileName?.split('.')[0] || 'Contract',
+            abi: [
+                { "inputs": [], "name": "count", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+                { "inputs": [], "name": "increment", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
+            ],
+            bytecode: '0x608060405234801561001057600080fd5b50610150806100206000396000f3fe'
         }],
         errors: []
     };

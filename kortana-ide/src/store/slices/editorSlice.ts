@@ -139,6 +139,19 @@ export const createNewFile = createAsyncThunk(
     }
 );
 
+export const deleteFile = createAsyncThunk(
+    'editor/deleteFile',
+    async (fileId: string, { rejectWithValue }) => {
+        try {
+            const service = FileService.getInstance();
+            await service.deleteFile(fileId);
+            return fileId;
+        } catch (err: any) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const editorSlice = createSlice({
     name: 'editor',
     initialState,
@@ -212,6 +225,13 @@ const editorSlice = createSlice({
             const file = state.files.find(f => f.id === action.payload);
             if (file) {
                 file.isDirty = false;
+            }
+        });
+        builder.addCase(deleteFile.fulfilled, (state, action) => {
+            state.files = state.files.filter(f => f.id !== action.payload);
+            if (state.activeFileId === action.payload) {
+                const remainingOpen = state.files.filter(f => f.isOpen);
+                state.activeFileId = remainingOpen.length > 0 ? remainingOpen[0].id : null;
             }
         });
     }
