@@ -152,6 +152,23 @@ export const deleteFile = createAsyncThunk(
     }
 );
 
+export const loadLastProject = createAsyncThunk(
+    'editor/loadLastProject',
+    async (_, { dispatch }) => {
+        const lastPath = localStorage.getItem('kortana_ide_last_project');
+        if (lastPath) {
+            const service = FileService.getInstance();
+            // Check if path still exists in mock or real FS
+            const exists = await service.isDirectory(lastPath);
+            if (exists) {
+                const files = await scanDirectory(lastPath, service);
+                return { path: lastPath, files };
+            }
+        }
+        return null;
+    }
+);
+
 const editorSlice = createSlice({
     name: 'editor',
     initialState,
@@ -196,6 +213,7 @@ const editorSlice = createSlice({
                 state.projectPath = action.payload.path;
                 state.files = action.payload.files;
                 state.activeFileId = null;
+                localStorage.setItem('kortana_ide_last_project', action.payload.path);
                 // Auto-detect project language based on file extensions
                 const hasSol = action.payload.files.some(f => f.name.endsWith('.sol'));
                 const hasQrl = action.payload.files.some(f => f.name.endsWith('.qrl'));
@@ -207,6 +225,7 @@ const editorSlice = createSlice({
                 state.projectPath = action.payload.path;
                 state.files = action.payload.files;
                 state.projectLanguage = (action.meta.arg as any).language;
+                localStorage.setItem('kortana_ide_last_project', action.payload.path);
                 // Find the Counter file and set it active
                 const counterFile = action.payload.files.find(f => f.name.toLowerCase().includes('counter'));
                 if (counterFile) {
@@ -232,6 +251,15 @@ const editorSlice = createSlice({
             if (state.activeFileId === action.payload) {
                 const remainingOpen = state.files.filter(f => f.isOpen);
                 state.activeFileId = remainingOpen.length > 0 ? remainingOpen[0].id : null;
+            }
+        });
+        builder.addCase(loadLastProject.fulfilled, (state, action) => {
+            if (action.payload) {
+                state.projectPath = action.payload.path;
+                state.files = action.payload.files;
+                const hasSol = action.payload.files.some(f => f.name.endsWith('.sol'));
+                const hasQrl = action.payload.files.some(f => f.name.endsWith('.qrl'));
+                state.projectLanguage = hasSol ? 'solidity' : (hasQrl ? 'quorlin' : null);
             }
         });
     }

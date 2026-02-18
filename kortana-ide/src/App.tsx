@@ -29,7 +29,8 @@ import {
     createNewFile,
     closeFile,
     createNewProject,
-    deleteFile
+    deleteFile,
+    loadLastProject
 } from './store/slices/editorSlice';
 import { compileCode, setLanguage } from './store/slices/compilerSlice';
 import { resetStatus } from './store/slices/deploymentSlice';
@@ -64,12 +65,13 @@ const App: React.FC = () => {
     // Initial Loading/Splash
     useEffect(() => {
         console.log('[Renderer] App starting, isLoading true');
+        dispatch(loadLastProject());
         const timer = setTimeout(() => {
             console.log('[Renderer] Splashing finished');
             setIsLoading(false);
         }, 3000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [dispatch]);
 
     useEffect(() => {
         if (lastDeployment) {

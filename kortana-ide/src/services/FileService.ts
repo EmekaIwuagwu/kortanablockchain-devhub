@@ -12,13 +12,41 @@ export class FileService {
 
     private constructor() {
         this.isWeb = typeof window.ipcRenderer === 'undefined';
-        // Always provide mock files as a "Sandbox" option, regardless of platform
-        this.mockDirs.add('web-project-root');
-        this.mockDirs.add('web-project-root/contracts');
-        this.mockDirs.add('web-project-root/scripts');
-        this.mockFiles.set('web-project-root/contracts/MyToken.sol', '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MyToken {\n    string public name = "Kortana Web Token";\n}');
-        // The following line was malformed in the provided edit. Assuming the intent was to keep the original mock file for Deploy.qrl.
-        this.mockFiles.set('web-project-root/scripts/Deploy.qrl', 'contract Deploy {\n    function main() public {\n        // Deployment logic\n    }\n}');
+
+        if (this.isWeb) {
+            this.loadFromStorage();
+            // If empty, add default files
+            if (this.mockFiles.size === 0) {
+                this.mockDirs.add('web-project-root');
+                this.mockDirs.add('web-project-root/contracts');
+                this.mockDirs.add('web-project-root/scripts');
+                this.mockFiles.set('web-project-root/contracts/MyToken.sol', '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract MyToken {\n    string public name = "Kortana Web Token";\n}');
+                this.mockFiles.set('web-project-root/scripts/Deploy.ql', 'contract Deploy {\n    function main() public {\n        // Deployment logic\n    }\n}');
+                this.persist();
+            }
+        }
+    }
+
+    private loadFromStorage() {
+        try {
+            const files = localStorage.getItem('kortana_ide_files');
+            const dirs = localStorage.getItem('kortana_ide_dirs');
+            if (files) {
+                const parsedFiles = JSON.parse(files);
+                this.mockFiles = new Map(Object.entries(parsedFiles));
+            }
+            if (dirs) {
+                this.mockDirs = new Set(JSON.parse(dirs));
+            }
+        } catch (e) {
+            console.error('Failed to load from storage', e);
+        }
+    }
+
+    private persist() {
+        if (!this.isWeb) return;
+        localStorage.setItem('kortana_ide_files', JSON.stringify(Object.fromEntries(this.mockFiles)));
+        localStorage.setItem('kortana_ide_dirs', JSON.stringify(Array.from(this.mockDirs)));
     }
 
     public static getInstance(): FileService {
@@ -47,10 +75,14 @@ export class FileService {
             return await window.ipcRenderer.invoke('fs:writeFile', { filePath: path, content });
         }
         this.mockFiles.set(path, content);
-        // Ensure parent dir exists in mock
+        // Recursively ensure all parent dirs exist in mock
         const parts = path.split('/');
-        parts.pop();
-        this.mockDirs.add(parts.join('/'));
+        let current = '';
+        for (let i = 0; i < parts.length - 1; i++) {
+            current = current ? `${current}/${parts[i]}` : parts[i];
+            this.mockDirs.add(current);
+        }
+        this.persist();
         return true;
     }
 
@@ -58,7 +90,14 @@ export class FileService {
         if (!this.isWeb) {
             return await window.ipcRenderer.invoke('fs:createFolder', path);
         }
-        this.mockDirs.add(path);
+        // Recursively ensure all parent dirs exist
+        const parts = path.split('/');
+        let current = '';
+        for (const part of parts) {
+            current = current ? `${current}/${part}` : part;
+            this.mockDirs.add(current);
+        }
+        this.persist();
         return true;
     }
 
@@ -86,6 +125,7 @@ export class FileService {
             return await window.ipcRenderer.invoke('fs:deleteFile', path);
         }
         this.mockFiles.delete(path);
+        this.persist();
         return true;
     }
 
