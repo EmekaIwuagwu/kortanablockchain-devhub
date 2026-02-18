@@ -517,17 +517,22 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            <DeploymentModal
-                isOpen={isDeployModalOpen}
-                onClose={() => setIsDeployModalOpen(false)}
-                onInteract={() => {
-                    setConsoleTab('interact');
-                    setIsDeployModalOpen(false);
-                }}
-                contractName={lastResult?.contracts[0]?.name || activeFile?.name.replace(/\.(sol|qrl)$/, '') || 'Contract'}
-                bytecode={lastResult?.contracts[0]?.bytecode || ''}
-                abi={lastResult?.contracts[0]?.abi || []}
-            />
+            {(() => {
+                const mainContract = lastResult?.contracts?.find(c => c.bytecode && c.bytecode.length > 50) || lastResult?.contracts?.[0];
+                return (
+                    <DeploymentModal
+                        isOpen={isDeployModalOpen}
+                        onClose={() => setIsDeployModalOpen(false)}
+                        onInteract={() => {
+                            setConsoleTab('interact');
+                            setIsDeployModalOpen(false);
+                        }}
+                        contractName={mainContract?.name || activeFile?.name.replace(/\.(sol|qrl)$/, '') || 'Contract'}
+                        bytecode={mainContract?.bytecode || ''}
+                        abi={mainContract?.abi || []}
+                    />
+                );
+            })()}
             <NewProjectModal
                 isOpen={isNewProjectModalOpen}
                 onClose={() => setIsNewProjectModalOpen(false)}

@@ -1,6 +1,7 @@
-using KortanaStudio.Backend.Models;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Linq;
+using System.IO;
 using Microsoft.Extensions.Logging;
 
 namespace KortanaStudio.Backend.Services
@@ -113,25 +114,15 @@ namespace KortanaStudio.Backend.Services
                     });
                 }
 
-                return new CompilationResult { Status = "success", Contracts = results };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning($"Native solc not found or failed: {ex.Message}. Using simulation mode.");
-                return new CompilationResult
-                {
-                    Status = "success",
-                    Timestamp = DateTime.UtcNow,
-                    Contracts = new List<CompiledContract>
-                    {
-                        new CompiledContract
-                        {
-                            Name = ExtractContractName(request.SourceCode),
-                            Bytecode = "0x608060405234801561001057600080fd5b50610150806100206000396000f3fe",
-                            Abi = "[{\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
-                        }
-                    }
+                return new CompilationResult { 
+                    Status = "success", 
+                    Contracts = results.OrderByDescending(c => c.Bytecode.Length).ToList() 
                 };
+            }
+            finally 
+            {
+                // Cleanup temp file
+                try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { /* ignore */ }
             }
         }
 
