@@ -22,16 +22,25 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({ isOpen, onClose, cont
     const [contractName, setContractName] = useState(initialContractName);
     const [copied, setCopied] = useState(false);
 
+    // Constructor Argument Management
+    const constructorAbi = abi?.find(item => item.type === 'constructor');
+    const [constructorInputs, setConstructorInputs] = useState<Record<string, string>>({});
+
     const { isDeploying, status, error, lastDeployment } = useSelector((state: RootState) => state.deployment);
 
     const handleDeploy = () => {
+        // Collect constructor arguments
+        const args = (constructorAbi?.inputs || []).map((input: any) => {
+            return constructorInputs[input.name] || "";
+        });
+
         dispatch(deployContract({
             config: {
                 network,
                 contractName,
                 gasLimit,
                 gasPrice,
-                constructorParams: []
+                constructorParams: args
             },
             bytecode,
             abi
@@ -81,6 +90,33 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({ isOpen, onClose, cont
                             placeholder="Enter Token or Contract Name..."
                         />
                     </div>
+
+                    {/* Constructor Parameters */}
+                    {constructorAbi && constructorAbi.inputs && constructorAbi.inputs.length > 0 && (
+                        <div className="space-y-4 p-4 bg-indigo-500/5 rounded-xl border border-indigo-500/10 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest flex items-center space-x-2">
+                                <Info size={12} />
+                                <span>Constructor Parameters</span>
+                            </label>
+                            <div className="space-y-3">
+                                {constructorAbi.inputs.map((input: any, idx: number) => (
+                                    <div key={idx} className="space-y-1.5">
+                                        <div className="flex justify-between items-center px-1">
+                                            <span className="text-[9px] font-mono text-vscode-muted">{input.type}</span>
+                                            <span className="text-[9px] font-black text-indigo-400/70 uppercase tracking-tighter">{input.name}</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={constructorInputs[input.name] || ''}
+                                            onChange={(e) => setConstructorInputs({ ...constructorInputs, [input.name]: e.target.value })}
+                                            className="w-full bg-black/40 text-white text-[11px] font-mono p-2.5 rounded border border-white/5 focus:border-indigo-500/30 outline-none transition-all placeholder:text-[9px]"
+                                            placeholder={`Value for ${input.name}...`}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <label className="text-[10px] text-vscode-muted uppercase font-black tracking-widest">Target Environment</label>
