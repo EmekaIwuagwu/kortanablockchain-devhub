@@ -62,19 +62,11 @@ const InteractionPanel: React.FC = () => {
         try {
             const service = BlockchainService.getInstance();
             const provider = service.getProvider();
-            if (!provider) throw new Error("No provider");
 
-            const signer = await provider.getSigner();
-            const contract = new ethers.Contract(contractAddress, abi, signer);
-
+            // Parse constructor arguments with type coercion
             const args = fn.inputs.map((input: any) => {
                 const val = inputs[`${fnId}-${input.name}`]?.trim() || '';
-
-                if (val === '') {
-                    throw new Error(`Input required: ${input.name} (${input.type})`);
-                }
-
-                // Simple auto-conversion for common types
+                if (val === '') throw new Error(`Input required: ${input.name} (${input.type})`);
                 if (input.type.includes('int') && !isNaN(Number(val)) && val !== '') return BigInt(val);
                 if (input.type === 'bool') return val.toLowerCase() === 'true';
                 return val;
@@ -82,9 +74,15 @@ const InteractionPanel: React.FC = () => {
 
             let result;
             if (fn.stateMutability === 'view' || fn.stateMutability === 'pure') {
-                result = await contract[fn.name](...args);
+                // READ: use rpcProvider directly — plain eth_call, no wallet needed
+                const readContract = new ethers.Contract(contractAddress, abi, provider);
+                result = await readContract[fn.name](...args);
             } else {
-                const tx = await contract[fn.name](...args, { type: 0 });
+                // WRITE: need MetaMask or private key signer
+                const signer = await service.getSignerForInteraction();
+                if (!signer) throw new Error('No wallet connected. Please connect MetaMask or a Private Key first.');
+                const writeContract = new ethers.Contract(contractAddress, abi, signer);
+                const tx = await writeContract[fn.name](...args, { gasLimit: BigInt(500000) });
                 result = `Transaction Broadcasted: ${tx.hash}`;
                 await tx.wait();
                 result = `Success! TX Hash: ${tx.hash}`;
@@ -93,14 +91,14 @@ const InteractionPanel: React.FC = () => {
             setResults(prev => ({ ...prev, [fnId]: typeof result === 'bigint' ? result.toString() : result?.toString() || 'Success (No Return)' }));
         } catch (error: any) {
             console.error('Interaction Error:', error);
-            let msg = error.message.split(' (')[0];
-
-            if (msg.includes('could not decode result data') || msg.includes('bad response')) {
-                msg = 'Interface Mismatch: The logic on-chain does not match this ABI, or the contract is still being indexed by the node. Try again in 10 seconds.';
+            let msg = error.message?.split(' (')[0] || 'Unknown error';
+            if (msg.includes('could not decode') || msg.includes('bad response') || msg.includes('coalesce')) {
+                msg = 'Node returned unexpected data — retry in 5 seconds.';
             } else if (msg.includes('reverted')) {
                 msg = 'Execution Reverted: The contract logic rejected this call.';
+            } else if (msg.includes('Input required')) {
+                msg = error.message;
             }
-
             setResults(prev => ({ ...prev, [fnId]: `Error: ${msg}` }));
         } finally {
             setLoading(prev => ({ ...prev, [fnId]: false }));

@@ -152,4 +152,15 @@ export class BlockchainService {
     public getProvider() {
         return this.rpcProvider;
     }
+
+    /**
+     * Returns the best available signer for write (state-changing) contract calls.
+     * Prefers MetaMask (BrowserProvider) for EIP-1559, falls back to private key wallet.
+     */
+    public async getSignerForInteraction(): Promise<ethers.Signer | null> {
+        if (this.customSigner) return this.customSigner;
+        if (this.browserProvider) return await this.browserProvider.getSigner();
+        return null;
+    }
 }
+
