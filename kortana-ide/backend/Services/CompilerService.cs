@@ -63,11 +63,12 @@ namespace KortanaStudio.Backend.Services
         private async Task<CompilationResult> CompileSolidityAsync(CompilationRequest request)
         {
             _logger.LogInformation("Attempting production Solidity compilation via solc...");
+            string tempFile = null;
             
             try 
             {
                 // Create a temporary file for the source code
-                string tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.sol");
+                tempFile = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.sol");
                 await File.WriteAllTextAsync(tempFile, request.SourceCode);
 
                 var startInfo = new ProcessStartInfo
@@ -123,7 +124,7 @@ namespace KortanaStudio.Backend.Services
             finally 
             {
                 // Cleanup temp file
-                try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { /* ignore */ }
+                try { if (tempFile != null && File.Exists(tempFile)) File.Delete(tempFile); } catch { /* ignore */ }
             }
         }
 
