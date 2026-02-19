@@ -140,14 +140,14 @@ export class BlockchainService {
             console.log("   Final Payload Args:", formattedArgs);
 
             // 4. Integrated Deployment (Library-managed Transaction Handling)
-            // This is the safest way to avoid 'EOF' and serialization errors.
+            // We use a high-gas default but allow the library to finalize the transaction envelope.
+            // Removing explicit 'type' and 'chainId' often helps custom RPCs that have buggy JSON parsers.
             const contract = await factory.deploy(...formattedArgs, {
                 gasLimit: BigInt(config?.gasLimit || "3000000"),
-                gasPrice: ethers.parseUnits(config?.gasPrice || "20", "gwei"),
-                type: 0 // COMPATIBILITY: Force Legacy (Type 0) for Kortana Node stability
+                gasPrice: ethers.parseUnits(config?.gasPrice || "20", "gwei")
             });
 
-            console.log("   Broadcasting to Protocol...");
+            console.log("   Broadcasting Optimized Payload...");
             const txResponse = contract.deploymentTransaction();
             if (!txResponse) throw new Error("Protocol failed to return a transaction hash.");
 

@@ -74,7 +74,7 @@ namespace KortanaStudio.Backend.Services
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "solc",
-                    Arguments = $"--combined-json abi,bin,bin-runtime {tempFile}",
+                    Arguments = $"--optimize --optimize-runs 200 --combined-json abi,bin,bin-runtime {tempFile}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
