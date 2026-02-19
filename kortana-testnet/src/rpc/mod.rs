@@ -229,12 +229,26 @@ impl RpcHandler {
                     } else { None }
                 } else { None }
             }
+            "eth_maxPriorityFeePerGas" => {
+                // EIP-1559: Return the minimum priority fee. Kortana node uses 0 priority fee.
+                Some(serde_json::to_value(format!("0x{:x}", crate::parameters::MIN_GAS_PRICE)).unwrap())
+            }
             "eth_feeHistory" => {
+                // Return a proper fee history so MetaMask can calculate EIP-1559 fees
+                let block_count = if let Some(arr) = &p {
+                    arr.first().and_then(|v| v.as_str())
+                        .and_then(|s| u64::from_str_radix(s.strip_prefix("0x").unwrap_or(s), 16).ok())
+                        .unwrap_or(4).min(10)
+                } else { 4 };
+                let base_fees: Vec<String> = (0..=block_count).map(|_| 
+                    format!("0x{:x}", crate::parameters::MIN_GAS_PRICE)
+                ).collect();
+                let gas_ratios: Vec<f64> = (0..block_count).map(|_| 0.1).collect();
                 Some(serde_json::json!({
-                    "baseFeePerGas": ["0x0"],
-                    "gasUsedRatio": [],
-                    "oldestBlock": format!("0x{:x}", current_height),
-                    "reward": []
+                    "oldestBlock": format!("0x{:x}", current_height.saturating_sub(block_count)),
+                    "baseFeePerGas": base_fees,
+                    "gasUsedRatio": gas_ratios,
+                    "reward": (0..block_count).map(|_| vec!["0x0"]).collect::<Vec<_>>()
                 }))
             }
             "eth_sendRawTransaction" => {
@@ -383,19 +397,25 @@ impl RpcHandler {
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
                             "nonce": format!("0x{:016x}", block.header.poh_sequence),
                             "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                            "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
-                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
-                            "difficulty": "0x1",
-                            "totalDifficulty": "0x1",
+                            "receiptsRoot": format!("0x{}", hex::encode(block.header.receipts_root)),
+                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())),
+                            "difficulty": "0x0",
+                            "totalDifficulty": "0x0",
                             "extraData": "0x",
-                            "size": format!("0x{:x}", block.transactions.len() * 100 + 100),
+                            "size": format!("0x{:x}", block.transactions.len() * 100 + 500),
                             "gasLimit": format!("0x{:x}", block.header.gas_limit),
                             "gasUsed": format!("0x{:x}", block.header.gas_used),
                             "timestamp": format!("0x{:x}", block.header.timestamp),
+                            // EIP-1559 CRITICAL: baseFeePerGas tells MetaMask this chain supports EIP-1559.
+                            // Without this field, MetaMask defaults to Legacy transactions.
+                            "baseFeePerGas": format!("0x{:x}", block.header.base_fee),
                             "transactions": txs_json,
-                            "uncles": []
+                            "uncles": [],
+                            "withdrawals": [],
+                            "withdrawalsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
                         }))
                     },
                     _ => Some(serde_json::Value::Null)
@@ -448,19 +468,24 @@ impl RpcHandler {
                             "parentHash": format!("0x{}", hex::encode(block.header.parent_hash)),
                             "nonce": format!("0x{:016x}", block.header.poh_sequence),
                             "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                            "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+                            "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
                             "transactionsRoot": format!("0x{}", hex::encode(block.header.transactions_root)),
                             "stateRoot": format!("0x{}", hex::encode(block.header.state_root)),
-                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())), 
-                            "difficulty": "0x1",
-                            "totalDifficulty": "0x1",
+                            "receiptsRoot": format!("0x{}", hex::encode(block.header.receipts_root)),
+                            "miner": format!("0x{}", hex::encode(block.header.proposer.as_evm_address())),
+                            "difficulty": "0x0",
+                            "totalDifficulty": "0x0",
                             "extraData": "0x",
-                            "size": format!("0x{:x}", block.transactions.len() * 100 + 100),
+                            "size": format!("0x{:x}", block.transactions.len() * 100 + 500),
                             "gasLimit": format!("0x{:x}", block.header.gas_limit),
                             "gasUsed": format!("0x{:x}", block.header.gas_used),
                             "timestamp": format!("0x{:x}", block.header.timestamp),
+                            // EIP-1559: baseFeePerGas presence enables MetaMask EIP-1559 mode
+                            "baseFeePerGas": format!("0x{:x}", block.header.base_fee),
                             "transactions": txs_json,
-                            "uncles": []
+                            "uncles": [],
+                            "withdrawals": [],
+                            "withdrawalsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"
                         }))
                     },
                     _ => Some(serde_json::Value::Null)
