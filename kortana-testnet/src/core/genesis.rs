@@ -7,29 +7,39 @@ use crate::parameters::*;
 
 pub fn create_genesis_state() -> State {
     let mut state = State::new();
-    
-    // Foundation Account
+
+    // -------------------------------------------------------
+    // Total Genesis Supply: 800 Billion DNR
+    // -------------------------------------------------------
+
+    // Foundation Reserve — 500B DNR
     let foundation_addr = Address::from_pubkey(b"foundation");
     let mut foundation_acc = Account::new();
-    foundation_acc.balance = 250_000_000_000_000_000_000_000_000; // 250M DNR
+    foundation_acc.balance = 500_000_000_000_000_000_000_000_000_000_000; // 500B DNR
     state.update_account(foundation_addr, foundation_acc);
 
-    // Initial Validator
+    // Initial Validator — minimum stake only
     let validator_addr = Address::from_pubkey(b"genesis_validator");
     let mut validator_acc = Account::new();
     let stake = 32_000_000_000_000_000_000; // 32 DNR (min stake)
     validator_acc.balance = stake;
     state.update_account(validator_addr, validator_acc);
-    
-    // Add to staking store as initial stake
     state.staking.delegate(validator_addr, validator_addr, stake, 0);
 
-    // Faucet Account (Priv: 2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa)
+    // Ecosystem Faucet — 299.993B DNR
     // Addr: 0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64
+    // Priv: 2d502aa349bb96c3676db8fd9ceb611594ca2a6dfbeeb9f2b175bf9116cbcdaa
     let faucet_addr = Address::from_hex("0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
     let mut faucet_acc = Account::new();
-    faucet_acc.balance = 100_000_000_000_000_000_000_000_000; // 100M DNR
+    faucet_acc.balance = 299_993_000_000_000_000_000_000_000_000_000; // 299.993B DNR
     state.update_account(faucet_addr, faucet_acc);
+
+    // Owner Wallet — 7M DNR (pre-funded at genesis)
+    // Addr: 0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9
+    let owner_addr = Address::from_hex("0x28e514Ce1a0554B83f6d5EEEE11B07D0e294D9F9").unwrap();
+    let mut owner_acc = Account::new();
+    owner_acc.balance = 7_000_000_000_000_000_000_000_000; // 7M DNR
+    state.update_account(owner_addr, owner_acc);
 
     state
 }
