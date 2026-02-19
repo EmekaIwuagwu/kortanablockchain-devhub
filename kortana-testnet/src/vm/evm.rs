@@ -157,23 +157,19 @@ impl EvmExecutor {
             let opcode = bytecode[pc];
             
             // Log opcode BEFORE execution
-            /* if true {
-                print!("[EVM] PC: {}, Op: 0x{:02x}, Gas: {}, Stack[{}]: ", 
-                    pc, opcode, self.gas_remaining, self.stack.data.len());
-                // Print top 8 stack elements
-                let show_count = std::cmp::min(8, self.stack.data.len());
-                print!("[");
-                for i in 0..show_count {
-                    let idx = self.stack.data.len() - 1 - i;
-                    print!("{:02x}{:02x}{:02x}{:02x}", 
-                        self.stack.data[idx][28], 
-                        self.stack.data[idx][29],
-                        self.stack.data[idx][30],
-                        self.stack.data[idx][31]);
-                    if i < show_count - 1 { print!(", "); }
+            if true {
+                if let Some(ref mut f) = debug_file {
+                    let show_count = std::cmp::min(4, self.stack.data.len());
+                    let mut top = String::new();
+                    for i in 0..show_count {
+                        let idx = self.stack.data.len() - 1 - i;
+                        top.push_str(&hex::encode(&self.stack.data[idx]));
+                        top.push('|');
+                    }
+                    let _ = writeln!(f, "PC:{:04x} OP:0x{:02x} Gas:{} Stack[{}]:[{}]",
+                        pc - 1, opcode, self.gas_remaining, self.stack.data.len(), top);
                 }
-                println!("]");
-            } */
+            }
             
             pc += 1;
 
