@@ -226,7 +226,7 @@ async fn main() {
             let task_node = rpc_node.clone();
             tokio::spawn(async move {
                 let mut buffer = Vec::new();
-                let mut temp_buf = [0u8; 4096];
+                let mut temp_buf = [0u8; 65536]; // 64KB per read chunk for fast ingestion
                 
                 // Set a timeout for reading the full request
                 let read_result = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
@@ -254,7 +254,7 @@ async fn main() {
                                 break;
                             }
                         }
-                        if buffer.len() > 16384 { break; } // Safety cap
+                        if buffer.len() > 10_485_760 { break; } // Safety cap: 10MB (supports large contract deployments)
                     }
                     Some(())
                 }).await;
