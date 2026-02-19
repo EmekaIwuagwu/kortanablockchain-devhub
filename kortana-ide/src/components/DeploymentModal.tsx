@@ -27,6 +27,24 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({ isOpen, onClose, cont
     const [constructorInputs, setConstructorInputs] = useState<Record<string, string>>({});
 
     const { isDeploying, status, error, lastDeployment } = useSelector((state: RootState) => state.deployment);
+    const { address: walletAddress } = useSelector((state: RootState) => state.wallet);
+
+    // Smart Defaults Logic: Stop making the user do the work!
+    React.useEffect(() => {
+        if (constructorAbi?.inputs && walletAddress && isOpen) {
+            const defaults: Record<string, string> = {};
+            constructorAbi.inputs.forEach((input: any) => {
+                const name = input.name.toLowerCase();
+                // If it looks like a supply, give it 1 Million
+                if (name.includes('supply')) defaults[input.name] = '1000000';
+                // If it looks like a treasury/owner, give it YOUR address
+                if (name.includes('treasury') || name.includes('owner') || name.includes('recipient') || input.type === 'address') {
+                    defaults[input.name] = walletAddress;
+                }
+            });
+            setConstructorInputs(prev => ({ ...defaults, ...prev }));
+        }
+    }, [constructorAbi, walletAddress, isOpen]);
 
     const handleDeploy = () => {
         // Collect constructor arguments

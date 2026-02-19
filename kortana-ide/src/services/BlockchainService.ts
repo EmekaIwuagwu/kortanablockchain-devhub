@@ -128,16 +128,18 @@ export class BlockchainService {
 
             // 3. Get current network state
             const nonce = await provider.getTransactionCount(address);
-            console.log(`   Nonce: ${nonce}`);
 
-            // 4. Build Legacy (Type 0) transaction with safe defaults
-            const gasLimit = config?.gasLimit || "500000"; // Conservative default
-            const gasPrice = config?.gasPrice || "1"; // 1 Gwei for testnet
+            // 4. Build transaction with robust defaults
+            const gasLimit = config?.gasLimit || "3000000";
+            const gasPrice = config?.gasPrice || "20";
+
+            // Clean data: Ensure it starts with 0x and is valid hex
+            const txData = deployTx.data.startsWith('0x') ? deployTx.data : `0x${deployTx.data}`;
 
             const txRequest: any = {
-                type: 0, // CRITICAL: Legacy transaction
-                data: deployTx.data,
-                gasLimit: parseInt(gasLimit),
+                to: null, // Contract creation
+                data: txData,
+                gasLimit: BigInt(gasLimit),
                 gasPrice: ethers.parseUnits(gasPrice, "gwei"),
                 nonce: nonce,
                 chainId: parseInt(KORTANA_TESTNET.chainId, 16)
