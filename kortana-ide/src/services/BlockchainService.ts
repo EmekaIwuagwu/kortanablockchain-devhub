@@ -114,46 +114,45 @@ export class BlockchainService {
             if (!provider) throw new Error("No provider available");
 
             const balance = await provider.getBalance(address);
-            console.log(`   Deployer: ${address}`);
-            console.log(`   Balance: ${ethers.formatEther(balance)} DNR`);
+            console.log(`🚀 [BlockchainService] Launching High-Compatibility Deployment...`);
+            console.log(`   Account: ${address} | Balance: ${ethers.formatEther(balance)} DNR`);
 
             if (balance === 0n) {
                 throw new Error("Insufficient balance! Please fund your account with DNR.");
             }
 
-            // 2. Prepare constructor arguments and deployment data
-            const args = config?.args || [];
-            const factory = new ethers.ContractFactory(abi, bytecode);
-            const deployTx = await factory.getDeployTransaction(...args);
+            // 2. Build Factory on top of the Signer
+            const factory = new ethers.ContractFactory(abi, bytecode, signer);
 
-            // 3. Get current network state
-            const nonce = await provider.getTransactionCount(address);
+            // 3. Smart Parameter Formatting: Kortana nodes require strict uint types
+            const constructorAbi = abi.find(item => item.type === 'constructor');
+            const formattedArgs = (constructorAbi?.inputs || []).map((input: any, index: number) => {
+                const rawValue = (config?.args || [])[index] || "";
 
-            // 4. Build transaction with robust defaults
-            const gasLimit = config?.gasLimit || "3000000";
-            const gasPrice = config?.gasPrice || "20";
+                // If the ABI expects a number (uint/int), enforce BigInt
+                if (input.type.includes('uint') || input.type.includes('int')) {
+                    const cleanVal = rawValue.toString().replace(/[^0-9]/g, '');
+                    return cleanVal ? BigInt(cleanVal) : 0n;
+                }
+                return rawValue; // Addresses and strings remain as-is
+            });
 
-            // Clean data: Ensure it starts with 0x and is valid hex
-            const txData = deployTx.data.startsWith('0x') ? deployTx.data : `0x${deployTx.data}`;
+            console.log("   Final Payload Args:", formattedArgs);
 
-            const txRequest: any = {
-                to: null, // Contract creation
-                data: txData,
-                gasLimit: BigInt(gasLimit),
-                gasPrice: ethers.parseUnits(gasPrice, "gwei"),
-                nonce: nonce,
-                chainId: parseInt(KORTANA_TESTNET.chainId, 16)
-            };
+            // 4. Integrated Deployment (Library-managed Transaction Handling)
+            // This is the safest way to avoid 'EOF' and serialization errors.
+            const contract = await factory.deploy(...formattedArgs, {
+                gasLimit: BigInt(config?.gasLimit || "3000000"),
+                gasPrice: ethers.parseUnits(config?.gasPrice || "20", "gwei"),
+                type: 0 // COMPATIBILITY: Force Legacy (Type 0) for Kortana Node stability
+            });
 
-            console.log(`   Gas Limit: ${gasLimit}`);
-            console.log(`   Gas Price: ${gasPrice} Gwei`);
-            console.log("   Broadcasting...");
+            console.log("   Broadcasting to Protocol...");
+            const txResponse = contract.deploymentTransaction();
+            if (!txResponse) throw new Error("Protocol failed to return a transaction hash.");
 
-            // 5. Sign and broadcast
-            const txResponse = await signer.sendTransaction(txRequest);
-
-            console.log("✅ [BlockchainService] Transaction broadcasted!");
-            console.log(`   RPC Hash: ${txResponse.hash}`);
+            console.log("✅ [BlockchainService] Atomic Success!");
+            console.log(`   Pulse Hash: ${txResponse.hash}`);
 
             return txResponse as ethers.ContractTransactionResponse;
 
