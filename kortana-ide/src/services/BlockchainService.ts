@@ -6,17 +6,12 @@ const CHAIN_ID = parseInt(KORTANA_TESTNET.chainId, 16); // 72511
 
 /**
  * BlockchainService — Kortana Protocol Adapter
- * 
- * CRITICAL ARCHITECTURE NOTE:
- * The Kortana Poseidon RPC node (Kortana/v1.0.0/rust) only accepts
- * Legacy (Type-0) transactions. MetaMask enforces EIP-1559 (Type-2)
- * which causes "Parse error: EOF" on the node side.
  *
- * SOLUTION: For ALL deployments, we bypass MetaMask's signing pipeline
- * and send the transaction directly via eth_sendRawTransaction using a
- * manually signed Type-0 transaction from the ethers.js JsonRpcProvider.
+ * After the long-term blockchain fix (adding baseFeePerGas to block responses),
+ * MetaMask now correctly identifies Kortana as an EIP-1559 chain and sends
+ * proper Type-2 transactions which the node's existing decoder handles.
  *
- * MetaMask is still used ONLY for wallet discovery (getting the user's address).
+ * The deploy() method now works seamlessly with MetaMask OR a private key.
  */
 export class BlockchainService {
     private static instance: BlockchainService;
@@ -25,7 +20,7 @@ export class BlockchainService {
     private rpcProvider: ethers.JsonRpcProvider;
 
     private constructor() {
-        // Always maintain a direct RPC connection — this is our actual tx broadcaster
+        // Always maintain a direct RPC connection
         this.rpcProvider = new ethers.JsonRpcProvider(KORTANA_TESTNET.rpcUrls[0], {
             chainId: CHAIN_ID,
             name: 'Kortana Testnet'
@@ -39,10 +34,6 @@ export class BlockchainService {
         return BlockchainService.instance;
     }
 
-    /**
-     * Connect via MetaMask. We get the user's address but will NOT
-     * use MetaMask to sign deployment transactions.
-     */
     public async connectWallet(): Promise<string> {
         const isElectron = typeof window.ipcRenderer !== 'undefined';
 
@@ -59,10 +50,7 @@ export class BlockchainService {
         try {
             this.browserProvider = new ethers.BrowserProvider(window.ethereum);
             const accounts = await this.browserProvider.send("eth_requestAccounts", []);
-
-            // Try to add/switch to Kortana network in MetaMask (best effort)
             await this.ensureKortanaNetwork();
-
             this.customSigner = null;
             return accounts[0];
         } catch (error: any) {
@@ -71,9 +59,6 @@ export class BlockchainService {
         }
     }
 
-    /**
-     * Connect via private key — full signing capability for Kortana.
-     */
     public async connectWithPrivateKey(privateKey: string): Promise<string> {
         try {
             this.customSigner = new ethers.Wallet(privateKey, this.rpcProvider);
@@ -96,20 +81,18 @@ export class BlockchainService {
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: KORTANA_TESTNET.chainId }],
             });
+            console.log("Network synchronized with Kortana Testnet");
         } catch (error: any) {
-            // Ignore user rejection (code 4001) — we only need the address
             if (error.code !== 4001) {
-                console.warn("Could not switch MetaMask to Kortana. Deployment still works via direct RPC.");
+                console.warn("Network switch warning:", error.message);
             }
         }
     }
 
     /**
-     * Deploy a smart contract to the Kortana network.
-     *
-     * KEY: This method ALWAYS signs transactions directly via the RPC provider,
-     * bypassing MetaMask's EIP-1559 enforcement. This is the ONLY way to
-     * successfully deploy to the Kortana Poseidon Rust node.
+     * Deploy a smart contract.
+     * Works with both MetaMask (EIP-1559) and Private Key (Legacy) connections.
+     * The Kortana node now handles both transaction types after the blockchain fix.
      */
     public async deploy(
         bytecode: string,
@@ -117,32 +100,21 @@ export class BlockchainService {
         config?: { gasLimit: string; gasPrice: string; args: any[] }
     ): Promise<ethers.ContractTransactionResponse> {
 
-        console.log("🚀 [BlockchainService] Initiating Kortana-optimised deployment...");
+        console.log("🚀 [BlockchainService] Starting Kortana deployment...");
 
-        // --- Step 1: Determine the deployer address ---
-        // We need the user's address to check balance and get nonce.
-        // If MetaMask is connected (no customSigner), we must request a temp signer.
-        // If private key connected, use that directly.
-        let deployerAddress: string;
-        let signingWallet: ethers.Wallet;
+        // Determine signer: prefer customSigner (private key), fall back to MetaMask
+        const signer = this.customSigner ||
+            (this.browserProvider ? await this.browserProvider.getSigner() : null);
 
-        if (this.customSigner) {
-            signingWallet = this.customSigner;
-            deployerAddress = signingWallet.address;
-        } else if (this.browserProvider) {
-            // MetaMask is connected but cannot sign Legacy txs.
-            // We need the user to provide a private key for deployment.
-            throw new Error(
-                "METAMASK_LIMITATION: MetaMask cannot sign Legacy transactions for the Kortana network. " +
-                "Please use 'Connect with Private Key' to deploy contracts. " +
-                "Your MetaMask address is shown for reference only."
-            );
-        } else {
+        if (!signer) {
             throw new Error('No wallet connected. Please connect via MetaMask or Private Key first.');
         }
 
-        // --- Step 2: Check balance ---
-        const balance = await this.rpcProvider.getBalance(deployerAddress);
+        const deployerAddress = await signer.getAddress();
+        const provider = signer.provider ?? this.rpcProvider;
+
+        // 1. Balance check
+        const balance = await provider.getBalance(deployerAddress);
         console.log(`   Deployer: ${deployerAddress}`);
         console.log(`   Balance: ${ethers.formatEther(balance)} DNR`);
 
@@ -150,7 +122,7 @@ export class BlockchainService {
             throw new Error("Insufficient balance! Your account has 0 DNR. Please fund it before deploying.");
         }
 
-        // --- Step 3: Parse constructor arguments with correct types ---
+        // 2. Parse constructor arguments with correct types
         const constructorAbi = abi.find((item: any) => item.type === 'constructor');
         const formattedArgs = (constructorAbi?.inputs || []).map((input: any, index: number) => {
             const rawValue = (config?.args || [])[index] ?? "";
@@ -162,50 +134,18 @@ export class BlockchainService {
         });
         console.log("   Constructor Args:", formattedArgs);
 
-        // --- Step 4: Build deployment calldata ---
-        const factory = new ethers.ContractFactory(abi, bytecode);
-        const deployTx = await factory.getDeployTransaction(...formattedArgs);
-
-        // --- Step 5: Get network state ---
-        const nonce = await this.rpcProvider.getTransactionCount(deployerAddress, 'pending');
-        // Use actual network gas price (confirmed to be 1 wei on Kortana)
-        const networkGasPrice = (await this.rpcProvider.getFeeData()).gasPrice ?? 1n;
-        console.log(`   Nonce: ${nonce}`);
-        console.log(`   Network Gas Price: ${networkGasPrice.toString()} wei`);
-
-        // --- Step 6: Build STRICT Legacy (Type-0) transaction ---
-        // This is the ONLY format the Kortana Rust node accepts.
-        const txRequest = {
-            type: 0,                   // MANDATORY: Legacy transaction
-            to: null,                  // null = contract creation
-            data: deployTx.data,       // ABI-encoded constructor call + bytecode
+        // 3. Deploy using ContractFactory — works for both MetaMask and Private Key
+        const factory = new ethers.ContractFactory(abi, bytecode, signer);
+        const contract = await factory.deploy(...formattedArgs, {
             gasLimit: BigInt(config?.gasLimit ?? "3000000"),
-            gasPrice: networkGasPrice, // Use actual network price, not user override
-            nonce: nonce,
-            chainId: CHAIN_ID,
-            value: 0n
-        };
+        });
 
-        console.log(`   Gas Limit: ${txRequest.gasLimit.toString()}`);
-        console.log("   Broadcasting via direct RPC (bypassing MetaMask)...");
-
-        // --- Step 7: Sign manually and send via eth_sendRawTransaction ---
-        const signedTx = await signingWallet.signTransaction(txRequest);
-        console.log(`   Signed TX length: ${signedTx.length} chars`);
-
-        const txHash = await this.rpcProvider.send("eth_sendRawTransaction", [signedTx]);
-        console.log(`✅ Broadcasted! Hash: ${txHash}`);
-
-        // Return a compatible object for the deployment slice to poll
-        const txResponse = await this.rpcProvider.getTransaction(txHash);
+        const txResponse = contract.deploymentTransaction();
         if (!txResponse) {
-            // The Kortana node sometimes doesn't return the tx immediately
-            // Construct a minimal response so polling can still work
-            return {
-                hash: txHash,
-                wait: async () => this.rpcProvider.waitForTransaction(txHash)
-            } as any;
+            throw new Error("Protocol failed to return a transaction hash.");
         }
+
+        console.log(`✅ [BlockchainService] Transaction broadcast! Hash: ${txResponse.hash}`);
         return txResponse as ethers.ContractTransactionResponse;
     }
 

@@ -237,31 +237,12 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({ isOpen, onClose, cont
                         </div>
                     )}
 
-                    {status === 'failed' && error?.includes('METAMASK_LIMITATION') && (
-                        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-3 animate-in slide-in-from-top-4">
-                            <div className="flex items-start space-x-3 text-amber-400">
-                                <div className="p-2 rounded-lg bg-amber-500/20 shrink-0"><AlertTriangle size={20} /></div>
-                                <div className="flex flex-col">
-                                    <span className="text-[11px] font-black uppercase tracking-wider">MetaMask Cannot Sign for Kortana</span>
-                                    <span className="text-[10px] opacity-80 mt-1">MetaMask uses the EIP-1559 standard which is incompatible with the Kortana node. You must use a Private Key to deploy.</span>
-                                </div>
-                            </div>
-                            <div className="bg-black/30 rounded-lg p-3 space-y-1 border border-amber-500/10">
-                                <p className="text-[9px] font-black text-amber-400 uppercase tracking-widest">How to fix:</p>
-                                <p className="text-[10px] text-white/70">1. Close this window</p>
-                                <p className="text-[10px] text-white/70">2. Click <span className="text-amber-400 font-bold">"Use Private Key"</span> in the sidebar</p>
-                                <p className="text-[10px] text-white/70">3. Enter your wallet's private key</p>
-                                <p className="text-[10px] text-white/70">4. Open Deploy and click <span className="text-amber-400 font-bold">Deploy Pulse</span> again</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {status === 'failed' && !error?.includes('METAMASK_LIMITATION') && (
+                    {status === 'failed' && (
                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center space-x-4 text-red-400 animate-in slide-in-from-top-4">
                             <div className="p-2 rounded-lg bg-red-500/20"><AlertTriangle size={24} /></div>
                             <div className="flex flex-col">
                                 <span className="text-[11px] font-bold uppercase tracking-wider">Deployment Failed</span>
-                                <span className="text-[10px] opacity-80 line-clamp-3">{error || 'Network error — Check DNR balance'}</span>
+                                <span className="text-[10px] opacity-80 line-clamp-3">{error || 'Network error — Check DNR balance and try again'}</span>
                             </div>
                         </div>
                     )}
