@@ -49,7 +49,7 @@ pub fn create_genesis_block(state_root: [u8; 32]) -> Block {
         proposer: Address::ZERO,
         gas_used: 0,
         gas_limit: GAS_LIMIT_PER_BLOCK,
-        base_fee: 1_000_000_000, // 1 Gwei
+        base_fee: MIN_GAS_PRICE, // 1 wei — Kortana minimum gas price
         vrf_output: [0u8; 32],
     };
 

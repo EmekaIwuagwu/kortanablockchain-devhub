@@ -18,7 +18,7 @@ impl Default for FeeMarket {
 impl FeeMarket {
     pub fn new() -> Self {
         Self {
-            base_fee: 1_000_000_000, // 1 Gwei
+            base_fee: crate::parameters::MIN_GAS_PRICE, // 1 wei — Kortana minimum
             target_gas_per_block: 15_000_000,
             elasticity_multiplier: 2,
         }
@@ -33,8 +33,10 @@ impl FeeMarket {
         };
 
         // Simplified EIP-1559 update logic: base_fee * (1 + (gas_delta / target_delta))
+        // Clamped to MIN_GAS_PRICE so it never goes below 1 wei
         let delta = (self.base_fee as i128 * diff) / (target as i128 * 8);
-        self.base_fee = (self.base_fee as i128 + delta).max(1) as u128;
+        self.base_fee = (self.base_fee as i128 + delta)
+            .max(crate::parameters::MIN_GAS_PRICE as i128) as u128;
     }
 
     pub fn calculate_priority_fee(&self, max_fee: u128, max_priority_fee: u128) -> u128 {
