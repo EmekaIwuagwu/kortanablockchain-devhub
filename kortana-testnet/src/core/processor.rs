@@ -109,101 +109,153 @@ impl<'a> BlockProcessor<'a> {
                  Err(_) => (0, 500u64, None),
              }
         } else {
-            if is_deployment {
-                // CONTRACT DEPLOYMENT
-                println!("[PROCESSOR] Contract deployment detected - Data length: {}, Gas: {}", tx.data.len(), tx.gas_limit);
-                
-                // Derive contract address from sender and nonce (nonce was already incremented)
-                let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce);
-                
-                let mut executor = EvmExecutor::new(contract_addr, tx.gas_limit - intrinsic_gas);
-                executor.caller = tx.from;
-                executor.callvalue = tx.value;
-
-                // Standard Ethereum: Transfer value to contract address BEFORE execution
-                if tx.value > 0 {
-                    let mut contract_acc = self.state.get_account(&contract_addr);
-                    contract_acc.balance += tx.value;
-                    self.state.update_account(contract_addr, contract_acc);
-                }                
-                match executor.execute(&tx.data, self.state, header) {
-                    Ok(runtime_code) => {
-                        println!("[PROCESSOR DEBUG] Deployment successful. Runtime code length: {}", runtime_code.len());
-                        let _ = std::io::stdout().flush();
-                        // Store the runtime code
-                        let code_hash = {
-use sha3::{Digest, Keccak256};
-                            let mut hasher = Keccak256::new();
-                            hasher.update(&runtime_code);
-                            let result = hasher.finalize();
-                            let mut hash = [0u8; 32];
-                            hash.copy_from_slice(&result);
-                            hash
-                        };
+            match tx.vm_type {
+                crate::types::transaction::VmType::EVM => {
+                    if is_deployment {
+                        // CONTRACT DEPLOYMENT
+                        println!("[PROCESSOR] Contract deployment detected - Data length: {}, Gas: {}", tx.data.len(), tx.gas_limit);
                         
-                        self.state.put_code(code_hash, runtime_code);
+                        // Derive contract address from sender and nonce (nonce was already incremented)
+                        let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce);
                         
-                        // Create contract account
-                        let mut contract_acc = self.state.get_account(&contract_addr);
-                        contract_acc.is_contract = true;
-                        contract_acc.code_hash = code_hash;
-                        self.state.update_account(contract_addr, contract_acc);
-                        
-                        logs = executor.logs;
-                        (1, tx.gas_limit - executor.gas_remaining, Some(contract_addr))
-                    }
-                    Err(e) => {
-                        println!("[PROCESSOR ERROR] Contract deployment failed: {:?}", e);
-                        (0, tx.gas_limit, None)
-                    }
-                }
-            } else {
-                // REGULAR CONTRACT CALL
-                let to_account = self.state.get_account(&tx.to);
-                
-                if to_account.is_contract {
-                    // Call existing contract
-                    if let Some(code) = self.state.get_code(&to_account.code_hash) {
-                         // Standard Ethereum: Transfer value to contract address BEFORE execution
-                        if tx.value > 0 {
-                            let mut recipient = self.state.get_account(&tx.to);
-                            recipient.balance += tx.value;
-                            self.state.update_account(tx.to, recipient);
-                        }
-
-                        let mut executor = EvmExecutor::new(tx.to, tx.gas_limit - intrinsic_gas);
-                        executor.calldata = tx.data.clone();
+                        let mut executor = EvmExecutor::new(contract_addr, tx.gas_limit - intrinsic_gas);
                         executor.caller = tx.from;
                         executor.callvalue = tx.value;
-                        
-                        match executor.execute(&code, self.state, header) {
-                            Ok(_) => {
+
+                        // Standard Ethereum: Transfer value to contract address BEFORE execution
+                        if tx.value > 0 {
+                            let mut contract_acc = self.state.get_account(&contract_addr);
+                            contract_acc.balance += tx.value;
+                            self.state.update_account(contract_addr, contract_acc);
+                        }                
+                        match executor.execute(&tx.data, self.state, header) {
+                            Ok(runtime_code) => {
+                                println!("[PROCESSOR DEBUG] Deployment successful. Runtime code length: {}", runtime_code.len());
+                                let _ = std::io::stdout().flush();
+                                // Store the runtime code
+                                let code_hash = {
+                                    use sha3::{Digest, Keccak256};
+                                    let mut hasher = Keccak256::new();
+                                    hasher.update(&runtime_code);
+                                    let result = hasher.finalize();
+                                    let mut hash = [0u8; 32];
+                                    hash.copy_from_slice(&result);
+                                    hash
+                                };
+                                
+                                self.state.put_code(code_hash, runtime_code);
+                                
+                                // Create contract account
+                                let mut contract_acc = self.state.get_account(&contract_addr);
+                                contract_acc.is_contract = true;
+                                contract_acc.code_hash = code_hash;
+                                self.state.update_account(contract_addr, contract_acc);
+                                
                                 logs = executor.logs;
-                                (1, tx.gas_limit - executor.gas_remaining, None)
+                                (1, tx.gas_limit - executor.gas_remaining, Some(contract_addr))
                             }
                             Err(e) => {
-                                println!("[PROCESSOR ERROR] Contract call failed: {:?}", e);
+                                println!("[PROCESSOR ERROR] Contract deployment failed: {:?}", e);
                                 (0, tx.gas_limit, None)
-                            },
+                            }
                         }
                     } else {
-                        // Contract has no code
-                        (0, intrinsic_gas, None)
+                        // REGULAR CONTRACT CALL
+                        let to_account = self.state.get_account(&tx.to);
+                        
+                        if to_account.is_contract {
+                            // Call existing contract
+                            if let Some(code) = self.state.get_code(&to_account.code_hash) {
+                                 // Standard Ethereum: Transfer value to contract address BEFORE execution
+                                if tx.value > 0 {
+                                    let mut recipient = self.state.get_account(&tx.to);
+                                    recipient.balance += tx.value;
+                                    self.state.update_account(tx.to, recipient);
+                                }
+
+                                let mut executor = EvmExecutor::new(tx.to, tx.gas_limit - intrinsic_gas);
+                                executor.calldata = tx.data.clone();
+                                executor.caller = tx.from;
+                                executor.callvalue = tx.value;
+                                
+                                match executor.execute(&code, self.state, header) {
+                                    Ok(_) => {
+                                        logs = executor.logs;
+                                        (1, tx.gas_limit - executor.gas_remaining, None)
+                                    }
+                                    Err(e) => {
+                                        println!("[PROCESSOR ERROR] Contract call failed: {:?}", e);
+                                        (0, tx.gas_limit, None)
+                                    },
+                                }
+                            } else {
+                                // Contract has no code
+                                (0, intrinsic_gas, None)
+                            }
+                        } else {
+                            let gas_used = intrinsic_gas + (tx.data.len() as u64 * 16);
+                            if gas_used > tx.gas_limit {
+                                println!("[PROCESSOR ERROR] Out of gas: used {} > limit {}", gas_used, tx.gas_limit);
+                                (0, tx.gas_limit, None) // Return 0 status, used all gas
+                            } else {
+                                println!("[PROCESSOR] Regular transfer: from {} to {} value {}", tx.from, tx.to, tx.value);
+                                // Transfer value to recipient
+                                if tx.value > 0 {
+                                    let mut recipient = self.state.get_account(&tx.to);
+                                    recipient.balance += tx.value;
+                                    self.state.update_account(tx.to, recipient);
+                                }
+                                (1, gas_used, None)
+                            }
+                        }
                     }
-                } else {
-                    let gas_used = intrinsic_gas + (tx.data.len() as u64 * 16);
-                    if gas_used > tx.gas_limit {
-                        println!("[PROCESSOR ERROR] Out of gas: used {} > limit {}", gas_used, tx.gas_limit);
-                        (0, tx.gas_limit, None) // Return 0 status, used all gas
-                    } else {
-                        println!("[PROCESSOR] Regular transfer: from {} to {} value {}", tx.from, tx.to, tx.value);
-                        // Transfer value to recipient
-                        if tx.value > 0 {
-                            let mut recipient = self.state.get_account(&tx.to);
-                            recipient.balance += tx.value;
-                            self.state.update_account(tx.to, recipient);
+                }
+                crate::types::transaction::VmType::Quorlin => {
+                    use crate::vm::quorlin::QuorlinExecutor;
+                    if is_deployment {
+                        println!("[PROCESSOR] Quorlin Contract deployment detected");
+                        let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce);
+                        let mut executor = QuorlinExecutor::new(contract_addr, tx.gas_limit - intrinsic_gas);
+                        
+                        match executor.execute(&tx.data, self.state) {
+                            Ok(_) => {
+                                // For Quorlin, we'll store the original bytecode as the "code"
+                                let code_hash = {
+                                    use sha3::{Digest, Keccak256};
+                                    let mut hasher = Keccak256::new();
+                                    hasher.update(&tx.data);
+                                    let result = hasher.finalize();
+                                    let mut hash = [0u8; 32];
+                                    hash.copy_from_slice(&result);
+                                    hash
+                                };
+                                self.state.put_code(code_hash, tx.data.clone());
+                                let mut contract_acc = self.state.get_account(&contract_addr);
+                                contract_acc.is_contract = true;
+                                contract_acc.code_hash = code_hash;
+                                self.state.update_account(contract_addr, contract_acc);
+                                (1, tx.gas_limit - executor.gas_remaining, Some(contract_addr))
+                            }
+                            Err(e) => {
+                                println!("[PROCESSOR ERROR] Quorlin deployment failed: {}", e);
+                                (0, tx.gas_limit, None)
+                            }
                         }
-                        (1, gas_used, None)
+                    } else {
+                        // Call Quorlin contract
+                        let to_account = self.state.get_account(&tx.to);
+                        if to_account.is_contract {
+                            if let Some(code) = self.state.get_code(&to_account.code_hash) {
+                                let mut executor = QuorlinExecutor::new(tx.to, tx.gas_limit - intrinsic_gas);
+                                match executor.execute(&code, self.state) {
+                                    Ok(_) => (1, tx.gas_limit - executor.gas_remaining, None),
+                                    Err(e) => {
+                                        println!("[PROCESSOR ERROR] Quorlin call failed: {}", e);
+                                        (0, tx.gas_limit, None)
+                                    }
+                                }
+                            } else { (0, intrinsic_gas, None) }
+                        } else { (0, intrinsic_gas, None) }
                     }
                 }
             }

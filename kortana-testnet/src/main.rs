@@ -16,6 +16,7 @@ const CLR_RESET: &str = "\x1b[0m";
 const CLR_BLUE: &str = "\x1b[34m";
 const CLR_CYAN: &str = "\x1b[36m";
 const CLR_GREEN: &str = "\x1b[32m";
+#[allow(dead_code)]
 const CLR_RED: &str = "\x1b[31m";
 const CLR_YELLOW: &str = "\x1b[33m";
 const CLR_MAGENTA: &str = "\x1b[35m";
@@ -147,7 +148,7 @@ async fn main() {
     // 3. Initialize Core Components
     print!("{}[3/5] Starting Consensus Engine... {}", CLR_YELLOW, CLR_RESET);
     let genesis_validator = ValidatorInfo {
-        address: Address::from_pubkey(b"genesis_validator"),
+        address: Address::from_hex("0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap(),
         stake: 32_000_000_000_000_000_000,
         is_active: true,
         commission: 500, // 5%
@@ -223,7 +224,7 @@ async fn main() {
         loop {
             let (mut socket, _) = listener.accept().await.unwrap();
             let handler = rpc_handler.clone();
-            let task_node = rpc_node.clone();
+            let _task_node = rpc_node.clone();
             tokio::spawn(async move {
                 let mut buffer = Vec::new();
                 let mut temp_buf = [0u8; 65536]; // 64KB per read chunk for fast ingestion
@@ -268,7 +269,7 @@ async fn main() {
                 } else if req_body_str.starts_with("GET") {
                     let status_json = serde_json::json!({
                         "status": "online", "node": "Kortana", "version": "1.0.0",
-                        "chain_id": CHAIN_ID, "height": task_node.height.load(Ordering::Relaxed)
+                        "chain_id": CHAIN_ID, "height": _task_node.height.load(Ordering::Relaxed)
                     }).to_string();
                     (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
                 } else if let Some(header_end) = req_body_str.find("\r\n\r\n") {

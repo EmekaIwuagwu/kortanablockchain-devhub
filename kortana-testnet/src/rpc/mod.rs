@@ -48,7 +48,7 @@ use crate::consensus::ConsensusEngine;
 
 // Filter tracking for MetaMask compatibility
 #[derive(Debug, Clone)]
-enum FilterType {
+pub enum FilterType {
     Block,
     Logs {
         address: Option<Vec<String>>,
@@ -59,13 +59,13 @@ enum FilterType {
 }
 
 #[derive(Debug, Clone)]
-struct RpcFilter {
-    id: String,
-    filter_type: FilterType,
-    last_poll_block: u64,
+pub struct RpcFilter {
+    pub id: String,
+    pub filter_type: FilterType,
+    pub last_poll_block: u64,
 }
 
-type FilterMap = Arc<Mutex<HashMap<String, RpcFilter>>>;
+pub type FilterMap = Arc<Mutex<HashMap<String, RpcFilter>>>;
 
 pub struct RpcHandler {
     pub state: Arc<Mutex<State>>,
@@ -132,9 +132,8 @@ impl RpcHandler {
                             
                             if is_deployment {
                                 // Contract deployment: 53k intrinsic + bytecode cost
-                                // Use higher multiplier for deployment complexity
                                 let creation_cost = 53000u64;
-                                let bytecode_cost = (data_len as u64) * 100; // More realistic than 16
+                                let bytecode_cost = (data_len as u64) * 16;
                                 gas = creation_cost + bytecode_cost;
                                 
                                 // Minimum 200k for any deployment, max 10M
@@ -145,7 +144,7 @@ impl RpcHandler {
                                 gas = 21000 + ((data_len as u64) * 16);
                             }
                         } else if is_deployment {
-                            // Deployment with no data? Return minimum deployment gas
+                             // Deployment with no data? Return minimum deployment gas
                             gas = 53000;
                         }
                     }

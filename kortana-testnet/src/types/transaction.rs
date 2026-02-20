@@ -40,7 +40,11 @@ impl Encodable for Transaction {
         s.append(&self.gas_limit);
         s.append(&self.gas_price);
         s.append(&self.data);
-        s.append(&(0u8)); // Always EVM
+        let vm_val = match self.vm_type {
+            VmType::EVM => 0u8,
+            VmType::Quorlin => 1u8,
+        };
+        s.append(&vm_val);
         s.append(&self.chain_id);
         s.append(&self.signature);
     }
@@ -48,6 +52,9 @@ impl Encodable for Transaction {
 
 impl Decodable for Transaction {
     fn decode(rlp: &Rlp) -> Result<Self, rlp::DecoderError> {
+        let vm_val: u8 = rlp.val_at(7)?;
+        let vm_type = if vm_val == 1 { VmType::Quorlin } else { VmType::EVM };
+        
         Ok(Transaction {
             nonce: rlp.val_at(0)?,
             from: Address::from_bytes(rlp.val_at::<Vec<u8>>(1)?.try_into().map_err(|_| rlp::DecoderError::Custom("Invalid address"))?).map_err(|_| rlp::DecoderError::Custom("Invalid address checksum"))?,
@@ -56,7 +63,7 @@ impl Decodable for Transaction {
             gas_limit: rlp.val_at(4)?,
             gas_price: rlp.val_at(5)?,
             data: rlp.val_at(6)?,
-            vm_type: VmType::EVM, // Always EVM
+            vm_type,
             chain_id: rlp.val_at(8)?,
             signature: rlp.val_at(9).ok(),
             cached_hash: None,
