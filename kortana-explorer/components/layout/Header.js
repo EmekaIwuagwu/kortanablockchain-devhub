@@ -1,11 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Rocket, ChevronDown, Menu, X } from 'lucide-react';
 
 const Header = () => {
     const [activeDropdown, setActiveDropdown] = useState(null);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const navLinks = [
         { label: 'Home', href: '/' },
@@ -29,16 +39,27 @@ const Header = () => {
     ];
 
     return (
-        <header className="glass">
-            <div className="container flex items-center justify-between">
-                <Link href="/" className="flex items-center gap-3">
-                    <img src="/logo.png" alt="Kortana" style={{ height: '40px' }} />
-                    <span className="font-heading" style={{ fontSize: '1.5rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #ffffff, #9d4edd)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <header className={`glass ${scrolled ? 'scrolled' : ''}`} style={{
+            transition: 'all 0.3s ease',
+            background: scrolled ? 'rgba(11, 1, 24, 0.8)' : 'var(--surface)',
+            borderBottom: scrolled ? '1px solid var(--primary)' : '1px solid var(--border)'
+        }}>
+            <div className="container flex items-center justify-between" style={{ height: '100%' }}>
+                <Link href="/" className="flex items-center gap-2 md:gap-3">
+                    <img src="/logo.png" alt="Kortana" style={{ height: '32px' }} />
+                    <span className="font-heading" style={{
+                        fontSize: 'clamp(1.1rem, 4vw, 1.5rem)',
+                        letterSpacing: '-0.02em',
+                        background: 'linear-gradient(to right, #ffffff, #9d4edd)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                    }}>
                         KORTANA
                     </span>
                 </Link>
 
-                <nav className="flex items-center" style={{ gap: '0.5rem' }}>
+                {/* Desktop Nav */}
+                <nav className="hidden-mobile items-center" style={{ gap: '0.5rem' }}>
                     {navLinks.map((link, idx) => (
                         <div
                             key={idx}
@@ -95,7 +116,75 @@ const Header = () => {
                         </button>
                     </div>
                 </nav>
+
+                {/* Mobile Toggle */}
+                <button
+                    className="show-mobile btn"
+                    style={{ padding: '0.5rem', background: 'transparent' }}
+                    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                >
+                    {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
             </div>
+
+            {/* Mobile Menu Overlay */}
+            {mobileMenuOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: '70px',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(11, 1, 24, 0.98)',
+                    backdropFilter: 'blur(10px)',
+                    zIndex: 999,
+                    padding: '1.5rem',
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem'
+                }} className="animate-fade-in">
+                    {navLinks.map((link, idx) => (
+                        <div key={idx}>
+                            {link.href ? (
+                                <Link
+                                    href={link.href}
+                                    className="nav-link"
+                                    style={{ fontSize: '1.25rem', padding: '1rem 0' }}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    {link.label}
+                                </Link>
+                            ) : (
+                                <div>
+                                    <div style={{ color: 'var(--primary-light)', fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem', marginTop: '1rem' }}>
+                                        {link.label}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1rem', borderLeft: '1px solid var(--border)' }}>
+                                        {link.items.map((item, i) => (
+                                            <Link
+                                                key={i}
+                                                href={item.href}
+                                                className="nav-link"
+                                                style={{ fontSize: '1.1rem', padding: '0.5rem 0' }}
+                                                onClick={() => setMobileMenuOpen(false)}
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    <div style={{ marginTop: '2rem' }}>
+                        <button className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>
+                            <Rocket size={20} />
+                            Launch App
+                        </button>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };

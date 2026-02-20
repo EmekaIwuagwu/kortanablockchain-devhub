@@ -60,20 +60,30 @@ export default function Home() {
     <div style={{ paddingBottom: '4rem' }}>
       {/* Hero Section */}
       <section style={{
-        padding: '6rem 0 4rem',
+        padding: 'clamp(3rem, 10vw, 6rem) 0 clamp(2rem, 8vw, 4rem)',
         background: 'radial-gradient(circle at center, rgba(157, 78, 221, 0.15) 0%, transparent 70%)',
         textAlign: 'center'
       }}>
         <div className="container">
-          <h1 className="font-heading" style={{ fontSize: '3.5rem', marginBottom: '1.5rem', lineHeight: '1.1' }}>
+          <h1 className="font-heading" style={{
+            fontSize: 'clamp(2rem, 8vw, 3.5rem)',
+            marginBottom: '1.5rem',
+            lineHeight: '1.1'
+          }}>
             The <span style={{ color: 'var(--primary-light)' }}>Kortana</span> Blockchain Explorer
           </h1>
-          <p className="text-dim" style={{ fontSize: '1.25rem', marginBottom: '3rem', maxWidth: '700px', margin: '0 auto 3rem' }}>
+          <p className="text-dim" style={{
+            fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+            marginBottom: '3rem',
+            maxWidth: '700px',
+            margin: '0 auto 3rem'
+          }}>
             Explore blocks, transactions, and addresses on the most advanced high-performance blockchain.
           </p>
           <SearchBar large={true} />
         </div>
       </section>
+
 
       <div className="container">
         <StatsOverview stats={stats} />

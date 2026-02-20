@@ -21,9 +21,10 @@ const StatCard = ({ title, value, icon: Icon, change, suffix }) => (
             </div>
         </div>
         <div className="flex items-end gap-2" style={{ position: 'relative', zIndex: 1 }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: '700', letterSpacing: '-0.02em' }}>{value}</h2>
+            <h2 style={{ fontSize: 'clamp(1.5rem, 5vw, 2rem)', fontWeight: '700', letterSpacing: '-0.02em' }}>{value}</h2>
             {suffix && <span className="text-dim mb-1 font-heading" style={{ fontSize: '0.8rem' }}>{suffix}</span>}
         </div>
+
         {change && (
             <div className="text-small mt-2 flex items-center gap-1" style={{ color: change.startsWith('+') ? 'var(--success)' : 'var(--error)', position: 'relative', zIndex: 1 }}>
                 <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{change}</span>
