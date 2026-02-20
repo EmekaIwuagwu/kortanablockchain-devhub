@@ -1,0 +1,244 @@
+﻿cargo : warning: value assigned to `is_deployment` 
+is never read
+At line:1 char:1
++ cargo check 2> build_errors.txt
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warni 
+   ng: value ...` is never read:String) [], Remot  
+  eException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   --> src\rpc\mod.rs:113:25
+    |
+113 | ...   let mut is_deployment = false;
+    |               ^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being 
+read?
+    = note: `#[warn(unused_assignments)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: unused variable: `value`
+   --> src\rpc\mod.rs:687:50
+    |
+687 | ...t (from, to, value, gas_price) = if let...
+    |                 ^^^^^ help: if this is 
+intentional, prefix it with an underscore: `_value`
+    |
+    = note: `#[warn(unused_variables)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: unused variable: `topics`
+   --> src\rpc\mod.rs:789:61
+    |
+789 | ...s { address, topics, .. } => {
+    |                 ^^^^^^-
+    |                 |
+    |                 help: try removing the field
+
+warning: unused variable: `value`
+   --> src\vm\evm.rs:531:25
+    |
+531 | ...   let value = Self::u256_to_u128(self....
+    |           ^^^^^
+    |
+help: if this is intentional, prefix it with an 
+underscore
+    |
+531 |                     let _value = 
+Self::u256_to_u128(self.stack.pop()?);
+    |                         +
+help: you might have meant to pattern match on the 
+similarly named constant `MIN_GAS_PRICE`
+    |
+531 -                     let value = 
+Self::u256_to_u128(self.stack.pop()?);
+531 +                     let 
+parameters::MIN_GAS_PRICE = 
+Self::u256_to_u128(self.stack.pop()?);
+    |
+
+warning: unused variable: `res`
+   --> src\vm\evm.rs:870:17
+    |
+870 |         let mut res = [0u8; 32];
+    |                 ^^^ help: if this is 
+intentional, prefix it with an underscore: `_res`
+
+warning: unused variable: `temp`
+   --> src\vm\evm.rs:871:17
+    |
+871 |         let mut temp = [0u32; 16]; // 16-b...
+    |                 ^^^^ help: if this is 
+intentional, prefix it with an underscore: `_temp`
+
+warning: unused variable: `carry`
+   --> src\vm\evm.rs:882:21
+    |
+882 |             let mut carry = 0u32;
+    |                     ^^^^^
+    |
+help: if this is intentional, prefix it with an 
+underscore
+    |
+882 |             let mut _carry = 0u32;
+    |                     +
+help: you might have meant to pattern match on the 
+similarly named constant `BRANCHES`
+    |
+882 -             let mut carry = 0u32;
+882 +             let mut network::p2p::KortanaNetw
+ork::run::{closure#0}::BRANCHES = 0u32;
+    |
+
+warning: unused variable: `result`
+   --> src\vm\evm.rs:893:17
+    |
+893 |         let mut result = [0u64; 4];
+    |                 ^^^^^^ help: if this is 
+intentional, prefix it with an underscore: 
+`_result`
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:870:13
+    |
+870 |         let mut res = [0u8; 32];
+    |             ----^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:871:13
+    |
+871 | ...   let mut temp = [0u32; 16]; // 16-bit...
+    |           ----^^^^
+    |           |
+    |           help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:882:17
+    |
+882 |             let mut carry = 0u32;
+    |                 ----^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\vm\evm.rs:893:13
+    |
+893 |         let mut result = [0u64; 4];
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: type `RpcFilter` is more private than the 
+item `RpcHandler::filters`
+  --> src\rpc\mod.rs:78:5
+   |
+78 |     pub filters: FilterMap,
+   |     ^^^^^^^^^^^^^^^^^^^^^^ field 
+`RpcHandler::filters` is reachable at visibility 
+`pub`
+   |
+note: but type `RpcFilter` is only usable at 
+visibility `pub(self)`
+  --> src\rpc\mod.rs:62:1
+   |
+62 | struct RpcFilter {
+   | ^^^^^^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by 
+default
+
+warning: fields `from_block` and `to_block` are 
+never read
+  --> src\rpc\mod.rs:56:9
+   |
+53 |     Logs {
+   |     ---- fields in this variant
+...
+56 |         from_block: u64,
+   |         ^^^^^^^^^^
+57 |         to_block: Option<u64>,
+   |         ^^^^^^^^
+   |
+   = note: `FilterType` has derived impls for the 
+traits `Clone` and `Debug`, but these are 
+intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: field `id` is never read
+  --> src\rpc\mod.rs:63:5
+   |
+62 | struct RpcFilter {
+   |        --------- field in this struct
+63 |     id: String,
+   |     ^^
+   |
+   = note: `RpcFilter` has derived impls for the 
+traits `Clone` and `Debug`, but these are 
+intentionally ignored during dead code analysis
+
+warning: `kortana-blockchain-rust` (lib) generated 
+15 warnings (run `cargo fix --lib -p 
+kortana-blockchain-rust` to apply 7 suggestions)
+    Checking kortana-blockchain-rust v1.1.0 (C:\Use
+rs\emi\Desktop\blockchains\kortanablockchain-devhub
+\kortana-mainnet)
+warning: unused import: `std::io::Write`
+  --> src\main.rs:11:5
+   |
+11 | use std::io::Write;
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of 
+`#[warn(unused)]`) on by default
+
+error[E0609]: no field `delegator` on type 
+`&Vec<Delegation>`
+   --> src\main.rs:133:24
+    |
+133 |          if stake_info.delegator == addr && 
+stake_info.amount >= MIN_VALIDATOR_STAKE {
+    |                        ^^^^^^^^^ unknown 
+field
+
+error[E0609]: no field `amount` on type 
+`&Vec<Delegation>`
+   --> src\main.rs:133:56
+    |
+133 |          if stake_info.delegator == addr && 
+stake_info.amount >= MIN_VALIDATOR_STAKE {
+    |                                              
+          ^^^^^^ unknown field
+
+error[E0609]: no field `amount` on type 
+`&Vec<Delegation>`
+   --> src\main.rs:136:36
+    |
+136 |                  stake: stake_info.amount,
+    |                                    ^^^^^^ 
+unknown field
+
+warning: variable does not need to be mutable
+   --> src\main.rs:343:9
+    |
+343 |     let mut state = kortana_blockchain_rust::
+core::genesis::create_genesis_state();
+    |         ----^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of 
+`#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc 
+--explain E0609`.
+warning: `kortana-blockchain-rust` (bin 
+"kortana-blockchain-rust") generated 2 warnings
+error: could not compile `kortana-blockchain-rust` 
+(bin "kortana-blockchain-rust") due to 3 previous 
+errors; 2 warnings emitted

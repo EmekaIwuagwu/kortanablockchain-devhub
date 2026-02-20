@@ -48,24 +48,21 @@ use crate::consensus::ConsensusEngine;
 
 // Filter tracking for MetaMask compatibility
 #[derive(Debug, Clone)]
-enum FilterType {
+pub enum FilterType {
     Block,
     Logs {
         address: Option<Vec<String>>,
         topics: Option<Vec<Value>>,
-        from_block: u64,
-        to_block: Option<u64>,
     },
 }
 
 #[derive(Debug, Clone)]
-struct RpcFilter {
-    id: String,
-    filter_type: FilterType,
-    last_poll_block: u64,
+pub struct RpcFilter {
+    pub filter_type: FilterType,
+    pub last_poll_block: u64,
 }
 
-type FilterMap = Arc<Mutex<HashMap<String, RpcFilter>>>;
+pub type FilterMap = Arc<Mutex<HashMap<String, RpcFilter>>>;
 
 pub struct RpcHandler {
     pub state: Arc<Mutex<State>>,
@@ -110,12 +107,11 @@ impl RpcHandler {
             "eth_gasPrice" => Some(serde_json::to_value(format!("0x{:x}", crate::parameters::MIN_GAS_PRICE)).unwrap()),
             "eth_estimateGas" => {
                 let mut gas = crate::parameters::MIN_GAS_PER_TX;
-                let mut is_deployment = false;
                 
                 if let Some(arr) = p {
                     if let Some(call_obj) = arr.first().and_then(|v| v.as_object()) {
                         // Check if this is a contract deployment (no 'to' address or to == null)
-                        is_deployment = match call_obj.get("to") {
+                        let is_deployment = match call_obj.get("to") {
                             None => true,
                             Some(v) if v.is_null() => true,
                             Some(v) => {
@@ -684,7 +680,7 @@ impl RpcHandler {
                                  }).collect();
 
                                   let tx = self.storage.get_transaction(hash_str).ok().flatten();
-                                  let (from, to, value, gas_price) = if let Some(t) = &tx {
+                                  let (from, to, _value, gas_price) = if let Some(t) = &tx {
                                      (
                                          format!("0x{}", hex::encode(t.from.as_evm_address())),
                                          format!("0x{}", hex::encode(t.to.as_evm_address())),
@@ -728,7 +724,6 @@ impl RpcHandler {
             "eth_newBlockFilter" => {
                 let filter_id = format!("0x{:x}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos() % 0xFFFFFFFF);
                 let filter = RpcFilter {
-                    id: filter_id.clone(),
                     filter_type: FilterType::Block,
                     last_poll_block: current_height,
                 };
@@ -755,12 +750,9 @@ impl RpcHandler {
                 } else { (None, None, current_height) };
 
                 let filter = RpcFilter {
-                    id: filter_id.clone(),
                     filter_type: FilterType::Logs { 
                         address, 
                         topics, 
-                        from_block,
-                        to_block: None 
                     },
                     last_poll_block: from_block.saturating_sub(1),
                 };
@@ -786,7 +778,7 @@ impl RpcHandler {
                                     }
                                     Some(Value::Array(hashes))
                                 }
-                                FilterType::Logs { address, topics, .. } => {
+                                FilterType::Logs { address, topics } => {
                                     let mut logs = Vec::new();
                                     for h in start_block..=end_block {
                                         if let Ok(Some(b)) = self.storage.get_block(h) {

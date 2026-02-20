@@ -8,7 +8,6 @@ use kortana_blockchain_rust::consensus::bft::FinalityGadget;
 use kortana_blockchain_rust::config::NodeConfig;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::io::Write;
 use std::time::Duration;
 use clap::Parser;
 use k256::ecdsa::SigningKey;
@@ -18,7 +17,7 @@ const CLR_RESET: &str = "\x1b[0m";
 const CLR_BLUE: &str = "\x1b[34m";
 const CLR_CYAN: &str = "\x1b[36m";
 const CLR_GREEN: &str = "\x1b[32m";
-const CLR_RED: &str = "\x1b[31m";
+const _CLR_RED: &str = "\x1b[31m";
 const CLR_YELLOW: &str = "\x1b[33m";
 const CLR_MAGENTA: &str = "\x1b[35m";
 const CLR_BOLD: &str = "\x1b[1m";
@@ -128,16 +127,18 @@ async fn main() {
     print!("{}[3/5] Syncing Consensus Set... {}", CLR_YELLOW, CLR_RESET);
     // Extract initial validators from genesis staking state
     let mut initial_validators = Vec::new();
-    for (&addr, stake_info) in state.staking.delegations.iter() {
+    for (&addr, delegation_list) in state.staking.delegations.iter() {
          // Simplify for genesis: if you stake to yourself at genesis, you're a validator
-         if stake_info.delegator == addr && stake_info.amount >= MIN_VALIDATOR_STAKE {
-             initial_validators.push(ValidatorInfo {
-                 address: addr,
-                 stake: stake_info.amount,
-                 is_active: true,
-                 commission: 500, // 5% default
-                 missed_blocks: 0,
-             });
+         for stake_info in delegation_list {
+             if stake_info.delegator == addr && stake_info.amount >= MIN_VALIDATOR_STAKE {
+                 initial_validators.push(ValidatorInfo {
+                     address: addr,
+                     stake: stake_info.amount,
+                     is_active: true,
+                     commission: 500, // 5% default
+                     missed_blocks: 0,
+                 });
+             }
          }
     }
     
@@ -199,7 +200,7 @@ async fn main() {
         loop {
             let (mut socket, _) = listener.accept().await.unwrap();
             let handler = rpc_handler.clone();
-            let task_node = rpc_node.clone();
+            let _task_node = rpc_node.clone();
             tokio::spawn(async move {
                 // ... (Simplified RPC reading for production)
                 let mut buffer = vec![0u8; 16384];
@@ -340,7 +341,7 @@ fn generate_wallet() {
 
 fn run_self_test() {
     println!("\n{}--- KORTANA PROTOCOL V1.1 SELF-TEST ---{}", CLR_BOLD, CLR_RESET);
-    let mut state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+    let state = kortana_blockchain_rust::core::genesis::create_genesis_state();
     let root = state.calculate_root();
     println!("Genesis Root: 0x{} -> {}PASS{}", hex::encode(root), CLR_GREEN, CLR_RESET);
     println!("Check CHAIN_ID: {} -> {}PASS{}", CHAIN_ID, CLR_GREEN, CLR_RESET);

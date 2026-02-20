@@ -166,8 +166,9 @@ impl EvmExecutor {
                         top.push_str(&hex::encode(&self.stack.data[idx]));
                         top.push('|');
                     }
+                    let log_pc = if pc > 0 { pc - 1 } else { 0 };
                     let _ = writeln!(f, "PC:{:04x} OP:0x{:02x} Gas:{} Stack[{}]:[{}]",
-                        pc - 1, opcode, self.gas_remaining, self.stack.data.len(), top);
+                        log_pc, opcode, self.gas_remaining, self.stack.data.len(), top);
                 }
             }
             
@@ -528,7 +529,7 @@ impl EvmExecutor {
                 // System
                 0xF0 => { // CREATE (Deploying contract from contract)
                     self.consume_gas(32000)?;
-                    let value = Self::u256_to_u128(self.stack.pop()?);
+                    let _value = Self::u256_to_u128(self.stack.pop()?);
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
                     let init_code = self.memory.load(off, len)?;
@@ -867,37 +868,6 @@ impl EvmExecutor {
     }
 
     fn mul_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
-        let mut res = [0u8; 32];
-        let mut temp = [0u32; 16]; // 16-bit chunks for multiplication
-
-        // Convert [u8; 32] to [u16; 16] for easier multiplication
-        let mut a16 = [0u16; 16];
-        let mut b16 = [0u16; 16];
-        for i in 0..16 {
-            a16[i] = ((a[i * 2] as u16) << 8) | (a[i * 2 + 1] as u16);
-            b16[i] = ((b[i * 2] as u16) << 8) | (b[i * 2 + 1] as u16);
-        }
-
-        for i in (0..16).rev() {
-            let mut carry = 0u32;
-            for j in (0..16).rev() {
-                if i + j + 1 < 16 {
-                   // This is a simplified schoolbook multiplication. 
-                   // Real U256 would be better, but let's at least do it with more precision than u128.
-                }
-            }
-        }
-        
-        // Actually, for Kortana, let's use a more reliable 256-bit multiplication logic
-        // This is a common pattern for 256-bit mul in Rust without BigInt
-        let mut result = [0u64; 4];
-        let mut a64 = [0u64; 4];
-        let mut b64 = [0u64; 4];
-        for i in 0..4 {
-            a64[i] = u64::from_be_bytes(a[i*8..(i+1)*8].try_into().unwrap());
-            b64[i] = u64::from_be_bytes(b[i*8..(i+1)*8].try_into().unwrap());
-        }
-        
         // Simplified multiplication (only bottom 128 bits for now as a stepping stone)
         // TODO: Full 256-bit multiplication if needed for high-value tokens
         let a_val = u128::from_be_bytes(a[16..32].try_into().unwrap());
