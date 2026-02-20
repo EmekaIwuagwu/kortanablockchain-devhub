@@ -79,4 +79,62 @@ mod tests {
         assert_eq!(receipt.status, 1);
         println!("Solidity (EVM) Contract execution status: {}", receipt.status);
     }
+
+    #[test]
+    fn test_quorlin_state_and_address() {
+        let mut state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+        let faucet_addr = Address::from_hex("0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
+        
+        // Instructions:
+        // 1. Get current address
+        // 2. Push 123
+        // 3. Store in global "my_value"
+        // 4. Return the value
+        let instructions = vec![
+            QuorlinOpcode::Address,
+            QuorlinOpcode::Push(888),
+            QuorlinOpcode::StoreGlobal("balance".to_string()),
+            QuorlinOpcode::Push(888),
+            QuorlinOpcode::Return,
+        ];
+        let data = serde_json::to_vec(&instructions).unwrap();
+
+        let tx = Transaction {
+            nonce: 0,
+            from: faucet_addr,
+            to: Address::ZERO, // Deploy
+            value: 0,
+            gas_limit: 100000,
+            gas_price: 1,
+            data,
+            vm_type: VmType::Quorlin,
+            chain_id: CHAIN_ID,
+            signature: None,
+            cached_hash: None,
+        };
+
+        let mut processor = BlockProcessor::new(&mut state, FeeMarket::new());
+        let header = kortana_blockchain_rust::types::block::BlockHeader {
+            version: 1, height: 1, slot: 1, timestamp: 123456789, parent_hash: [0u8;32], state_root: [0u8;32], transactions_root: [0u8;32], receipts_root: [0u8;32], poh_hash: [0u8;32], poh_sequence: 0, proposer: Address::ZERO, gas_used: 0, gas_limit: 30000000, base_fee: 1, vrf_output: [0u8; 32]
+        };
+
+        let receipt = processor.process_transaction(tx, &header).unwrap();
+        assert_eq!(receipt.status, 1);
+        
+        let contract_addr = receipt.contract_address.unwrap();
+        let storage = state.storage.get(&contract_addr).unwrap();
+        
+        // Check if value was stored
+        use sha3::{Digest, Keccak256};
+        let mut hasher = Keccak256::new();
+        hasher.update(b"balance");
+        let key: [u8; 32] = hasher.finalize().into();
+        
+        let stored_val = storage.get(&key).unwrap();
+        let mut expected = [0u8; 32];
+        expected[24..32].copy_from_slice(&(888u64).to_be_bytes());
+        
+        assert_eq!(stored_val, &expected);
+        println!("Quorlin State Test: PASS (Stored 888 at key 'balance')");
+    }
 }

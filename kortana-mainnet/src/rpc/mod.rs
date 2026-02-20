@@ -778,7 +778,7 @@ impl RpcHandler {
                                     }
                                     Some(Value::Array(hashes))
                                 }
-                                FilterType::Logs { address, topics } => {
+                                FilterType::Logs { address, topics: _ } => {
                                     let mut logs = Vec::new();
                                     for h in start_block..=end_block {
                                         if let Ok(Some(b)) = self.storage.get_block(h) {
