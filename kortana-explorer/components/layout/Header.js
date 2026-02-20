@@ -38,6 +38,46 @@ const Header = () => {
         { label: 'Verify', href: '/verify' },
     ];
 
+    const handleLaunchApp = async () => {
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                // Try to switch to the Kortana Testnet
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x11B3F' }], // 72511 in hex
+                });
+            } catch (switchError) {
+                // This error code indicates that the chain has not been added to MetaMask.
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [
+                                {
+                                    chainId: '0x11B3F',
+                                    chainName: 'Kortana Testnet',
+                                    nativeCurrency: {
+                                        name: 'Dinari',
+                                        symbol: 'DNR',
+                                        decimals: 18,
+                                    },
+                                    rpcUrls: ['https://poseidon-rpc.kortana.worchsester.xyz'],
+                                    blockExplorerUrls: ['https://explorer.kortana.worchsester.xyz'],
+                                },
+                            ],
+                        });
+                    } catch (addError) {
+                        console.error('User rejected adding the network');
+                    }
+                }
+                console.error('Failed to switch network:', switchError);
+            }
+        } else {
+            alert('Please install MetaMask to launch the Kortana App!');
+            window.open('https://metamask.io/download/', '_blank');
+        }
+    };
+
     return (
         <header className={`glass ${scrolled ? 'scrolled' : ''}`} style={{
             transition: 'all 0.3s ease',
@@ -110,7 +150,11 @@ const Header = () => {
                     ))}
 
                     <div style={{ marginLeft: '1rem' }}>
-                        <button className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem' }}>
+                        <button
+                            className="btn btn-primary"
+                            style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem' }}
+                            onClick={handleLaunchApp}
+                        >
                             <Rocket size={16} />
                             Launch App
                         </button>
@@ -178,7 +222,11 @@ const Header = () => {
                         </div>
                     ))}
                     <div style={{ marginTop: '2rem' }}>
-                        <button className="btn btn-primary" style={{ width: '100%', padding: '1rem' }}>
+                        <button
+                            className="btn btn-primary"
+                            style={{ width: '100%', padding: '1rem' }}
+                            onClick={handleLaunchApp}
+                        >
                             <Rocket size={20} />
                             Launch App
                         </button>
