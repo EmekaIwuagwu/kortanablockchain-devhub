@@ -1,9 +1,9 @@
 // File: tests/integration_test.rs
 
-use kortana_mainnet::address::Address;
-use kortana_mainnet::types::transaction::{Transaction, VmType};
-use kortana_mainnet::state::account::State;
-use kortana_mainnet::core::processor::BlockProcessor;
+use kortana_blockchain_rust::address::Address;
+use kortana_blockchain_rust::types::transaction::{Transaction, VmType};
+use kortana_blockchain_rust::state::account::State;
+use kortana_blockchain_rust::core::processor::BlockProcessor;
 
 #[test]
 fn test_full_transaction_flow() {
@@ -25,12 +25,12 @@ fn test_full_transaction_flow() {
         gas_price: 1,
         data: vec![],
         vm_type: VmType::EVM,
-        chain_id: kortana_mainnet::parameters::CHAIN_ID,
+        chain_id: kortana_blockchain_rust::parameters::CHAIN_ID,
         signature: None,
         cached_hash: None,
     };
 
-    let header = kortana_mainnet::types::block::BlockHeader {
+    let header = kortana_blockchain_rust::types::block::BlockHeader {
         version: 1,
         height: 1,
         slot: 1,
@@ -48,7 +48,7 @@ fn test_full_transaction_flow() {
         vrf_output: [0u8; 32],
     };
 
-    let mut processor = BlockProcessor::new(&mut state, kortana_mainnet::core::fees::FeeMarket::new());
+    let mut processor = BlockProcessor::new(&mut state, kortana_blockchain_rust::core::fees::FeeMarket::new());
     let receipt = processor.process_transaction(tx, &header).unwrap();
 
     assert_eq!(receipt.status, 1);

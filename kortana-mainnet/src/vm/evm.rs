@@ -39,7 +39,7 @@ impl EvmStack {
 
     pub fn pop(&mut self) -> Result<[u8; 32], EvmError> {
         if self.data.is_empty() {
-            tracing::error!("[STACK EMERGENCY] Stack underflow! Stack is empty");
+            eprintln!("[STACK EMERGENCY] Stack underflow! Stack is empty");
             return Err(EvmError::StackUnderflow);
         }
         self.data.pop().ok_or(EvmError::StackUnderflow)
@@ -69,12 +69,6 @@ impl EvmMemory {
     }
 
     pub fn store(&mut self, offset: usize, value: &[u8]) {
-        // VULNERABILITY FIX: Prevent massive memory allocation DOS
-        let max_memory = 32 * 1024 * 1024; // 32MB limit
-        if offset + value.len() > max_memory {
-            return; // Silently fail or track error
-        }
-        
         if offset + value.len() > self.data.len() {
             self.data.resize(offset + value.len(), 0);
         }
@@ -127,40 +121,55 @@ impl EvmExecutor {
         let mut iteration = 0;
         let max_iterations = 100000; // Safety limit
         
-        tracing::info!("[EVM] Starting execution - Bytecode: {}, Gas: {}", bytecode.len(), self.gas_remaining);
+        // Write to file for debugging
+        use std::io::Write;
+        println!("\n[EVM] Starting execution - Bytecode: {}, Gas: {}", bytecode.len(), self.gas_remaining);
+        
+        let debug_path = "evm_debug.log";
+        let mut debug_file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(debug_path)
+            .ok();
+        
+        if let Some(ref mut f) = debug_file {
+            let _ = writeln!(f, "\n========== [EVM DEBUG] Starting execution ==========");
+            let _ = writeln!(f, "Bytecode length: {}, Gas: {}", bytecode.len(), self.gas_remaining);
+            let _ = f.flush();
+        }
 
         while pc < bytecode.len() {
             iteration += 1;
             if iteration > max_iterations {
-                tracing::error!("[EVM ERROR] Max iterations reached! Infinite loop detected at PC: {}", pc);
+                if let Some(ref mut f) = debug_file {
+                    let _ = writeln!(f, "[EVM ERROR] Max iterations reached! Infinite loop detected at PC: {}", pc);
+                }
                 return Err(EvmError::OutOfGas);
             }
             
             if self.gas_remaining == 0 {
-                tracing::error!("[EVM ERROR] Out of gas at PC: {}, Iteration: {}", pc, iteration);
+                if let Some(ref mut f) = debug_file {
+                    let _ = writeln!(f, "[EVM ERROR] Out of gas at PC: {}, Iteration: {}", pc, iteration);
+                }
                 return Err(EvmError::OutOfGas);
             }
 
             let opcode = bytecode[pc];
             
             // Log opcode BEFORE execution
-            /* if true {
-                print!("[EVM] PC: {}, Op: 0x{:02x}, Gas: {}, Stack[{}]: ", 
-                    pc, opcode, self.gas_remaining, self.stack.data.len());
-                // Print top 8 stack elements
-                let show_count = std::cmp::min(8, self.stack.data.len());
-                print!("[");
-                for i in 0..show_count {
-                    let idx = self.stack.data.len() - 1 - i;
-                    print!("{:02x}{:02x}{:02x}{:02x}", 
-                        self.stack.data[idx][28], 
-                        self.stack.data[idx][29],
-                        self.stack.data[idx][30],
-                        self.stack.data[idx][31]);
-                    if i < show_count - 1 { print!(", "); }
+            if true {
+                if let Some(ref mut f) = debug_file {
+                    let show_count = std::cmp::min(4, self.stack.data.len());
+                    let mut top = String::new();
+                    for i in 0..show_count {
+                        let idx = self.stack.data.len() - 1 - i;
+                        top.push_str(&hex::encode(&self.stack.data[idx]));
+                        top.push('|');
+                    }
+                    let _ = writeln!(f, "PC:{:04x} OP:0x{:02x} Gas:{} Stack[{}]:[{}]",
+                        pc - 1, opcode, self.gas_remaining, self.stack.data.len(), top);
                 }
-                println!("]");
-            } */
+            }
             
             pc += 1;
 
@@ -552,63 +561,60 @@ impl EvmExecutor {
                     addr_buf.copy_from_slice(&addr_bytes[8..32]);
                     
                     if let Ok(target_addr) = crate::address::Address::from_bytes(addr_buf) {
-                        // VULNERABILITY FIX: Transfer value BEFORE call
-                        let mut can_call = true;
-                        if value > 0 {
-                            if state.transfer(&self.address, &target_addr, value).is_err() {
-                                self.stack.push([0u8; 32])?; // Insufficient balance
-                                can_call = false;
-                            }
-                        }
-
-                        if can_call {
-                            let target_account = state.get_account(&target_addr);
-                            
-                            if target_account.is_contract {
-                                if let Some(code) = state.get_code(&target_account.code_hash) {
-                                    let calldata = if args_length > 0 {
-                                        self.memory.load(args_offset, args_length)?
-                                    } else {
-                                        Vec::new()
-                                    };
-                                    
-                                    // VULNERABILITY FIX: Snapshot state before sub-call
-                                    let state_snapshot = state.clone();
-                                    let call_gas = std::cmp::min(gas, self.gas_remaining);
-                                    
-                                    let mut sub_executor = EvmExecutor::new(target_addr, call_gas);
-                                    sub_executor.calldata = calldata;
-                                    sub_executor.caller = self.address;
-                                    sub_executor.callvalue = value;
-                                    
-                                    match sub_executor.execute(&code, state, header) {
-                                        Ok(return_data) => {
-                                            // VULNERABILITY FIX: Correct gas deduction
-                                            let actual_used = call_gas.saturating_sub(sub_executor.gas_remaining);
-                                            self.gas_remaining = self.gas_remaining.saturating_sub(actual_used);
-                                            
-                                            if ret_length > 0 && !return_data.is_empty() {
-                                                let copy_len = std::cmp::min(ret_length, return_data.len());
-                                                self.memory.store(ret_offset, &return_data[..copy_len]);
-                                            }
-                                            self.logs.extend(sub_executor.logs);
-                                            self.stack.push(Self::u256_bool(true))?;
-                                        }
-                                        Err(_) => {
-                                            // VULNERABILITY FIX: Revert state on call failure
-                                            *state = state_snapshot;
-                                            self.gas_remaining = self.gas_remaining.saturating_sub(call_gas);
-                                            self.stack.push([0u8; 32])?;
-                                        }
-                                    }
+                        let target_account = state.get_account(&target_addr);
+                        
+                        if target_account.is_contract {
+                            // Load the contract code
+                            if let Some(code) = state.get_code(&target_account.code_hash) {
+                                // Prepare calldata
+                                let calldata = if args_length > 0 {
+                                    self.memory.load(args_offset, args_length)?
                                 } else {
-                                    // Contract has no code
-                                    self.stack.push([0u8; 32])?;
+                                    Vec::new()
+                                };
+                                
+                                // Create new executor for the call
+                                let mut sub_executor = EvmExecutor::new(
+                                    target_addr,
+                                    std::cmp::min(gas, self.gas_remaining)
+                                );
+                                sub_executor.calldata = calldata;
+                                sub_executor.caller = self.address; // Caller is current contract
+                                sub_executor.callvalue = value;
+                                
+                                // Execute the called contract
+                                match sub_executor.execute(&code, state, header) {
+                                    Ok(return_data) => {
+                                        // Deduct gas used
+                                        let gas_used = sub_executor.gas_remaining;
+                                        if gas_used < self.gas_remaining {
+                                            self.gas_remaining -= gas_used;
+                                        }
+                                        
+                                        // Store return data
+                                        if ret_length > 0 && !return_data.is_empty() {
+                                            let copy_len = std::cmp::min(ret_length, return_data.len());
+                                            self.memory.store(ret_offset, &return_data[..copy_len]);
+                                        }
+                                        
+                                        // Merge logs
+                                        self.logs.extend(sub_executor.logs);
+                                        
+                                        // Push success
+                                        self.stack.push(Self::u256_bool(true))?;
+                                    }
+                                    Err(_) => {
+                                        // Call failed, push 0
+                                        self.stack.push([0u8; 32])?;
+                                    }
                                 }
                             } else {
-                                // Transfer to non-contract is just a transfer (already done above)
-                                self.stack.push(Self::u256_bool(true))?;
+                                // Contract has no code
+                                self.stack.push([0u8; 32])?;
                             }
+                        } else {
+                            // Not a contract, treat as successful transfer
+                            self.stack.push(Self::u256_bool(true))?;
                         }
                     } else {
                         // Invalid address
@@ -756,25 +762,35 @@ impl EvmExecutor {
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
                     let data = self.memory.load(off, len).unwrap_or_default();
-                    tracing::warn!("[EVM REVERT] PC: {}, Data length: {}", pc - 1, len);
-                    if !data.is_empty() {
-                        tracing::warn!("[EVM REVERT] Data (hex): {}", hex::encode(&data));
+                    if let Some(ref mut f) = debug_file {
+                        let _ = writeln!(f, "[EVM REVERT] PC: {}, Data length: {}", pc - 1, len);
+                        if !data.is_empty() {
+                            let _ = writeln!(f, "[EVM REVERT] Data (hex): {}", hex::encode(&data));
+                        }
+                        let _ = f.flush();
                     }
                     return Err(EvmError::Revert(data));
                 }
                 _ => {
-                    tracing::error!("[EVM EMERGENCY] Invalid opcode: 0x{:02x} at PC: {}", opcode, pc - 1);
-                    tracing::error!("[EVM ERROR] Gas remaining: {}, Stack size: {}", self.gas_remaining, self.stack.data.len());
+                    if let Some(ref mut f) = debug_file {
+                        let _ = writeln!(f, "[EVM ERROR] Invalid opcode: 0x{:02x} at PC: {}, Iteration: {}", opcode, pc - 1, iteration);
+                        let _ = writeln!(f, "[EVM ERROR] Gas remaining: {}, Stack size: {}", self.gas_remaining, self.stack.data.len());
+                        let _ = f.flush();
+                    }
+                    println!("[EVM EMERGENCY] Invalid opcode: 0x{:02x} at PC: {}", opcode, pc - 1);
                     return Err(EvmError::InvalidOpcode);
                 }
             }
         }
         
-        tracing::info!("[EVM SUCCESS] Execution completed - Iterations: {}, Gas remaining: {}, Return data: {} bytes", 
-            iteration, 
-            self.gas_remaining,
-            _return_data.len()
-        );
+        if let Some(ref mut f) = debug_file {
+            let _ = writeln!(f, "[EVM SUCCESS] Execution completed - Iterations: {}, Gas remaining: {}, Return data: {} bytes", 
+                iteration, 
+                self.gas_remaining,
+                _return_data.len()
+            );
+            let _ = f.flush();
+        }
         
         Ok(_return_data)
     }

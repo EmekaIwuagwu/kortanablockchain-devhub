@@ -1,11 +1,11 @@
 
-use kortana_mainnet::types::transaction::{Transaction, VmType};
-use kortana_mainnet::address::Address;
-use kortana_mainnet::crypto::sign_message;
+use kortana_blockchain_rust::types::transaction::{Transaction, VmType};
+use kortana_blockchain_rust::address::Address;
+use kortana_blockchain_rust::crypto::sign_message;
 use std::process::Command;
 use serde_json::json;
 
-const RPC_URL: &str = "http://127.0.0.1:8545";
+const RPC_URL: &str = "https://poseidon-rpc.kortana.worchsester.xyz";
 
 fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
     let json_body = json!({
@@ -50,7 +50,7 @@ fn main() {
 
     // 2. Deploy Maya (Quorlin)
     println!("\n[2/2] Deploying Maya Token (Quorlin) to Native VM...");
-    use kortana_mainnet::vm::quorlin::QuorlinOpcode;
+    use kortana_blockchain_rust::vm::quorlin::QuorlinOpcode;
     let maya_ops = vec![
         QuorlinOpcode::Push(1000000), // Initial supply
         QuorlinOpcode::StoreGlobal("total_supply".to_string()),
@@ -78,7 +78,7 @@ fn deploy_contract(from: &Address, priv_key: &[u8], data: Vec<u8>, vm_type: VmTy
         gas_price: 1_000_000_000,
         data,
         vm_type,
-        chain_id: 9002,
+        chain_id: 72511,
         signature: None,
         cached_hash: None,
     };

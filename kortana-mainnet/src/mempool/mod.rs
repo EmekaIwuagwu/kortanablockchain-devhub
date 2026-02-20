@@ -54,13 +54,13 @@ impl Mempool {
         let _ = std::io::stdout().flush();
         
         if self.seen_hashes.contains(&hash) {
-            tracing::warn!("[MEMPOOL] REJECTED: Transaction already seen");
+            println!("[MEMPOOL] REJECTED: Transaction already seen");
             let _ = std::io::stdout().flush();
             return false;
         }
         
         if self.heap.len() >= self.max_size {
-            tracing::warn!("[MEMPOOL] REJECTED: Mempool is full ({}/{})", self.heap.len(), self.max_size);
+            println!("[MEMPOOL] REJECTED: Mempool is full ({}/{})", self.heap.len(), self.max_size);
             let _ = std::io::stdout().flush();
             return false;
         }
@@ -68,7 +68,7 @@ impl Mempool {
         let priority = tx.gas_price;
         self.seen_hashes.insert(hash);
         self.heap.push(MempoolTransaction { tx, priority });
-        tracing::info!("[MEMPOOL] ACCEPTED: Transaction added. New size: {}", self.heap.len());
+        println!("[MEMPOOL] ACCEPTED: Transaction added. New size: {}", self.heap.len());
         let _ = std::io::stdout().flush();
         true
     }
@@ -92,7 +92,7 @@ impl Mempool {
 
     pub fn remove_transaction(&mut self, hash: &[u8; 32]) {
         use std::io::Write;
-        tracing::info!("[MEMPOOL] remove_transaction() - Hash: 0x{}", hex::encode(hash));
+        println!("[MEMPOOL] remove_transaction() - Hash: 0x{}", hex::encode(hash));
         let _ = std::io::stdout().flush();
 
         self.seen_hashes.remove(hash);

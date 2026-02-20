@@ -1,6 +1,6 @@
 // File: tests/trie_test.rs
 
-use kortana_mainnet::state::trie::MerklePatriciaTrie;
+use kortana_blockchain_rust::state::trie::MerklePatriciaTrie;
 
 #[test]
 #[ignore] // TODO: Fix MerklePatriciaTrie.get() - currently returning None

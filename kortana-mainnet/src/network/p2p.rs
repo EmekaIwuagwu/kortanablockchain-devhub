@@ -100,7 +100,7 @@ impl KortanaNetwork {
                 // Incoming from P2P -> Node
                 event = self.swarm.select_next_some() => match event {
                     SwarmEvent::NewListenAddr { address, .. } => {
-                        tracing::info!("P2P Node listening on {:?}", address);
+                        println!("P2P Node listening on {:?}", address);
                     }
                     SwarmEvent::Behaviour(event) => match event {
                         KortanaBehaviourEvent::Gossipsub(gossipsub::Event::Message {
@@ -116,7 +116,7 @@ impl KortanaNetwork {
                                     let rep = self.peer_reputation.entry(peer_id).or_insert(0);
                                     *rep -= 10;
                                     if *rep < -50 {
-                                        tracing::warn!("[P2P] Disconnecting malicious peer {:?}", peer_id);
+                                        println!("[P2P] Disconnecting malicious peer {:?}", peer_id);
                                         let _ = self.swarm.disconnect_peer_id(peer_id);
                                     }
                                 }

@@ -1,9 +1,9 @@
 
-use kortana_mainnet::address::Address;
+use kortana_blockchain_rust::address::Address;
 use std::process::Command;
 use serde_json::json;
 
-const RPC_URL: &str = "http://127.0.0.1:8545";
+const RPC_URL: &str = "https://poseidon-rpc.kortana.worchsester.xyz";
 
 fn rpc_call(method: &str, params: serde_json::Value) -> serde_json::Value {
     let json_body = json!({

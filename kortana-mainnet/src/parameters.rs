@@ -5,23 +5,23 @@ pub const TESTNET_CHAIN_ID: u64 = 72511;
 
 pub const STAKING_CONTRACT_ADDRESS: &str = "0x0000000000000000000000000000000000000001";
 
-pub const BLOCK_TIME_SECS: u64 = 5;
-pub const SLOT_DURATION_SECS: u64 = 5;
+pub const BLOCK_TIME_SECS: u64 = 2;
+pub const SLOT_DURATION_SECS: u64 = 2;
 pub const FINALITY_DELAY_SLOTS: u64 = 20;
 
-pub const BLOCKS_PER_EPOCH: u64 = 432;  // ~36 minutes
-pub const BLOCKS_PER_DAY: u64 = 17280;
-pub const BLOCKS_PER_YEAR: u64 = 6_307_200;
-pub const EPOCHS_PER_YEAR: u64 = 14600;
+pub const BLOCKS_PER_EPOCH: u64 = 432;  // ~14 minutes at 2s blocks
+pub const BLOCKS_PER_DAY: u64 = 43200;
+pub const BLOCKS_PER_YEAR: u64 = 15_768_000;
+pub const EPOCHS_PER_YEAR: u64 = 36500;
 
 pub const INITIAL_BLOCK_REWARD: u128 = 5_000_000_000_000_000_000;  // 5 DNR
-pub const HALVING_INTERVAL: u64 = 4_320_000;  // ~1 year
+pub const HALVING_INTERVAL: u64 = 15_768_000;  // ~1 year
 pub const HALVING_PERCENTAGE: u32 = 10;
 
-pub const TOTAL_SUPPLY: u128 = 1_000_000_000_000_000_000_000_000_000;  // 1B DNR
+pub const TOTAL_SUPPLY: u128 = 800_000_000_000_000_000_000_000_000_000_000;  // 800B DNR
 
-pub const MIN_VALIDATOR_STAKE: u128 = 32_000_000_000_000_000_000;  // 32 DNR
-pub const ACTIVE_VALIDATOR_COUNT: usize = 50;
+pub const MIN_VALIDATOR_STAKE: u128 = 1_000_000_000_000_000_000_000_000;  // 1M DNR
+pub const ACTIVE_VALIDATOR_COUNT: usize = 3;
 pub const MAX_COMMISSION_RATE: u16 = 10000;  // 100% in basis points
 
 pub const MIN_GAS_PRICE: u128 = 1;  // 1 satoshi

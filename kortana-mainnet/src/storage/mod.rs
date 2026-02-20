@@ -231,7 +231,7 @@ impl Storage {
         self.db.remove("latest_state_height").map_err(|e| e.to_string())?;
         
         self.db.flush().map_err(|e| e.to_string())?;
-        tracing::info!("[STORAGE] Database cleared successfully");
+        println!("[STORAGE] Database cleared successfully");
         Ok(())
     }
 }

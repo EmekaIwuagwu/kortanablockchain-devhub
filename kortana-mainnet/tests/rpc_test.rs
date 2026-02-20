@@ -1,11 +1,11 @@
 // tests/rpc_test.rs
-use kortana_mainnet::rpc::{RpcHandler, JsonRpcRequest};
-use kortana_mainnet::state::account::State;
-use kortana_mainnet::mempool::Mempool;
-use kortana_mainnet::storage::Storage;
-use kortana_mainnet::consensus::ConsensusEngine;
-use kortana_mainnet::types::transaction::{Transaction, VmType};
-use kortana_mainnet::Address;
+use kortana_blockchain_rust::rpc::{RpcHandler, JsonRpcRequest};
+use kortana_blockchain_rust::state::account::State;
+use kortana_blockchain_rust::mempool::Mempool;
+use kortana_blockchain_rust::storage::Storage;
+use kortana_blockchain_rust::consensus::ConsensusEngine;
+use kortana_blockchain_rust::types::transaction::{Transaction, VmType};
+use kortana_blockchain_rust::Address;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicU64;
 use tokio::sync::mpsc;

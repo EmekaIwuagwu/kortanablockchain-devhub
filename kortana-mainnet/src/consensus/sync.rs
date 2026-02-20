@@ -24,7 +24,7 @@ impl SyncEngine {
     }
 
     pub fn start_fast_sync(&mut self, current_height: u64, target_height: u64) {
-        tracing::info!("Starting Fast Sync: {} -> {}", current_height, target_height);
+        println!("Starting Fast Sync: {} -> {}", current_height, target_height);
         self.state = SyncState::FastSyncing {
             start_height: current_height,
             target_height,
@@ -43,7 +43,7 @@ impl SyncEngine {
         if let SyncState::FastSyncing { target_height, .. } = self.state {
             if last_height >= target_height {
                 self.state = SyncState::Broadcasting;
-                tracing::info!("Fast Sync Complete at height {}", last_height);
+                println!("Fast Sync Complete at height {}", last_height);
             }
         }
         

@@ -1,21 +1,52 @@
-# ⚔️ Kortana Blockchain Node (Rust Implementation)
+# ⚔️# Kortana Mainnet Protocol Node
 
-Welcome to the heart of the Kortana Network. This repository contains the high-performance, multithreaded blockchain node implementation written in Rust.
+Welcome to the production-grade Kortana Mainnet node implementation. This version is optimized for high-performance EVM compatibility with a 2-second block time and a decentralized 3-validator consensus set.
 
-## 🚀 Quick Start (Zero to Hero)
+## 🚀 Mainnet Specifications
+- **Network Name**: Kortana Mainnet
+- **Chain ID**: `9002`
+- **Currency**: `DNR` (Dinari)
+- **Consensus**: BFT with PoH Anchor
+- **Block Time**: 2 Seconds
+- **Validators**: 3 Initial Production Nodes
 
-If you are deploying to a new Ubuntu cloud server (e.g., RackNerd, Azure, DigitalOcean), use our automated installer to set up everything in one go.
+## 🛠️ Production Deployment
 
-### 1. Simple One-Line Setup
+### 1. Requirements
+- Rust (Latest Stable)
+- 4 vCPUs / 8GB RAM minimum
+- Port `8545` (RPC) and `30333` (P2P) open
+
+### 2. Setup
 ```bash
-# Clone the repository
-git clone https://github.com/EmekaIwuagwu/kortanablockchain-devhub.git
-cd kortanablockchain-devhub/kortana-blockchain-rust
+# Clone and navigate to mainnet folder
+cd kortana-mainnet
 
-# Make the installer executable and run it
-chmod +x install.sh
-sudo ./install.sh
+# Copy env example
+cp .env.example .env
+
+# Generate a new validator wallet if needed
+cargo run -- --wallet
 ```
+
+### 3. Running the Node
+To run in production mode (requires `VALIDATOR_PRIVATE_KEY` in `.env` or as environment variable):
+```bash
+cargo run --release -- --prod
+```
+
+For development/local testing:
+```bash
+cargo run --release
+```
+
+## 📊 Monitoring
+Logs are color-coded for clarity:
+- 👑 **Yellow**: Block Production (Leader)
+- ✅ **Green**: Successful Finality/Verification
+- 🟦 **Blue**: RPC Handshake
+- 🟪 **Magenta**: Mempool Activity
+- 🟥 **Red**: Critical Errors/Slashing
 
 ---
 

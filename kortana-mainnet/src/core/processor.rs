@@ -27,7 +27,7 @@ impl<'a> BlockProcessor<'a> {
 
         // 0. Chain ID validation (EIP-155)
         if tx.chain_id != CHAIN_ID {
-             tracing::error!("[PROCESSOR ERROR] Invalid Chain ID. Expected: {}, Got: {}", CHAIN_ID, tx.chain_id);
+             println!("[PROCESSOR ERROR] Invalid Chain ID. Expected: {}, Got: {}", CHAIN_ID, tx.chain_id);
             return Err(format!("Invalid chain ID: expected {}, got {}", CHAIN_ID, tx.chain_id));
         }
 
@@ -42,13 +42,13 @@ impl<'a> BlockProcessor<'a> {
         // 1. Basic validation
         let mut sender = self.state.get_account(&tx.from);
         if sender.nonce != tx.nonce {
-             tracing::error!("[PROCESSOR ERROR] Invalid Nonce. Account: {}, Expected: {}, Got: {}", tx.from, sender.nonce, tx.nonce);
+             println!("[PROCESSOR ERROR] Invalid Nonce. Account: {}, Expected: {}, Got: {}", tx.from, sender.nonce, tx.nonce);
             return Err("Invalid nonce".to_string());
         }
         
         let total_cost = tx.total_cost();
         if sender.balance < total_cost {
-             tracing::error!("[PROCESSOR ERROR] Insufficient Funds. Account: {}, Balance: {}, Cost: {}", tx.from, sender.balance, total_cost);
+             println!("[PROCESSOR ERROR] Insufficient Funds. Account: {}, Balance: {}, Cost: {}", tx.from, sender.balance, total_cost);
             return Err("Insufficient funds for tx".to_string());
         }
 
@@ -65,7 +65,7 @@ impl<'a> BlockProcessor<'a> {
          
         // Calculate intrinsic gas
         let intrinsic_gas = if is_deployment { 53000 } else { 21000 };
-        tracing::debug!("[PROCESSOR DEBUG] is_deployment: {}, is_staking: {}, intrinsic_gas: {}", is_deployment, is_staking, intrinsic_gas);
+        println!("[PROCESSOR DEBUG] is_deployment: {}, is_staking: {}, intrinsic_gas: {}", is_deployment, is_staking, intrinsic_gas);
         let _ = std::io::stdout().flush();
         if tx.gas_limit < intrinsic_gas {
             return Err(format!("Gas limit too low: {} < {}", tx.gas_limit, intrinsic_gas));
@@ -111,7 +111,7 @@ impl<'a> BlockProcessor<'a> {
         } else {
             if is_deployment {
                 // CONTRACT DEPLOYMENT
-                tracing::info!("[PROCESSOR] Contract deployment detected - Data length: {}, Gas: {}", tx.data.len(), tx.gas_limit);
+                println!("[PROCESSOR] Contract deployment detected - Data length: {}, Gas: {}", tx.data.len(), tx.gas_limit);
                 
                 // Derive contract address from sender and nonce (nonce was already incremented)
                 let contract_addr = Address::derive_contract_address(&tx.from, tx.nonce);
@@ -128,7 +128,7 @@ impl<'a> BlockProcessor<'a> {
                 }                
                 match executor.execute(&tx.data, self.state, header) {
                     Ok(runtime_code) => {
-                        tracing::debug!("[PROCESSOR DEBUG] Deployment successful. Runtime code length: {}", runtime_code.len());
+                        println!("[PROCESSOR DEBUG] Deployment successful. Runtime code length: {}", runtime_code.len());
                         let _ = std::io::stdout().flush();
                         // Store the runtime code
                         let code_hash = {
@@ -153,7 +153,7 @@ use sha3::{Digest, Keccak256};
                         (1, tx.gas_limit - executor.gas_remaining, Some(contract_addr))
                     }
                     Err(e) => {
-                        tracing::error!("[PROCESSOR ERROR] Contract deployment failed: {:?}", e);
+                        println!("[PROCESSOR ERROR] Contract deployment failed: {:?}", e);
                         (0, tx.gas_limit, None)
                     }
                 }
@@ -182,7 +182,7 @@ use sha3::{Digest, Keccak256};
                                 (1, tx.gas_limit - executor.gas_remaining, None)
                             }
                             Err(e) => {
-                                tracing::error!("[PROCESSOR ERROR] Contract call failed: {:?}", e);
+                                println!("[PROCESSOR ERROR] Contract call failed: {:?}", e);
                                 (0, tx.gas_limit, None)
                             },
                         }
@@ -193,10 +193,10 @@ use sha3::{Digest, Keccak256};
                 } else {
                     let gas_used = intrinsic_gas + (tx.data.len() as u64 * 16);
                     if gas_used > tx.gas_limit {
-                        tracing::error!("[PROCESSOR ERROR] Out of gas: used {} > limit {}", gas_used, tx.gas_limit);
+                        println!("[PROCESSOR ERROR] Out of gas: used {} > limit {}", gas_used, tx.gas_limit);
                         (0, tx.gas_limit, None) // Return 0 status, used all gas
                     } else {
-                        tracing::info!("[PROCESSOR] Regular transfer: from {} to {} value {}", tx.from, tx.to, tx.value);
+                        println!("[PROCESSOR] Regular transfer: from {} to {} value {}", tx.from, tx.to, tx.value);
                         // Transfer value to recipient
                         if tx.value > 0 {
                             let mut recipient = self.state.get_account(&tx.to);
@@ -217,19 +217,8 @@ use sha3::{Digest, Keccak256};
         };
 
         if status == 0 && tx.value > 0 && !is_staking {
-            // Revert value transfer on failure: 
-            // 1. Return to sender
+            // Revert value transfer on failure
             refund += tx.value;
-            
-            // 2. Remove from recipient/contract (IMPORTANT: Prevents duplication/inflation)
-            let target_addr = if is_deployment {
-                Address::derive_contract_address(&tx.from, tx.nonce)
-            } else {
-                tx.to
-            };
-            let mut target_acc = self.state.get_account(&target_addr);
-            target_acc.balance = target_acc.balance.saturating_sub(tx.value);
-            self.state.update_account(target_addr, target_acc);
         }
         if refund > 0 {
             sender.balance += refund;

@@ -1,7 +1,7 @@
 
-use kortana_mainnet::types::transaction::{Transaction, VmType};
-use kortana_mainnet::address::Address;
-use kortana_mainnet::crypto::sign_message;
+use kortana_blockchain_rust::types::transaction::{Transaction, VmType};
+use kortana_blockchain_rust::address::Address;
+use kortana_blockchain_rust::crypto::sign_message;
 use std::process::Command;
 use serde_json::json;
 

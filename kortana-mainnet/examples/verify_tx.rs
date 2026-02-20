@@ -1,5 +1,5 @@
 
-use kortana_mainnet::address::Address;
+use kortana_blockchain_rust::address::Address;
 use std::process::Command;
 use serde_json::json;
 

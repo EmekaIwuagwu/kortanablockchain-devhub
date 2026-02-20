@@ -122,7 +122,9 @@ impl Transaction {
              let to_bytes: Vec<u8> = rlp.val_at(5).map_err(|e| format!("EIP1559 to: {}", e))?;
              let value: u128 = rlp.val_at(6).map_err(|e| format!("EIP1559 value: {}", e))?;
              let data: Vec<u8> = rlp.val_at(7).map_err(|e| format!("EIP1559 data: {}", e))?;
-             let access_list: Vec<u8> = rlp.val_at(8).map_err(|e| format!("EIP1559 access_list: {}", e))?;
+             // access_list is an RLP list (e.g. 0xc0 for empty), NOT raw bytes.
+             // Use at().as_raw() to grab the raw RLP encoding so we can reconstruct the signing hash exactly.
+             let access_list_raw: Vec<u8> = rlp.at(8).map_err(|e| format!("EIP1559 access_list pos: {}", e))?.as_raw().to_vec();
              let v_val: u64 = rlp.val_at(9).map_err(|e| format!("EIP1559 v: {}", e))?;
              let r_bytes: Vec<u8> = rlp.val_at(10).map_err(|e| format!("EIP1559 r: {}", e))?;
              let s_bytes: Vec<u8> = rlp.val_at(11).map_err(|e| format!("EIP1559 s: {}", e))?;
@@ -133,10 +135,12 @@ impl Transaction {
                  Address::from_evm_address(b)
              };
 
-             // Reconstruct signing data for EIP-1559
+             // Reconstruct signing data for EIP-1559: 0x02 || rlp([chain_id, nonce, max_priority_fee, max_fee, gas_limit, to, value, data, access_list])
              let mut s_rlp = RlpStream::new_list(9);
              s_rlp.append(&chain_id).append(&nonce).append(&max_priority_fee).append(&max_fee)
-                  .append(&gas_limit).append(&to_bytes).append(&value).append(&data).append_raw(&access_list, 1);
+                  .append(&gas_limit).append(&to_bytes).append(&value).append(&data)
+                  .append_raw(&access_list_raw, 1); // append raw RLP list node verbatim
+
              
              let mut msg = vec![0x02];
              msg.extend_from_slice(&s_rlp.out());

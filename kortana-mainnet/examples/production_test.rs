@@ -1,7 +1,7 @@
 
-use kortana_mainnet::types::transaction::{Transaction, VmType};
-use kortana_mainnet::address::Address;
-use kortana_mainnet::crypto::sign_message;
+use kortana_blockchain_rust::types::transaction::{Transaction, VmType};
+use kortana_blockchain_rust::address::Address;
+use kortana_blockchain_rust::crypto::sign_message;
 use std::process::Command;
 use std::time::Duration;
 use std::thread::sleep;
@@ -76,7 +76,7 @@ fn main() {
         gas_price: 2_000_000_000, // 2 Gwei
         data: vec![],
         vm_type: VmType::EVM,
-        chain_id: 9002, // Mainnet (9002)
+        chain_id: 1, // Mainnet
         signature: None,
         cached_hash: None,
     };
@@ -96,19 +96,10 @@ fn main() {
     println!("   > Tx Hash: {}", tx_hash);
 
     // 5. Wait for confirmation
-    println!("5. Waiting for Block Confirmation (Up to 30s)...");
-    for i in 1..=6 {
-        sleep(Duration::from_secs(5));
-        println!("   ... checking ({}s)", i * 5);
-        let current_bal_hex = curl_rpc("eth_getBalance", serde_json::json!([alice_addr.to_hex(), "latest"]));
-        let current_bal_str = current_bal_hex.as_str().unwrap_or("0x0");
-        if current_bal_str != "0x0" {
-            println!("   🎉 Transaction CONFIRMED in {}s!", i * 5);
-            break;
-        }
-    }
+    println!("5. Waiting for Block Confirmation (10s)...");
+    sleep(Duration::from_secs(10));
 
-    // 6. Final Balance Check
+    // 6. Check Balance Again
     let balance_hex_new = curl_rpc("eth_getBalance", serde_json::json!([alice_addr.to_hex(), "latest"]));
     println!("   > Alice Balance After: {}", balance_hex_new);
 
