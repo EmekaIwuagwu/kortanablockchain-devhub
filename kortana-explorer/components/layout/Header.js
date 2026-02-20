@@ -41,6 +41,9 @@ const Header = () => {
     const handleLaunchApp = async () => {
         if (typeof window.ethereum !== 'undefined') {
             try {
+                // First, request account access to authorize the site
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+
                 // Try to switch to the Kortana Testnet
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
