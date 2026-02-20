@@ -110,12 +110,11 @@ impl RpcHandler {
             "eth_gasPrice" => Some(serde_json::to_value(format!("0x{:x}", crate::parameters::MIN_GAS_PRICE)).unwrap()),
             "eth_estimateGas" => {
                 let mut gas = crate::parameters::MIN_GAS_PER_TX;
-                let mut is_deployment = false;
                 
                 if let Some(arr) = p {
                     if let Some(call_obj) = arr.first().and_then(|v| v.as_object()) {
                         // Check if this is a contract deployment (no 'to' address or to == null)
-                        is_deployment = match call_obj.get("to") {
+                        let is_deployment = match call_obj.get("to") {
                             None => true,
                             Some(v) if v.is_null() => true,
                             Some(v) => {
@@ -683,7 +682,7 @@ impl RpcHandler {
                                  }).collect();
 
                                   let tx = self.storage.get_transaction(hash_str).ok().flatten();
-                                  let (from, to, value, gas_price) = if let Some(t) = &tx {
+                                   let (from, to, _value, gas_price) = if let Some(t) = &tx {
                                      (
                                          format!("0x{}", hex::encode(t.from.as_evm_address())),
                                          format!("0x{}", hex::encode(t.to.as_evm_address())),
@@ -785,7 +784,7 @@ impl RpcHandler {
                                     }
                                     Some(Value::Array(hashes))
                                 }
-                                FilterType::Logs { address, topics, .. } => {
+                                FilterType::Logs { address, topics: _, .. } => {
                                     let mut logs = Vec::new();
                                     for h in start_block..=end_block {
                                         if let Ok(Some(b)) = self.storage.get_block(h) {
