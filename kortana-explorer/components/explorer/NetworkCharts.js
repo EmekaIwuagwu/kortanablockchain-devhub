@@ -35,7 +35,7 @@ const NetworkCharts = () => {
     }
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+        <div className="charts-grid">
             <div className="glass-card" style={{ height: '350px' }}>
                 <h3 className="font-heading mb-6" style={{ fontSize: '1rem', color: 'var(--text-dim)' }}>TRANSACTIONS PER SECOND (24H)</h3>
                 <ResponsiveContainer width="100%" height="80%">

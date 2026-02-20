@@ -153,18 +153,17 @@ const Header = () => {
                     ))}
 
                     <div style={{ marginLeft: '1rem' }}>
-                        <button
+                        {/* <button
                             className="btn btn-primary"
                             style={{ padding: '0.5rem 1.25rem', fontSize: '0.9rem' }}
                             onClick={handleLaunchApp}
                         >
                             <Rocket size={16} />
                             Launch App
-                        </button>
+                        </button> */}
                     </div>
                 </nav>
-
-                {/* Mobile Toggle */}
+                
                 <button
                     className="show-mobile btn"
                     style={{ padding: '0.5rem', background: 'transparent' }}
@@ -174,7 +173,6 @@ const Header = () => {
                 </button>
             </div>
 
-            {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
                 <div style={{
                     position: 'fixed',
@@ -225,14 +223,14 @@ const Header = () => {
                         </div>
                     ))}
                     <div style={{ marginTop: '2rem' }}>
-                        <button
+                        {/* <button
                             className="btn btn-primary"
                             style={{ width: '100%', padding: '1rem' }}
                             onClick={handleLaunchApp}
                         >
                             <Rocket size={20} />
                             Launch App
-                        </button>
+                        </button> */}
                     </div>
                 </div>
             )}

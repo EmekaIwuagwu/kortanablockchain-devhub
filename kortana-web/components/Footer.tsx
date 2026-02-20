@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Twitter, Github, Linkedin, Disc as Discord, Globe, Zap, Shield, Activity, Lock, ChevronRight } from 'lucide-react';
+import { Twitter, Github, Disc as Discord, Activity } from 'lucide-react';
 import { getBlockHeight } from '@/lib/rpc';
 
 export default function Footer() {
@@ -64,13 +64,13 @@ export default function Footer() {
                         <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-8">Network Ecosystem</h3>
                         <ul className="space-y-4">
                             <FooterLink href="/developers">Dev Portal</FooterLink>
-                            <FooterLink href="https://explorer.kortana.worchsester.xyz/" target="_blank">Network Explorer</FooterLink>
+                            <FooterLink href="https://explorer-testnet.kortana.worchsester.xyz/" target="_blank">Network Explorer</FooterLink>
                             <FooterLink href="/community">Join Community</FooterLink>
                         </ul>
                     </div>
 
                     {/* Network Status Widget */}
-                    <div className="glass-panel p-8 rounded-3xl border-white/5 bg-white/[0.02] backdrop-blur-xl group relative overflow-hidden">
+                    <div className="glass-panel p-8 rounded-3xl border-white/5 bg-white/2] backdrop-blur-xl group relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-20 transition-opacity">
                             <Activity size={40} />
                         </div>

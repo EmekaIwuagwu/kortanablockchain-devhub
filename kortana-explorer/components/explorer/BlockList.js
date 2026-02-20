@@ -31,7 +31,7 @@ const BlockList = ({ blocks = [] }) => {
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td className="hide-mobile-sm">
                                     <div className="text-small text-dim">Validated By</div>
                                     <Link href={`/address/${block.miner}`} className="text-accent text-small">
                                         {block.miner?.substring(0, 12)}...{block.miner?.substring(38)}

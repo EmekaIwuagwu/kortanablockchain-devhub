@@ -28,7 +28,7 @@ const SearchBar = ({ large = false }) => {
     };
 
     return (
-        <form onSubmit={handleSearch} className="search-container" style={{ maxWidth: large ? '800px' : '600px', margin: large ? '2rem auto' : '0' }}>
+        <form onSubmit={handleSearch} className={large ? 'search-container search-container-large' : 'search-container'}>
             <Search className="search-icon" size={large ? 24 : 18} />
             <input
                 type="text"
@@ -39,7 +39,7 @@ const SearchBar = ({ large = false }) => {
                 onChange={(e) => setQuery(e.target.value)}
             />
             {large && (
-                <button type="submit" className="btn btn-primary" style={{ position: 'absolute', right: '8px', top: '8px', bottom: '8px', padding: '0 2rem' }}>
+                <button type="submit" className="btn btn-primary search-btn-inline">
                     Search
                 </button>
             )}

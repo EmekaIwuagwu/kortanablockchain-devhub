@@ -28,7 +28,7 @@ const TransactionList = ({ transactions = [] }) => {
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td className="hide-mobile-sm">
                                     <div className="flex flex-col gap-0.5">
                                         <div className="flex items-center gap-2">
                                             <span className="text-small text-dim" style={{ minWidth: '32px', fontSize: '0.75rem' }}>From</span>

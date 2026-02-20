@@ -6,9 +6,9 @@ const Footer = () => {
     return (
         <footer className="glass">
             <div className="container">
-                <div style={{
+                <div className="footer-grid" style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
                     gap: '2rem'
                 }}>
                     <div>
