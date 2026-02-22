@@ -35,3 +35,13 @@ kortana-blockchain-rust/examples/*.exe
 dist/
 build/
 bin/
+
+# Kortana node runtime artifacts (never commit these)
+evm_debug.log
+*.log
+**/data/
+**/test_db*/
+**/snap.*
+**/*.db
+kortana-testnet/data/
+kortana-mainnet/data/
