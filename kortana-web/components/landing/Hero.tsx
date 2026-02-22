@@ -60,7 +60,7 @@ export default function Hero() {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8"
                 >
                     <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse"></span>
-                    <span className="text-sm font-medium text-cyan-300 tracking-wide uppercase">Mainnet Live · Chain ID 9002</span>
+                    <span className="text-sm font-medium text-cyan-300 tracking-wide uppercase">Mainnet Beta · Chain ID 9002</span>
                 </motion.div>
 
                 {/* Main Headline */}
