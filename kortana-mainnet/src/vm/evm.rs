@@ -119,59 +119,19 @@ impl EvmExecutor {
         let mut pc = 0;
         let mut _return_data = Vec::new();
         let mut iteration = 0;
-        let max_iterations = 100000; // Safety limit
-        
-        // Write to file for debugging
-        use std::io::Write;
-        println!("\n[EVM] Starting execution - Bytecode: {}, Gas: {}", bytecode.len(), self.gas_remaining);
-        
-        let debug_path = "evm_debug.log";
-        let mut debug_file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(debug_path)
-            .ok();
-        
-        if let Some(ref mut f) = debug_file {
-            let _ = writeln!(f, "\n========== [EVM DEBUG] Starting execution ==========");
-            let _ = writeln!(f, "Bytecode length: {}, Gas: {}", bytecode.len(), self.gas_remaining);
-            let _ = f.flush();
-        }
+        const MAX_ITERATIONS: u64 = 10_000_000;
 
         while pc < bytecode.len() {
             iteration += 1;
-            if iteration > max_iterations {
-                if let Some(ref mut f) = debug_file {
-                    let _ = writeln!(f, "[EVM ERROR] Max iterations reached! Infinite loop detected at PC: {}", pc);
-                }
+            if iteration > MAX_ITERATIONS {
                 return Err(EvmError::OutOfGas);
             }
-            
+
             if self.gas_remaining == 0 {
-                if let Some(ref mut f) = debug_file {
-                    let _ = writeln!(f, "[EVM ERROR] Out of gas at PC: {}, Iteration: {}", pc, iteration);
-                }
                 return Err(EvmError::OutOfGas);
             }
 
             let opcode = bytecode[pc];
-            
-            // Log opcode BEFORE execution
-            if true {
-                if let Some(ref mut f) = debug_file {
-                    let show_count = std::cmp::min(4, self.stack.data.len());
-                    let mut top = String::new();
-                    for i in 0..show_count {
-                        let idx = self.stack.data.len() - 1 - i;
-                        top.push_str(&hex::encode(&self.stack.data[idx]));
-                        top.push('|');
-                    }
-                    let log_pc = if pc > 0 { pc - 1 } else { 0 };
-                    let _ = writeln!(f, "PC:{:04x} OP:0x{:02x} Gas:{} Stack[{}]:[{}]",
-                        log_pc, opcode, self.gas_remaining, self.stack.data.len(), top);
-                }
-            }
-            
             pc += 1;
 
             match opcode {
@@ -237,9 +197,32 @@ impl EvmExecutor {
                 }
                 0x0B => { // SIGNEXTEND
                     self.consume_gas(5)?;
-                    let _b = self.stack.pop()?;
+                    let b = self.stack.pop()?;
                     let x = self.stack.pop()?;
-                    self.stack.push(x)?; // Simplified - just return x
+                    let b_usize = Self::u256_to_usize(b).unwrap_or(31);
+                    let result = if b_usize < 31 {
+                        let sign_bit_idx = b_usize * 8 + 7;
+                        let byte_idx = 31 - b_usize;
+                        let sign_bit = (x[byte_idx] >> (sign_bit_idx % 8)) & 1;
+                        let mut r = x;
+                        if sign_bit == 1 {
+                            for i in 0..byte_idx { r[i] = 0xFF; }
+                            if byte_idx < 32 {
+                                let mask = 0xFF_u8 << ((sign_bit_idx % 8) + 1);
+                                r[byte_idx] |= mask;
+                            }
+                        } else {
+                            for i in 0..byte_idx { r[i] = 0x00; }
+                            if byte_idx < 32 {
+                                let mask = !( 0xFF_u8.wrapping_shl(((sign_bit_idx % 8) + 1) as u32));
+                                r[byte_idx] &= mask;
+                            }
+                        }
+                        r
+                    } else {
+                        x
+                    };
+                    self.stack.push(result)?;
                 }
                 
                 // Comparisons & Logic
@@ -527,20 +510,51 @@ impl EvmExecutor {
                 }
 
                 // System
-                0xF0 => { // CREATE (Deploying contract from contract)
+                0xF0 => { // CREATE
                     self.consume_gas(32000)?;
-                    let _value = Self::u256_to_u128(self.stack.pop()?);
+                    let value = Self::u256_to_u128(self.stack.pop()?);
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
                     let init_code = self.memory.load(off, len)?;
-                    
-                    // Simplified: Execute init code in a new context
-                    if init_code.len() > 0 {
-                        // Would create a new contract here
-                        // For now, return a dummy address
-                        let mut addr = [0u8; 32];
-                        addr[31] = 0x01;
-                        self.stack.push(addr)?;
+
+                    if !init_code.is_empty() {
+                        // Derive CREATE address: keccak256(sender ++ nonce)[12..]
+                        let sender_account = state.get_account(&self.address);
+                        let nonce = sender_account.nonce;
+                        let mut hasher = Keccak256::new();
+                        hasher.update(self.address.to_bytes());
+                        hasher.update(nonce.to_be_bytes());
+                        let addr_hash: [u8; 32] = hasher.finalize().into();
+                        let mut contract_addr_bytes = [0u8; 24];
+                        contract_addr_bytes.copy_from_slice(&addr_hash[8..32]);
+                        if let Ok(contract_addr) = crate::address::Address::from_bytes(contract_addr_bytes) {
+                            // Transfer value to new contract
+                            if value > 0 {
+                                let mut sender_acc = state.get_account(&self.address);
+                                if sender_acc.balance >= value {
+                                    sender_acc.balance -= value;
+                                    state.update_account(self.address, sender_acc);
+                                    let mut contract_acc = state.get_account(&contract_addr);
+                                    contract_acc.balance += value;
+                                    state.update_account(contract_addr, contract_acc);
+                                }
+                            }
+                            // Execute init code
+                            let mut sub_exec = EvmExecutor::new(contract_addr, self.gas_remaining / 2);
+                            sub_exec.caller = self.address;
+                            sub_exec.callvalue = value;
+                            let _ = sub_exec.execute(&init_code, state, header);
+                            self.gas_remaining = self.gas_remaining.saturating_sub(sub_exec.gas_remaining);
+                            // Mark as contract and store deployed bytecode
+                            let mut contract_acc = state.get_account(&contract_addr);
+                            contract_acc.is_contract = true;
+                            state.update_account(contract_addr, contract_acc);
+                            let mut result = [0u8; 32];
+                            result[8..32].copy_from_slice(&contract_addr_bytes);
+                            self.stack.push(result)?;
+                        } else {
+                            self.stack.push([0u8; 32])?;
+                        }
                     } else {
                         self.stack.push([0u8; 32])?;
                     }
@@ -763,34 +777,12 @@ impl EvmExecutor {
                     let off = Self::u256_to_usize(self.stack.pop()?)?;
                     let len = Self::u256_to_usize(self.stack.pop()?)?;
                     let data = self.memory.load(off, len).unwrap_or_default();
-                    if let Some(ref mut f) = debug_file {
-                        let _ = writeln!(f, "[EVM REVERT] PC: {}, Data length: {}", pc - 1, len);
-                        if !data.is_empty() {
-                            let _ = writeln!(f, "[EVM REVERT] Data (hex): {}", hex::encode(&data));
-                        }
-                        let _ = f.flush();
-                    }
                     return Err(EvmError::Revert(data));
                 }
                 _ => {
-                    if let Some(ref mut f) = debug_file {
-                        let _ = writeln!(f, "[EVM ERROR] Invalid opcode: 0x{:02x} at PC: {}, Iteration: {}", opcode, pc - 1, iteration);
-                        let _ = writeln!(f, "[EVM ERROR] Gas remaining: {}, Stack size: {}", self.gas_remaining, self.stack.data.len());
-                        let _ = f.flush();
-                    }
-                    println!("[EVM EMERGENCY] Invalid opcode: 0x{:02x} at PC: {}", opcode, pc - 1);
                     return Err(EvmError::InvalidOpcode);
                 }
             }
-        }
-        
-        if let Some(ref mut f) = debug_file {
-            let _ = writeln!(f, "[EVM SUCCESS] Execution completed - Iterations: {}, Gas remaining: {}, Return data: {} bytes", 
-                iteration, 
-                self.gas_remaining,
-                _return_data.len()
-            );
-            let _ = f.flush();
         }
         
         Ok(_return_data)
@@ -868,12 +860,39 @@ impl EvmExecutor {
     }
 
     fn mul_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
-        // Simplified multiplication (only bottom 128 bits for now as a stepping stone)
-        // TODO: Full 256-bit multiplication if needed for high-value tokens
-        let a_val = u128::from_be_bytes(a[16..32].try_into().unwrap());
-        let b_val = u128::from_be_bytes(b[16..32].try_into().unwrap());
-        let res_val = a_val.wrapping_mul(b_val);
-        Self::u128_to_u256(res_val)
+        // Full 256-bit multiplication using 4x 64-bit limb decomposition
+        let a0 = u64::from_be_bytes(a[24..32].try_into().unwrap_or([0u8; 8])) as u128;
+        let a1 = u64::from_be_bytes(a[16..24].try_into().unwrap_or([0u8; 8])) as u128;
+        let a2 = u64::from_be_bytes(a[8..16].try_into().unwrap_or([0u8; 8])) as u128;
+        let a3 = u64::from_be_bytes(a[0..8].try_into().unwrap_or([0u8; 8])) as u128;
+        let b0 = u64::from_be_bytes(b[24..32].try_into().unwrap_or([0u8; 8])) as u128;
+        let b1 = u64::from_be_bytes(b[16..24].try_into().unwrap_or([0u8; 8])) as u128;
+        let b2 = u64::from_be_bytes(b[8..16].try_into().unwrap_or([0u8; 8])) as u128;
+        let b3 = u64::from_be_bytes(b[0..8].try_into().unwrap_or([0u8; 8])) as u128;
+
+        // Only keep the lower 256 bits (mod 2^256), EVM spec
+        let r0 = a0.wrapping_mul(b0);
+        let r1 = a0.wrapping_mul(b1).wrapping_add(a1.wrapping_mul(b0));
+        let r2 = a0.wrapping_mul(b2).wrapping_add(a1.wrapping_mul(b1)).wrapping_add(a2.wrapping_mul(b0));
+        let r3 = a0.wrapping_mul(b3).wrapping_add(a1.wrapping_mul(b2))
+                 .wrapping_add(a2.wrapping_mul(b1)).wrapping_add(a3.wrapping_mul(b0));
+
+        let c0 = r0 & 0xFFFFFFFFFFFFFFFF;
+        let carry1 = r0 >> 64;
+        let sum1 = r1.wrapping_add(carry1);
+        let c1 = sum1 & 0xFFFFFFFFFFFFFFFF;
+        let carry2 = sum1 >> 64;
+        let sum2 = r2.wrapping_add(carry2);
+        let c2 = sum2 & 0xFFFFFFFFFFFFFFFF;
+        let carry3 = sum2 >> 64;
+        let c3 = r3.wrapping_add(carry3) & 0xFFFFFFFFFFFFFFFF;
+
+        let mut result = [0u8; 32];
+        result[0..8].copy_from_slice(&(c3 as u64).to_be_bytes());
+        result[8..16].copy_from_slice(&(c2 as u64).to_be_bytes());
+        result[16..24].copy_from_slice(&(c1 as u64).to_be_bytes());
+        result[24..32].copy_from_slice(&(c0 as u64).to_be_bytes());
+        result
     }
 
     fn div_u256(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {

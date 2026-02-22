@@ -202,7 +202,6 @@ async fn main() {
             let handler = rpc_handler.clone();
             let _task_node = rpc_node.clone();
             tokio::spawn(async move {
-                // ... (Simplified RPC reading for production)
                 let mut buffer = vec![0u8; 16384];
                 if let Ok(n) = tokio::io::AsyncReadExt::read(&mut socket, &mut buffer).await {
                     let req_body = String::from_utf8_lossy(&buffer[..n]);

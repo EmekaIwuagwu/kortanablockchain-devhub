@@ -32,8 +32,7 @@ impl FeeMarket {
             -((target - gas_used) as i128)
         };
 
-        // Simplified EIP-1559 update logic: base_fee * (1 + (gas_delta / target_delta))
-        // Clamped to MIN_GAS_PRICE so it never goes below 1 wei
+        // EIP-1559 base fee adjustment: clamped to ±12.5% per block, floored at MIN_GAS_PRICE
         let delta = (self.base_fee as i128 * diff) / (target as i128 * 8);
         self.base_fee = (self.base_fee as i128 + delta)
             .max(crate::parameters::MIN_GAS_PRICE as i128) as u128;

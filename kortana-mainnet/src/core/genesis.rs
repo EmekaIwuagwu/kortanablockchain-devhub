@@ -9,7 +9,9 @@ pub fn create_genesis_state() -> State {
     let mut state = State::new();
 
     // -------------------------------------------------------
-    // Total Genesis Supply: 800 Billion DNR
+    // Total Genesis Supply: 500,000,000,000 DNR (500 Billion)
+    // Circulating at launch: 10,000,000,000 DNR (10 Billion)
+    // Treasury (Foundation + Reserve): 490,000,000,000 DNR
     // -------------------------------------------------------
 
     // Foundation Reserve — 490B DNR

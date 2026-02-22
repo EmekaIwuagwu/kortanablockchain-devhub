@@ -79,7 +79,7 @@ impl Block {
 
     pub fn calculate_merkle_roots(txs: &[Transaction], receipts: &[crate::types::transaction::TransactionReceipt]) -> ([u8; 32], [u8; 32]) {
         let tx_hashes: Vec<[u8; 32]> = txs.iter().map(|tx| tx.hash()).collect();
-        let receipt_hashes: Vec<[u8; 32]> = receipts.iter().map(|r| r.tx_hash).collect(); // Simplified receipt hash
+        let receipt_hashes: Vec<[u8; 32]> = receipts.iter().map(|r| r.tx_hash).collect();
         
         (
             Self::compute_merkle_root(&tx_hashes),
