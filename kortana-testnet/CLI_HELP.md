@@ -44,12 +44,12 @@ To perform staking actions, send a transaction to the Staking Contract with the 
 
 #### 1. List All Validators
 ```bash
-curl -X POST http://localhost:8545 -d '{"jsonrpc":"2.0","method":"eth_stakingValidators","params":[],"id":1}'
+curl -X POST http://localhost:8545 -d '{"jsonrpc":"2.0","method":"eth_getValidators","params":[],"id":1}'
 ```
 
-#### 2. Check My Delegations
+#### 2. Check My History
 ```bash
-curl -X POST http://localhost:8545 -d '{"jsonrpc":"2.0","method":"eth_stakingInfo","params":["YOUR_ADDRESS"],"id":1}'
+curl -X POST http://localhost:8545 -d '{"jsonrpc":"2.0","method":"eth_getAddressHistory","params":["YOUR_ADDRESS"],"id":1}'
 ```
 
 ---
