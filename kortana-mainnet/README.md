@@ -13,7 +13,7 @@ Welcome to the Kortana Mainnet Node — the production-grade, optimized implemen
 |-------|-------|
 | **Network Name** | Kortana Mainnet |
 | **RPC URL** | `https://zeus-rpc.mainnet.kortana.xyz` |
-| **Chain ID** | `7251` |
+| **Chain ID** | `9002` |
 | **Currency Symbol** | `DNR` |
 | **Block Explorer** | `https://explorer.mainnet.kortana.xyz` |
 | **Consensus** | Delegated Proof-of-History (DPoH) + BFT |
@@ -114,7 +114,7 @@ docker-compose logs -f
 ```
 Network Name:    Kortana Mainnet
 RPC URL:         https://zeus-rpc.mainnet.kortana.xyz
-Chain ID:        7251
+Chain ID:        9002
 Symbol:          DNR
 Block Explorer:  https://explorer.mainnet.kortana.xyz
 ```
@@ -208,7 +208,7 @@ sudo systemctl stop kortanad
 |-------|-------|
 | **Specification Version** | 2.0.0 |
 | **Language** | Rust (stable 1.70+) |
-| **Chain ID** | 7251 |
+| **Chain ID** | 9002 |
 | **Target Standard** | Polkadot / Cosmos / Solana Tier |
 | **Status** | 🟢 LIVE |
 | **Launch Date** | February 2026 |

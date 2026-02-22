@@ -24,7 +24,7 @@
 
 | Feature | Specification |
 |---------|--------------|
-| **Mainnet Chain ID** | `7251` |
+| **Mainnet Chain ID** | `9002` |
 | **Testnet Chain ID** | `72511` |
 | **Block Time** | 2 seconds |
 | **Finality** | < 2 seconds (Byzantine BFT) |
@@ -99,7 +99,7 @@
 |-------|-------|
 | **Network Name** | Kortana Mainnet |
 | **RPC URL** | `https://zeus-rpc.mainnet.kortana.xyz` |
-| **Chain ID** | `7251` |
+| **Chain ID** | `9002` |
 | **Currency Symbol** | `DNR` |
 | **Block Explorer** | `https://explorer.mainnet.kortana.xyz` |
 | **Status** | 🟢 LIVE & SECURED (v1.0.0-Mainnet) |
@@ -132,7 +132,7 @@ Block Explorer:  https://explorer.kortana.worchsester.xyz
 ```
 Network Name:    Kortana Mainnet
 RPC URL:         https://zeus-rpc.mainnet.kortana.xyz
-Chain ID:        7251
+Chain ID:        9002
 Symbol:          DNR
 Block Explorer:  https://explorer.mainnet.kortana.xyz
 ```
@@ -531,7 +531,7 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 |-------|-------|
 | **Specification Version** | 2.0.0 |
 | **Language** | Rust (stable 1.70+) |
-| **Mainnet Chain ID** | 7251 |
+| **Mainnet Chain ID** | 9002 |
 | **Testnet Chain ID** | 72511 |
 | **Target Standard** | Polkadot / Cosmos / Solana Tier |
 | **Testnet Status** | 🟢 LIVE |
