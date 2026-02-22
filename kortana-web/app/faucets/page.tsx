@@ -52,7 +52,7 @@ export default function FaucetsPage() {
                     <form onSubmit={handleRequest} className="space-y-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-300">Select Network</label>
-                            <div className="grid grid-cols-2 gap-4 p-1 bg-black/20 rounded-lg">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-1 bg-black/20 rounded-lg">
                                 <button
                                     type="button"
                                     onClick={() => setNetwork('testnet')}

@@ -59,7 +59,7 @@ export default function DevelopersPage() {
                             <div className="space-y-4">
                                 <EndpointItem label="RPC" value="https://poseidon-rpc.kortana.worchsester.xyz" copyable />
                                 <EndpointItem label="Chain ID" value="72511" />
-                                <EndpointItem label="Explorer" value="https://explorer-testnet.kortana.worchsester.xyz" copyable />
+                                <EndpointItem label="Explorer" value="https://explorer.kortana.worchsester.xyz" copyable />
                             </div>
                         </div>
                     </div>

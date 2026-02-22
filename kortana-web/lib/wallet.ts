@@ -1,3 +1,4 @@
+import { NETWORK } from './rpc';
 
 export async function connectWallet() {
     if (typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined') {
@@ -12,5 +13,36 @@ export async function connectWallet() {
         alert("Please install MetaMask to use this feature!");
         window.open('https://metamask.io/download/', '_blank');
         return null;
+    }
+}
+
+export async function addKortanaNetwork() {
+    if (typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined') {
+        try {
+            await (window as any).ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                    {
+                        chainId: NETWORK.mainnet.chainIdHex,
+                        chainName: NETWORK.mainnet.name,
+                        nativeCurrency: {
+                            name: 'Kortana DNR',
+                            symbol: NETWORK.mainnet.symbol,
+                            decimals: 18,
+                        },
+                        rpcUrls: [NETWORK.mainnet.rpcUrl],
+                        blockExplorerUrls: [NETWORK.mainnet.explorerUrl],
+                    },
+                ],
+            });
+            return true;
+        } catch (error) {
+            console.error("Error adding network to MetaMask", error);
+            return false;
+        }
+    } else {
+        alert("Please install MetaMask to use this feature!");
+        window.open('https://metamask.io/download/', '_blank');
+        return false;
     }
 }

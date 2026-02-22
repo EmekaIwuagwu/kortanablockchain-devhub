@@ -26,7 +26,7 @@ export default function TokenomicsPage() {
                 {/* Key Metric Highlight */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-20">
                     <StatBox label="Total Supply" value="500,000,000,000" sub="DNR" />
-                    <StatBox label="Foundation Reserve" value="490,000,000,000" sub="DNR" />
+                    <StatBox label="Foundation Reserve" value="245,000,000,000" sub="DNR" />
                     <StatBox label="Inflation Rate" value="4.2%" sub="Decreasing" />
                     <StatBox label="Burned (Total)" value="2,400,129" sub="DNR" color="orange" />
                 </div>
@@ -38,11 +38,9 @@ export default function TokenomicsPage() {
                             Initial Distribution
                         </h2>
                         <div className="space-y-4">
-                            <DistributionItem color="bg-cyan-500" percent="40%" label="Ecosystem & Community Rewards" />
-                            <DistributionItem color="bg-purple-500" percent="20%" label="Core Team & Contributors (4yr Vesting)" />
-                            <DistributionItem color="bg-blue-500" percent="15%" label="Foundation Reserve" />
-                            <DistributionItem color="bg-green-500" percent="15%" label="Early Backers & Investors" />
-                            <DistributionItem color="bg-yellow-500" percent="10%" label="Public Sale & Airdrops" />
+                            <DistributionItem color="bg-purple-500" percent="49%" label="Foundation Treasury (245B DNR — time-locked)" />
+                            <DistributionItem color="bg-cyan-500" percent="49%" label="Ecosystem Growth Treasury (245B DNR — grants & incentives)" />
+                            <DistributionItem color="bg-neon-green" percent="2%" label="Genesis Circulation (10B DNR — validators, faucet, ops)" />
                         </div>
 
                         <div className="mt-12 p-6 rounded-xl bg-white/5 border border-white/10">

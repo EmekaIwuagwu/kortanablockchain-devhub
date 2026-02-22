@@ -65,7 +65,7 @@ export default function Footer() {
                         <ul className="space-y-4">
                             <FooterLink href="/developers">Dev Portal</FooterLink>
                             <FooterLink href="https://explorer.mainnet.kortana.xyz" target="_blank">Mainnet Explorer</FooterLink>
-                            <FooterLink href="https://explorer-testnet.kortana.worchsester.xyz/" target="_blank">Testnet Explorer</FooterLink>
+                            <FooterLink href="https://explorer.kortana.worchsester.xyz" target="_blank">Testnet Explorer</FooterLink>
                             <FooterLink href="/faucets">Testnet Faucet</FooterLink>
                             <FooterLink href="/community">Join Community</FooterLink>
                         </ul>
@@ -94,8 +94,8 @@ export default function Footer() {
                         </div>
                         <button
                             onClick={async () => {
-                                const { connectWallet } = await import('@/lib/wallet');
-                                await connectWallet();
+                                const { addKortanaNetwork } = await import('@/lib/wallet');
+                                await addKortanaNetwork();
                             }}
                             className="mt-6 w-full text-[9px] font-black uppercase tracking-widest py-2 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-all"
                         >

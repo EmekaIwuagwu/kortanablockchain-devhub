@@ -55,11 +55,11 @@ export default function WhitepaperContent() {
                         </nav>
                     </div>
                     <a href="/kortana_whitepaper.pdf"
-    download="kortana_whitepaper.pdf"
-    className="w-full py-4 bg-white text-deep-space font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform shadow-xl shadow-white/5 group"
->
-    <Download size={14} /> Download PDF
-</a>
+                        download="kortana_whitepaper.pdf"
+                        className="w-full py-4 bg-white text-deep-space font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-3 hover:scale-[1.02] transition-transform shadow-xl shadow-white/5 group"
+                    >
+                        <Download size={14} /> Download PDF
+                    </a>
                     <div className="text-center">
                         <p className="text-[10px] text-gray-600 font-mono">Version 2.0.0 • Production Ready</p>
                     </div>
@@ -74,7 +74,7 @@ export default function WhitepaperContent() {
                         Kortana is a production-grade Layer 1 blockchain engineered from the ground up for industrial-scale
                         decentralized applications and global credit markets. Written entirely in <strong>Rust</strong>, Kortana
                         introduces a novel <strong>Delegated Proof-of-History (DPoH)</strong> consensus mechanism that fuses
-                        cryptographic time-ordering with Byzantine fault-tolerant finality, achieving <strong>5-second block
+                        cryptographic time-ordering with Byzantine fault-tolerant finality, achieving <strong>2-second block
                             times</strong> with <strong>sub-2-second irreversible finality</strong>.
                     </p>
                     <p className="text-gray-400 mt-6 leading-relaxed">
@@ -87,14 +87,15 @@ export default function WhitepaperContent() {
                     <p className="text-gray-400 mt-4 leading-relaxed">
                         The network is secured by 50 active validators operating under a delegated staking model with
                         comprehensive slashing conditions — from 1% penalties for downtime to 100% stake burns for proven Byzantine
-                        behavior. The native <strong>DINAR (DNR)</strong> token features a deflationary economic model with a 50%
-                        base-fee burn mechanism and annual emission halvings.
+                        behavior. The native <strong>DINAR (DNR)</strong> token has a fixed total supply of <strong>500 Billion DNR</strong>,
+                        with <strong>10 Billion DNR</strong> in genesis circulation and the remaining 490 Billion held across two
+                        on-chain treasury accounts with governance-controlled release schedules.
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-10">
-                        <StatCard value="5s" label="Block Time" />
-                        <StatCard value="<2s" label="Finality" />
+                        <StatCard value="2s" label="Block Time" />
+                        <StatCard value="< 2s" label="Finality" />
                         <StatCard value="50" label="Validators" />
-                        <StatCard value="1B" label="Total Supply" />
+                        <StatCard value="500B" label="Total Supply" />
                     </div>
                 </Section>
 
@@ -130,7 +131,7 @@ export default function WhitepaperContent() {
 
                     <h4 className="text-white font-bold mt-12 mb-4">Design Principles</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <PrincipleCard icon={<Zap size={16} />} title="Speed" desc="5-second blocks and sub-2-second finality through deterministic leader scheduling on the PoH clock." />
+                        <PrincipleCard icon={<Zap size={16} />} title="Speed" desc="2-second blocks and sub-2-second finality through deterministic leader scheduling on the PoH clock." />
                         <PrincipleCard icon={<Shield size={16} />} title="Security" desc="Military-grade cryptography: SHA3-256, ECDSA signatures, BLS12-381 aggregation, and checksum-verified addresses." />
                         <PrincipleCard icon={<Cpu size={16} />} title="Flexibility" desc="Dual VM architecture lets developers choose between EVM compatibility and Quorlin's raw performance." />
                         <PrincipleCard icon={<Users size={16} />} title="Decentralization" desc="50 active validators with delegated staking, commission-based rewards, and democratic governance readiness." />
@@ -170,8 +171,8 @@ export default function WhitepaperContent() {
 
                         <h4 className="text-white font-bold mt-10 mb-6">Slot-Based Block Production</h4>
                         <ul className="list-none space-y-4 pl-0">
-                            <BulletItem text="Each slot is exactly 5 seconds. The network produces one block per slot, yielding 17,280 blocks per day and approximately 6,307,200 blocks per year." />
-                            <BulletItem text="An epoch consists of 432 slots (~36 minutes). Validator sets and leader schedules are recomputed at epoch boundaries based on current stake distributions." />
+                            <BulletItem text="Each slot is exactly 2 seconds. The network produces one block per slot, yielding 43,200 blocks per day and approximately 15,768,000 blocks per year." />
+                            <BulletItem text="An epoch consists of 432 slots (~14.4 minutes). Validator sets and leader schedules are recomputed at epoch boundaries based on current stake distributions." />
                             <BulletItem text="Leader election is deterministic and stake-weighted: validators with more delegated stake are selected more frequently, but every active validator gets proportional representation." />
                             <BulletItem text="If a leader misses their slot (due to downtime or network partition), the slot is skipped and the next leader in the schedule produces the following block. Missed slots count toward downtime slashing thresholds." />
                         </ul>
@@ -285,7 +286,7 @@ export default function WhitepaperContent() {
                     <p className="text-sm text-gray-400">
                         Both VMs use gas metering to bound computation. Each opcode has a defined gas cost, and transactions
                         must specify a gas limit (minimum 21,000; maximum 10,000,000 per transaction). The block gas limit is
-                        capped at 30,000,000 to ensure block propagation stays within the 5-second slot window. Gas prices
+                        capped at 30,000,000 to ensure block propagation stays within the 2-second slot window. Gas prices
                         use a dynamic base fee adjusted per 2-block window, with a floor of 1 satoshi (10⁻¹⁸ DNR).
                     </p>
                 </Section>
@@ -298,24 +299,35 @@ export default function WhitepaperContent() {
                             unit of account for gas fees, staking collateral, and governance weight. Its economic model is designed
                             for long-term deflationary pressure while maintaining sufficient liquidity for network operations.
                         </p>
+                        <p className="text-gray-400 text-sm mt-4 leading-relaxed">
+                            DNR has a hardcoded fixed supply of <strong>500,000,000,000 tokens (500 Billion DNR)</strong>.
+                            At genesis, <strong>10,000,000,000 DNR (10 Billion, 2% of total supply)</strong> enter active circulation,
+                            distributed across foundation, validator, faucet, and owner accounts. The remaining
+                            <strong> 490 Billion DNR (98%)</strong> is split equally across two on-chain treasury accounts
+                            — the <em>Foundation Treasury</em> and the <em>Ecosystem Growth Treasury</em> — each holding
+                            245 Billion DNR, governed by time-locked release schedules and multi-sig governance.
+                        </p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                             <StatCard value="DNR" label="Symbol" />
                             <StatCard value="18" label="Decimals" />
-                            <StatCard value="1B" label="Total Supply" />
-                            <StatCard value="5 DNR" label="Block Reward" />
+                            <StatCard value="500B" label="Total Supply" />
+                            <StatCard value="10B" label="Circulating" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                         <div className="space-y-6">
-                            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Initial Distribution</h4>
+                            <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Supply Distribution (500B DNR)</h4>
                             <div className="space-y-3">
-                                <DistributionBar label="Community & Ecosystem" percent="60%" amount="600,000,000 DNR" color="bg-cyan-500" />
-                                <DistributionBar label="Foundation Reserve" percent="25%" amount="250,000,000 DNR" color="bg-purple-500" />
-                                <DistributionBar label="Team & Advisors" percent="10%" amount="100,000,000 DNR" color="bg-blue-500" />
-                                <DistributionBar label="Developer Ecosystem Fund" percent="5%" amount="50,000,000 DNR" color="bg-neon-green" />
+                                <DistributionBar label="Foundation Treasury" percent="49%" amount="245,000,000,000 DNR — time-locked, governance-released" color="bg-purple-500" />
+                                <DistributionBar label="Ecosystem Growth Treasury" percent="49%" amount="245,000,000,000 DNR — grants, partnerships, incentives" color="bg-cyan-500" />
+                                <DistributionBar label="Genesis Circulation" percent="2%" amount="10,000,000,000 DNR — validators, faucet, foundation operations" color="bg-neon-green" />
                             </div>
-                            <p className="text-xs text-gray-500 font-mono mt-4">Total Supply: 1,000,000,000 DNR • Smallest Unit: 1 satoshi = 10⁻¹⁸ DNR</p>
+                            <p className="text-xs text-gray-500 font-mono mt-4">Total Supply: 500,000,000,000 DNR • Smallest Unit: 1 satoshi = 10⁻¹⁸ DNR</p>
+                            <div className="p-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 mt-4">
+                                <p className="text-xs text-cyan-300 font-bold mb-1">🔒 Treasury Release Policy</p>
+                                <p className="text-xs text-gray-400 leading-relaxed">Both treasury accounts are time-locked smart contracts. Release tranches require multi-sig approval from the Foundation Council and a 14-day on-chain governance vote.</p>
+                            </div>
                         </div>
 
                         <div className="space-y-6">

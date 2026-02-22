@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Layers, Server, Cpu, Database, HardDrive } from 'lucide-react';
 import PageHeader from "@/components/PageHeader";
 
+
 export default function ArchitecturePage() {
     return (
         <div className="min-h-screen pb-20">
@@ -35,7 +36,7 @@ export default function ArchitecturePage() {
                         number={4}
                         title="Consensus & Network"
                         desc="DPoH + Byzantine Finality + libp2p"
-                        details="Delegated Proof-of-History (DPoH) creates a verifiable passage of time, enabling 5-second blocks. The libp2p gossipsub protocol ensures <500ms block propagation across the global network of 50 validators."
+                        details="Delegated Proof-of-History (DPoH) creates a verifiable passage of time, enabling 2-second blocks. The libp2p gossipsub protocol ensures <500ms block propagation across the global network of validators."
                         icon={<Server />}
                     />
                     <ArchitectureLayer
@@ -72,7 +73,7 @@ export default function ArchitecturePage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <motion.div whileHover={{ scale: 1.05 }} className="glass-panel p-8 rounded-xl bg-deep-space/60 backdrop-blur-md border border-white/10">
-                            <div className="text-cyan-400 font-bold text-5xl mb-2 font-mono">5s</div>
+                            <div className="text-cyan-400 font-bold text-5xl mb-2 font-mono">2s</div>
                             <div className="text-white font-medium">Block Time</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }} className="glass-panel p-8 rounded-xl bg-deep-space/60 backdrop-blur-md border border-white/10">

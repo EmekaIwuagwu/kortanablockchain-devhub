@@ -15,9 +15,9 @@ export const NETWORK = {
     testnet: {
         name: "Kortana Testnet",
         chainId: 72511,
-        chainIdHex: "0x11AFF",
+        chainIdHex: "0x11B3F",
         rpcUrl: "https://poseidon-rpc.kortana.worchsester.xyz",
-        explorerUrl: "https://explorer-testnet.kortana.worchsester.xyz",
+        explorerUrl: "https://explorer.kortana.worchsester.xyz",
         symbol: "DNR",
         decimals: 18,
         blockTime: 2,

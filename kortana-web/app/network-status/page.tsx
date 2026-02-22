@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import PageHeader from "@/components/PageHeader";
 import { Activity, Box, Clock, Zap, Map, Server } from "lucide-react";
-import { getBlockHeight } from '@/lib/rpc';
+import { getBlockHeight, NETWORK } from '@/lib/rpc';
+
 
 export default function NetworkStatusPage() {
-    const [blockHeight, setBlockHeight] = useState("12,405,299");
+    const [blockHeight, setBlockHeight] = useState("...");
 
     useEffect(() => {
         const fetchHeight = async () => {
@@ -42,7 +43,7 @@ export default function NetworkStatusPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                     <StatusCard label="Current TPS" value="1,245" icon={<Zap className="text-yellow-400" />} />
                     <StatusCard label="Block Height" value={blockHeight} icon={<Box className="text-cyan-400" />} />
-                    <StatusCard label="Avg Block Time" value="5.01s" icon={<Clock className="text-purple-400" />} />
+                    <StatusCard label="Avg Block Time" value={`${NETWORK.mainnet.blockTime.toFixed(1)}s`} icon={<Clock className="text-purple-400" />} />
                     <StatusCard label="Active Validators" value="50 / 50" icon={<Server className="text-neon-green" />} />
                 </div>
 
