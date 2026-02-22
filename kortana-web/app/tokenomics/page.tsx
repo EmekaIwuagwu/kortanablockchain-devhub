@@ -1,7 +1,18 @@
-'use client';
-
+import type { Metadata } from "next";
 import PageHeader from "@/components/PageHeader";
 import { PieChart, Zap, HandCoins, Lock, TrendingUp, AlertCircle } from "lucide-react";
+
+export const metadata: Metadata = {
+    title: "Tokenomics",
+    description:
+        "Kortana DNR token economics: 500 Billion total supply, EIP-1559 deflationary burning, staking rewards, and governance. Chain ID 9002.",
+    alternates: { canonical: "https://kortana.xyz/tokenomics" },
+    openGraph: {
+        title: "Kortana Tokenomics | DNR Token Economics",
+        description: "500B DNR total supply, deflationary burning, staking, governance. Built on Kortana Mainnet Chain ID 9002.",
+        url: "https://kortana.xyz/tokenomics",
+    },
+};
 
 export default function TokenomicsPage() {
     return (
@@ -14,8 +25,8 @@ export default function TokenomicsPage() {
             <div className="max-w-7xl mx-auto px-4 py-16">
                 {/* Key Metric Highlight */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-20">
-                    <StatBox label="Total Supply" value="1,000,000,000" sub="DNR" />
-                    <StatBox label="Circulating Supply" value="142,500,000" sub="DNR" />
+                    <StatBox label="Total Supply" value="500,000,000,000" sub="DNR" />
+                    <StatBox label="Foundation Reserve" value="490,000,000,000" sub="DNR" />
                     <StatBox label="Inflation Rate" value="4.2%" sub="Decreasing" />
                     <StatBox label="Burned (Total)" value="2,400,129" sub="DNR" color="orange" />
                 </div>

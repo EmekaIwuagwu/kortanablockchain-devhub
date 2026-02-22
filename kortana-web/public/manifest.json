@@ -1,0 +1,28 @@
+{
+    "name": "Kortana Blockchain",
+    "short_name": "Kortana",
+    "description": "Industrial-Grade Layer 1 Blockchain — EVM-compatible, 2s blocks, 50,000+ TPS, Chain ID 9002",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#05071a",
+    "theme_color": "#05071a",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "categories": [
+        "finance",
+        "technology",
+        "blockchain"
+    ]
+}

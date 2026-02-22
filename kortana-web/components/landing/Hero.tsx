@@ -60,7 +60,7 @@ export default function Hero() {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8"
                 >
                     <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse"></span>
-                    <span className="text-sm font-medium text-cyan-300 tracking-wide uppercase">Mainnet Beta Live</span>
+                    <span className="text-sm font-medium text-cyan-300 tracking-wide uppercase">Mainnet Live · Chain ID 9002</span>
                 </motion.div>
 
                 {/* Main Headline */}
@@ -91,7 +91,7 @@ export default function Hero() {
                 >
                     The <span className="text-white font-semibold">EVM-Compatible</span> Layer 1 built for high-frequency finance.
                     <br className="hidden md:block" />
-                    <span className="text-cyan-400">5-second blocks</span> • <span className="text-purple-400">Sub-2s finality</span> • <span className="text-neon-green">Zero downtime</span>
+                    <span className="text-cyan-400">2-second blocks</span> • <span className="text-purple-400">Sub-2s BFT finality</span> • <span className="text-neon-green">50,000+ TPS</span>
                 </motion.p>
 
                 <motion.div

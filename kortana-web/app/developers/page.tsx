@@ -41,14 +41,26 @@ export default function DevelopersPage() {
                     {/* Endpoint Info */}
                     <div className="glass-panel p-10 rounded-[2.5rem] border border-white/5 bg-gradient-to-br from-white/5 to-transparent shadow-2xl">
                         <h2 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-10 flex items-center gap-3">
-                            <Server className="w-4 h-4 text-neon-green" /> Network Integration
+                            <Server className="w-4 h-4 text-neon-green" /> Mainnet Integration
                         </h2>
 
                         <div className="space-y-6">
-                            <EndpointItem label="Network ID" value="Kortana Poseidon" />
-                            <EndpointItem label="RPC Gateway" value="https://poseidon-rpc.kortana.worchsester.xyz" copyable />
-                            <EndpointItem label="Chain Index" value="72511" />
-                            <EndpointItem label="Asset Symbol" value="DNR" />
+                            <EndpointItem label="Network Name" value="Kortana Mainnet" />
+                            <EndpointItem label="RPC Endpoint" value="https://zeus-rpc.mainnet.kortana.xyz" copyable />
+                            <EndpointItem label="Chain ID" value="9002 (0x232A)" />
+                            <EndpointItem label="Symbol" value="DNR" />
+                            <EndpointItem label="Block Explorer" value="https://explorer.mainnet.kortana.xyz" copyable />
+                        </div>
+
+                        <div className="mt-8 pt-8 border-t border-white/5">
+                            <div className="text-[10px] font-black text-gray-600 uppercase tracking-[0.3em] mb-6">
+                                Testnet (Poseidon)
+                            </div>
+                            <div className="space-y-4">
+                                <EndpointItem label="RPC" value="https://poseidon-rpc.kortana.worchsester.xyz" copyable />
+                                <EndpointItem label="Chain ID" value="72511" />
+                                <EndpointItem label="Explorer" value="https://explorer-testnet.kortana.worchsester.xyz" copyable />
+                            </div>
                         </div>
                     </div>
                 </div>

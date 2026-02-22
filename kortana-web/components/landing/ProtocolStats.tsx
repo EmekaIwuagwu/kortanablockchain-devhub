@@ -24,9 +24,11 @@ export default function ProtocolStats() {
                     <StatItem label="TOTAL TRANSACTIONS" value="142,593,021" />
                     <StatItem label="BLOCK HEIGHT" value={blockHeight} />
                     <StatItem label="ACTIVE ACCOUNTS" value="2,504,119" />
-                    <StatItem label="AVG BLOCK TIME" value="5.01s" color="cyan" />
-                    <StatItem label="TOTAL STAKED" value="450,000,000 DNR" />
-                    <StatItem label="NODES" value="50" color="green" />
+                    <StatItem label="AVG BLOCK TIME" value="2.0s" color="cyan" />
+                    <StatItem label="TOTAL STAKED" value="45,000,000,000 DNR" />
+                    <StatItem label="CHAIN ID" value="9002" color="green" />
+                    <StatItem label="TOTAL SUPPLY" value="500B DNR" />
+                    <StatItem label="FINALITY" value="< 2s BFT" color="cyan" />
                 </div>
             </div>
         </div>

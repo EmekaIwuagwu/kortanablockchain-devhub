@@ -8,9 +8,9 @@ import { getBlockHeight } from '@/lib/rpc';
 export default function KeyMetrics() {
     const [metrics, setMetrics] = useState({
         blockHeight: "...",
-        blockTime: 5.0,
+        blockTime: 2.0,
         validators: 50,
-        uptime: 99.99,
+        chainId: 9002,
         tps: 0
     });
 
@@ -69,7 +69,7 @@ export default function KeyMetrics() {
                     icon={<Clock className="w-5 h-5 text-purple-400" />}
                     label="Block Time"
                     value={`${metrics.blockTime.toFixed(1)}s`}
-                    sub="Deterministic"
+                    sub="Deterministic 2s"
                 />
                 <MetricCard
                     variants={item}
@@ -81,9 +81,9 @@ export default function KeyMetrics() {
                 <MetricCard
                     variants={item}
                     icon={<Globe className="w-5 h-5 text-blue-400" />}
-                    label="Nodes"
-                    value="140+"
-                    sub="Global Reach"
+                    label="Chain ID"
+                    value={`${metrics.chainId}`}
+                    sub="Mainnet Network"
                 />
             </motion.div>
 
@@ -97,7 +97,7 @@ export default function KeyMetrics() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-[80px] -mr-32 -mt-32 group-hover:bg-cyan-500/10 transition-colors"></div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center relative z-10">
-                    <SecondaryStat label="Total Supply" value="1.0B" icon={<Coins />} unit="DNR" />
+                    <SecondaryStat label="Total Supply" value="500B" icon={<Coins />} unit="DNR" />
                     <SecondaryStat label="Global Capacity" value="50,000+" icon={<Activity />} unit="TPS" color="cyan" />
                     <SecondaryStat label="Unique Holders" value="12,450+" icon={<Users />} unit="WALLETS" />
                     <SecondaryStat label="Gas Cost" value="< 0.001" icon={<Zap />} unit="DNR" color="green" />

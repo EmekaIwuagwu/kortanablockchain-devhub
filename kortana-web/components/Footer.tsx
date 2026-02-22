@@ -50,7 +50,7 @@ export default function Footer() {
 
                     {/* Resources Column */}
                     <div>
-                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-8">Technical Resourses</h3>
+                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-8">Technical Resources</h3>
                         <ul className="space-y-4">
                             <FooterLink href="/docs">Docs Hub</FooterLink>
                             <FooterLink href="/technology">Core Tech</FooterLink>
@@ -64,7 +64,9 @@ export default function Footer() {
                         <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em] mb-8">Network Ecosystem</h3>
                         <ul className="space-y-4">
                             <FooterLink href="/developers">Dev Portal</FooterLink>
-                            <FooterLink href="https://explorer-testnet.kortana.worchsester.xyz/" target="_blank">Network Explorer</FooterLink>
+                            <FooterLink href="https://explorer.mainnet.kortana.xyz" target="_blank">Mainnet Explorer</FooterLink>
+                            <FooterLink href="https://explorer-testnet.kortana.worchsester.xyz/" target="_blank">Testnet Explorer</FooterLink>
+                            <FooterLink href="/faucets">Testnet Faucet</FooterLink>
                             <FooterLink href="/community">Join Community</FooterLink>
                         </ul>
                     </div>
@@ -84,9 +86,21 @@ export default function Footer() {
 
                         <div className="space-y-5">
                             <StatusItem label="Block Height" value={blockHeight} />
-                            <StatusItem label="Block Time" value="5.0s" color="cyan" />
-                            <StatusItem label="Validator Nodes" value="50 / 50" color="green" />
+                            <StatusItem label="Block Time" value="2.0s" color="cyan" />
+                            <StatusItem label="Chain ID" value="9002" color="green" />
+                            <StatusItem label="Total Supply" value="500B DNR" />
+                            <StatusItem label="Symbol" value="DNR" color="cyan" />
+                            <StatusItem label="Finality" value="< 2s BFT" color="green" />
                         </div>
+                        <button
+                            onClick={async () => {
+                                const { connectWallet } = await import('@/lib/wallet');
+                                await connectWallet();
+                            }}
+                            className="mt-6 w-full text-[9px] font-black uppercase tracking-widest py-2 px-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-all"
+                        >
+                            + Add to MetaMask
+                        </button>
                     </div>
                 </div>
 
