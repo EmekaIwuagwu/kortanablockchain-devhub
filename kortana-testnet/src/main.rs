@@ -138,6 +138,14 @@ async fn main() {
         _ => {
             println!("{}GENESIS{}", CLR_CYAN, CLR_RESET);
             let initial_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+            let genesis_root = initial_state.calculate_root();
+            
+            // Persist GENESIS state and block 0 immediately so RPC/Explorer can see it
+            let genesis_block = kortana_blockchain_rust::core::genesis::create_genesis_block(genesis_root);
+            let _ = storage.put_state(0, &initial_state);
+            let _ = storage.put_block(&genesis_block);
+            let _ = storage.put_state_root(0, genesis_root);
+            
             (0, initial_state)
         }
     };
