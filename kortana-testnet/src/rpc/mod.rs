@@ -275,6 +275,20 @@ impl RpcHandler {
                                 match crate::types::transaction::Transaction::decode_ethereum(&bytes) {
                                     Ok(mut tx) => {
                                         tx.cached_hash = Some(tx_hash_bytes);
+                                        // Validation
+                                        if tx.chain_id != self.chain_id {
+                                            return Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32000, "Chain ID mismatch")).unwrap());
+                                        }
+                                        {
+                                            let state = self.state.lock().unwrap();
+                                            let sender = state.get_account(&tx.from);
+                                            if tx.nonce < sender.nonce {
+                                                return Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32000, "Nonce too low")).unwrap());
+                                            }
+                                            if sender.balance < tx.total_cost() {
+                                                 return Some(serde_json::to_value(JsonRpcResponse::new_error(req_id.clone(), -32000, "Insufficient funds")).unwrap());
+                                            }
+                                        }
                                         {
                                             let mut mempool = self.mempool.lock().unwrap();
                                             let added = mempool.add(tx.clone());

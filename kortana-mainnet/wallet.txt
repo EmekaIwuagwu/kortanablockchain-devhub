@@ -1,0 +1,6 @@
+
+[1m--- NEW KORTANA MAINNET WALLET ---[0m
+[35mPrivate Key: 91a8db149bcd1ea6c4d07336bc46e5e8fb1068339ce8a1ff1f82c14e6d5d705b[0m
+[36mAddress:     0xa1c47694cdda414b9ad6c4fb4242780240a3f97f[0m
+[1m----------------------------------[0m
+
