@@ -18,6 +18,7 @@ const formatBlock = (block) => {
         ...block,
         number: parseInt(block.number, 16),
         timestamp: parseInt(block.timestamp, 16),
+        timestamp_human: new Date(parseInt(block.timestamp, 16) * 1000).toLocaleTimeString(),
         gasUsed: BigInt(block.gasUsed || 0),
         gasLimit: BigInt(block.gasLimit || 0),
         baseFeePerGas: block.baseFeePerGas ? BigInt(block.baseFeePerGas) : null,

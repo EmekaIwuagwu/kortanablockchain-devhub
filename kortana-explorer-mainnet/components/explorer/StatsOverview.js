@@ -51,7 +51,7 @@ const StatsOverview = ({ stats }) => {
             />
             <StatCard
                 title="LATEST BLOCK"
-                value={stats?.latestBlock || '1,245,678'}
+                value={stats?.latestBlock ?? '0'}
                 icon={Box}
             />
             <StatCard
