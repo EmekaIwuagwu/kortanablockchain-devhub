@@ -26,7 +26,6 @@ pub struct Transaction {
     pub vm_type: VmType,
     pub chain_id: u64,
     pub signature: Option<Vec<u8>>,
-    #[serde(skip)]
     pub cached_hash: Option<[u8; 32]>,
 }
 
@@ -220,13 +219,21 @@ impl Transaction {
         
         let from = Address::from_evm_address(evm_addr);
         
-        Ok(Transaction {
+        let mut tx = Transaction {
                 nonce, from, to, value, gas_limit, gas_price, data,
                 vm_type: VmType::EVM,
                 chain_id,
                 signature: Some(bytes.to_vec()), 
                 cached_hash: None,
-        })
+        };
+
+        // Standard Ethereum TX Hash: Keccak256(RLP_encoded_bytes)
+        let mut hasher = Keccak256::new();
+        hasher.update(bytes);
+        let tx_hash: [u8; 32] = hasher.finalize().into();
+        tx.cached_hash = Some(tx_hash);
+        
+        Ok(tx)
     }
 
 }
