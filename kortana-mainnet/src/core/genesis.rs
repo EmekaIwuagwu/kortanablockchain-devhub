@@ -20,17 +20,16 @@ pub fn create_genesis_state() -> State {
     foundation_acc.balance = 490_000_000_000_000_000_000_000_000_000_000; // 490B DNR
     state.update_account(foundation_addr, foundation_acc);
 
-    // Initial Validators - 3 Highly Secure Nodes
+    // Initial Validators - Including your RackNerd Node
     let validator_stakes = 1_000_000_000_000_000_000_000_000; // 1M DNR each
     
-    let validator_keys = vec![
-        b"genesis_validator_1",
-        b"genesis_validator_2",
-        b"genesis_validator_3",
+    let validator_addresses = vec![
+        Address::from_hex("0xadf256ef0fa3c0fe774f7dac0fd04040e4fdef50").unwrap(), // Your RackNerd Node
+        Address::from_pubkey(b"genesis_validator_2"),
+        Address::from_pubkey(b"genesis_validator_3"),
     ];
 
-    for key in validator_keys {
-        let addr = Address::from_pubkey(key);
+    for addr in validator_addresses {
         let mut acc = Account::new();
         acc.balance = validator_stakes;
         state.update_account(addr, acc);
@@ -57,7 +56,7 @@ pub fn create_genesis_block(state_root: [u8; 32]) -> Block {
         version: 1,
         height: 0,
         slot: 0,
-        timestamp: 1738224000, // Jan 30 2026 
+        timestamp: 1740268800, // Feb 23 2026 
         parent_hash: [0u8; 32],
         state_root,
         transactions_root: [0u8; 32],
