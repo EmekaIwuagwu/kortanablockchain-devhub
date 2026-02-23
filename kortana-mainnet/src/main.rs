@@ -202,21 +202,94 @@ async fn main() {
             let handler = rpc_handler.clone();
             let _task_node = rpc_node.clone();
             tokio::spawn(async move {
-                let mut buffer = vec![0u8; 16384];
-                if let Ok(n) = tokio::io::AsyncReadExt::read(&mut socket, &mut buffer).await {
-                    let req_body = String::from_utf8_lossy(&buffer[..n]);
-                    if let Some(header_end) = req_body.find("\r\n\r\n") {
-                        let body = &req_body[header_end+4..];
-                        if !body.is_empty() {
-                            if let Ok(req) = serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(body) {
-                                let res = handler.handle(req).await;
-                                let res_json = serde_json::to_string(&res).unwrap();
-                                let http_res = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\n\r\n{}", res_json.len(), res_json);
-                                let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, http_res.as_bytes()).await;
+                let mut buffer = Vec::new();
+                let mut temp_buf = [0u8; 65536]; // 64KB per read chunk
+                
+                // Set a timeout for reading the full request
+                let read_result = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
+                    loop {
+                        let n = tokio::io::AsyncReadExt::read(&mut socket, &mut temp_buf).await.ok()?;
+                        if n == 0 { break; }
+                        buffer.extend_from_slice(&temp_buf[..n]);
+                        
+                        let req_str = String::from_utf8_lossy(&buffer);
+                        let req_lower = req_str.to_lowercase();
+                        if let Some(header_end) = req_str.find("\r\n\r\n") {
+                            // If we have a Content-Length, ensure we have the full body
+                            if let Some(cl_start) = req_lower.find("content-length: ") {
+                                let cl_end = req_lower[cl_start..].find("\r\n").unwrap_or(0);
+                                if cl_end > 0 {
+                                    let cl_val_str = req_str[cl_start + 16..cl_start + cl_end].trim();
+                                    if let Ok(cl_val) = cl_val_str.parse::<usize>() {
+                                        let body_start = header_end + 4;
+                                        if buffer.len() >= body_start + cl_val { break; }
+                                    } else { break; } 
+                                }
+                            } else {
+                                // For GET/OPTIONS or POST without Content-Length
+                                break;
                             }
                         }
+                        if buffer.len() > 10_485_760 { break; } // 10MB Safety cap
                     }
-                }
+                    Some(())
+                }).await;
+
+                if read_result.is_err() || buffer.is_empty() { return; }
+                
+                let req_body_str = String::from_utf8_lossy(&buffer);
+                
+                let (http_res, _method_name) = if req_body_str.starts_with("OPTIONS") {
+                    ("HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, Authorization\r\nContent-Length: 0\r\n\r\n".to_string(), "OPTIONS".to_string())
+                } else if req_body_str.starts_with("GET") {
+                    let status_json = serde_json::json!({
+                        "status": "online", "node": "Kortana Mainnet", "version": "1.1.0",
+                        "chain_id": CHAIN_ID, "height": _task_node.height.load(Ordering::Relaxed)
+                    }).to_string();
+                    (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}", status_json.len(), status_json), "HTTP_GET".to_string())
+                } else if let Some(header_end) = req_body_str.find("\r\n\r\n") {
+                    let body_start = header_end + 4;
+                    let mut cl_val = 0;
+                    let req_lower = req_body_str.to_lowercase();
+                    if let Some(cl_start) = req_lower.find("content-length: ") {
+                        let cl_rest = &req_body_str[cl_start + 16..];
+                        if let Some(cl_end) = cl_rest.find("\r\n") {
+                            cl_val = cl_rest[..cl_end].trim().parse::<usize>().unwrap_or(0);
+                        }
+                    }
+
+                    let body = if cl_val > 0 {
+                        let end = std::cmp::min(body_start + cl_val, buffer.len());
+                        String::from_utf8_lossy(&buffer[body_start..end]).to_string()
+                    } else {
+                        req_body_str[body_start..].trim_end_matches('\0').trim().to_string()
+                    };
+
+                    if body.is_empty() {
+                        ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 20\r\n\r\nKortana RPC is Live!".to_string(), "EMPTY_POST".to_string())
+                    } else {
+                        let res_json = if body.starts_with('[') {
+                            match serde_json::from_str::<Vec<kortana_blockchain_rust::rpc::JsonRpcRequest>>(&body) {
+                                Ok(reqs) => {
+                                    let mut results = Vec::new();
+                                    for req in reqs { results.push(handler.handle(req).await); }
+                                    serde_json::to_string(&results).unwrap()
+                                }
+                                Err(e) => serde_json::json!({ "jsonrpc": "2.0", "error": { "code": -32700, "message": format!("Parse error: {}", e) }, "id": null }).to_string()
+                            }
+                        } else {
+                            match serde_json::from_str::<kortana_blockchain_rust::rpc::JsonRpcRequest>(&body) {
+                                Ok(req) => serde_json::to_string(&handler.handle(req).await).unwrap(),
+                                Err(e) => serde_json::json!({ "jsonrpc": "2.0", "error": { "code": -32700, "message": format!("Parse error: {}", e) }, "id": null }).to_string()
+                            }
+                        };
+                        (format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}", res_json.len(), res_json), "JSON_RPC".to_string())
+                    }
+                } else {
+                    ("HTTP/1.1 400 Bad Request\r\n\r\n".to_string(), "BAD_REQUEST".to_string())
+                };
+
+                let _ = tokio::io::AsyncWriteExt::write_all(&mut socket, http_res.as_bytes()).await;
             });
         }
     });

@@ -105,7 +105,8 @@ After=network.target
 [Service]
 User=$USER
 WorkingDirectory=$(pwd)
-ExecStart=$BINARY_PATH
+EnvironmentFile=$(pwd)/.env
+ExecStart=$BINARY_PATH --prod
 Restart=always
 RestartSec=10
 LimitNOFILE=65535

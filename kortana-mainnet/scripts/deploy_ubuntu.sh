@@ -76,7 +76,8 @@ SERVICE_FILE="/etc/systemd/system/kortanad.service"
 P2P_LISTEN=${P2P_ADDR:-"/ip4/0.0.0.0/tcp/30333"}
 BOOT_NODES=${BOOTNODES:-""}
 
-EXEC_COMMAND="$BINARY_PATH --p2p-addr $P2P_LISTEN --rpc-addr 127.0.0.1:8545"
+# Use 0.0.0.0 for public RPC access by default
+EXEC_COMMAND="$BINARY_PATH --prod --p2p-addr $P2P_LISTEN --rpc-addr 0.0.0.0:8545"
 if [ ! -z "$BOOT_NODES" ]; then
     EXEC_COMMAND="$EXEC_COMMAND --bootnodes $BOOT_NODES"
 fi
@@ -90,6 +91,7 @@ After=network.target
 [Service]
 User=$USER
 WorkingDirectory=$(pwd)
+EnvironmentFile=$(pwd)/.env
 ExecStart=$EXEC_COMMAND
 Restart=always
 RestartSec=3

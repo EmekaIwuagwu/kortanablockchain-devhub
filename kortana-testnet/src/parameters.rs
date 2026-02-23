@@ -5,20 +5,20 @@ pub const TESTNET_CHAIN_ID: u64 = 11155111;
 
 pub const STAKING_CONTRACT_ADDRESS: &str = "0x0000000000000000000000000000000000000001";
 
-pub const BLOCK_TIME_SECS: u64 = 5;
-pub const SLOT_DURATION_SECS: u64 = 5;
+pub const BLOCK_TIME_SECS: u64 = 2;
+pub const SLOT_DURATION_SECS: u64 = 2;
 pub const FINALITY_DELAY_SLOTS: u64 = 20;
 
-pub const BLOCKS_PER_EPOCH: u64 = 432;  // ~36 minutes
-pub const BLOCKS_PER_DAY: u64 = 17280;
-pub const BLOCKS_PER_YEAR: u64 = 6_307_200;
-pub const EPOCHS_PER_YEAR: u64 = 14600;
+pub const BLOCKS_PER_EPOCH: u64 = 432;  // ~14 minutes at 2s blocks
+pub const BLOCKS_PER_DAY: u64 = 43200;
+pub const BLOCKS_PER_YEAR: u64 = 15_768_000;
+pub const EPOCHS_PER_YEAR: u64 = 36500;
 
 pub const INITIAL_BLOCK_REWARD: u128 = 5_000_000_000_000_000_000;  // 5 DNR
-pub const HALVING_INTERVAL: u64 = 4_320_000;  // ~1 year
+pub const HALVING_INTERVAL: u64 = 15_768_000;  // ~1 year
 pub const HALVING_PERCENTAGE: u32 = 10;
 
-pub const TOTAL_SUPPLY: u128 = 800_000_000_000_000_000_000_000_000_000_000;  // 800B DNR
+pub const TOTAL_SUPPLY: u128 = 500_000_000_000_000_000_000_000_000_000_000;  // 500B DNR
 
 pub const MIN_VALIDATOR_STAKE: u128 = 32_000_000_000_000_000_000;  // 32 DNR
 pub const ACTIVE_VALIDATOR_COUNT: usize = 50;
@@ -117,7 +117,8 @@ mod tests {
         for block in 0..BLOCKS_PER_YEAR {
             total = total.saturating_add(calculate_block_reward(block));
         }
-        assert!(total < 50_000_000_000_000_000_000_000_000_000_000_000_000);  // Adjusted for total supply scale
-        assert!(total > 30_000_000_000_000_000_000_000_000);
+        // At 2s blocks, 15,768,000 blocks/year * 5 DNR = 78,840,000 DNR
+        assert!(total < 80_000_000_000_000_000_000_000_000);  // Less than 80M DNR
+        assert!(total > 70_000_000_000_000_000_000_000_000);  // More than 70M DNR
     }
 }
