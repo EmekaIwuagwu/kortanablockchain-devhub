@@ -372,15 +372,24 @@ async fn main() {
                         let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut state, fees.clone());
                         let mut receipts = Vec::new();
 
-                        for tx in &txs {
+                         for tx in &txs {
+                            let tx_hash = tx.hash();
                             match processor.process_transaction(tx.clone(), &header) {
                                 Ok(receipt) => {
-                                    receipts.push(receipt);
-                                    mempool.remove_transaction(&tx.hash());
+                                    receipts.push(receipt.clone());
+                                    
+                                    // Senior Architect Fix: Explicitly index every transaction metadata
+                                    let _ = node.storage.put_transaction(tx);
+                                    let _ = node.storage.put_receipt(&receipt);
+                                    let _ = node.storage.put_index(&tx.from, tx_hash);
+                                    let _ = node.storage.put_index(&tx.to, tx_hash);
+                                    let _ = node.storage.put_global_transaction(tx_hash);
+
+                                    mempool.remove_transaction(&tx_hash);
                                 }
                                 Err(e) => {
-                                    println!("{}[PROCESSOR]{} Transaction 0x{} failed: {}. Removing from mempool.", CLR_CYAN, CLR_RESET, hex::encode(tx.hash()), e);
-                                    mempool.remove_transaction(&tx.hash());
+                                    println!("{}[PROCESSOR]{} Transaction 0x{} failed validation: {}. Removing from mempool.", CLR_CYAN, CLR_RESET, hex::encode(tx_hash), e);
+                                    mempool.remove_transaction(&tx_hash);
                                 }
                             }
                         }
@@ -401,6 +410,11 @@ async fn main() {
                         let h = block.header.height;
                         let _ = node.storage.put_block(&block);
                         let _ = node.storage.put_state(h, &state);
+
+                        // Senior Architect Fix: Map transaction hashes to their block locations
+                        for (idx, tx) in block.transactions.iter().enumerate() {
+                            let _ = node.storage.put_transaction_location(&tx.hash(), h, &block_hash, idx);
+                        }
                         
                         let _ = p2p_tx.send(kortana_blockchain_rust::network::messages::NetworkMessage::NewBlock(block)).await;
                         println!("  {}✅ Block {} Finalized ({} txs){}", CLR_GREEN, h, receipts.len(), CLR_RESET);
@@ -418,12 +432,23 @@ async fn main() {
                                  let mut state = node.state.lock().unwrap();
                                  let mut fees = node.fees.lock().unwrap();
                                  let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut state, fees.clone());
-                                 if processor.validate_block(&block).is_ok() {
+                                 if let Ok(receipts) = processor.validate_block(&block) {
                                      *fees = processor.fee_market;
                                      node.height.fetch_add(1, Ordering::SeqCst);
                                      let _ = node.storage.put_block(&block);
                                      let _ = node.storage.put_state(h, &state);
-                                     println!("{}[P2P]{} Applied external block {}", CLR_CYAN, CLR_RESET, h);
+
+                                     // Index transactions from the peer's block
+                                     for (tx, receipt) in block.transactions.iter().zip(receipts.iter()) {
+                                         let tx_hash = tx.hash();
+                                         let _ = node.storage.put_transaction(tx);
+                                         let _ = node.storage.put_receipt(receipt);
+                                         let _ = node.storage.put_index(&tx.from, tx_hash);
+                                         let _ = node.storage.put_index(&tx.to, tx_hash);
+                                         let _ = node.storage.put_global_transaction(tx_hash);
+                                     }
+
+                                     println!("{}[P2P]{} Applied and Indexed external block {}", CLR_CYAN, CLR_RESET, h);
                                  }
                              }
                         }

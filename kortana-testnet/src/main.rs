@@ -413,14 +413,15 @@ async fn main() {
                             let tx_hash = tx.hash();
                             match processor.process_transaction(tx.clone(), &header) {
                                 Ok(receipt) => {
-                                    receipts.push(receipt);
-                                    // Index transaction
+                                    receipts.push(receipt.clone());
+                                    
+                                    // Senior Architect Fix: Explicitly index metadata for Testnet
                                     let _ = node.storage.put_transaction(tx);
+                                    let _ = node.storage.put_receipt(&receipt);
                                     let _ = node.storage.put_index(&tx.from, tx_hash);
                                     let _ = node.storage.put_index(&tx.to, tx_hash);
                                     let _ = node.storage.put_global_transaction(tx_hash);
                                     
-                                    // Remove from mempool
                                     mempool.remove_transaction(&tx_hash);
                                 }
                                 Err(e) => {
@@ -561,18 +562,23 @@ async fn main() {
                                 let mut success = false;
                                 {
                                     let mut processor = kortana_blockchain_rust::core::processor::BlockProcessor::new(&mut state, fees.clone());
-                                    if processor.validate_block(&block).is_ok() {
+                                    if let Ok(receipts) = processor.validate_block(&block) {
                                         println!("  {}✅ Sync Block {} verified.{}", CLR_GREEN, block.header.height, CLR_RESET);
                                         *fees = processor.fee_market.clone();
                                         success = true;
                                         // Index transactions
                                         let block_hash = block.header.hash();
                                         for (tx_index, tx) in block.transactions.iter().enumerate() {
-                                            let _ = node.storage.put_transaction(tx);
-                                            let _ = node.storage.put_index(&tx.from, tx.hash());
-                                            let _ = node.storage.put_index(&tx.to, tx.hash());
                                             let tx_hash = tx.hash();
+                                            let _ = node.storage.put_transaction(tx);
+                                            let _ = node.storage.put_index(&tx.from, tx_hash);
+                                            let _ = node.storage.put_index(&tx.to, tx_hash);
                                             let _ = node.storage.put_transaction_location(&tx_hash, block.header.height, &block_hash, tx_index);
+                                            
+                                            // Ensure receipts are stored for synced blocks
+                                            if let Some(receipt) = receipts.get(tx_index) {
+                                                let _ = node.storage.put_receipt(receipt);
+                                            }
                                         }
                                     }
                                 }
