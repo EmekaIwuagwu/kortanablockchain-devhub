@@ -106,9 +106,12 @@ export default function FAQ() {
 
             <div className="text-center bg-indigo-600/10 p-8 rounded-3xl border border-indigo-500/20">
                 <p className="text-sm text-white font-bold mb-4">Still have questions?</p>
-                <button className="px-8 py-3 bg-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">
+                <a
+                    href="mailto:support@kortana.network"
+                    className="inline-block px-8 py-3 bg-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-700 transition"
+                >
                     Contact Support Team
-                </button>
+                </a>
             </div>
         </div>
     );

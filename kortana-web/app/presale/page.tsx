@@ -52,7 +52,7 @@ export default function PresalePage() {
                 <TierCards onSelectTier={scrollToRegistration} selectedTier={selectedTier} />
             </section>
 
-            <section ref={registrationRef} className="max-w-4xl mx-auto px-6 mb-32 pt-20">
+            <section id="registration-section" ref={registrationRef} className="max-w-4xl mx-auto px-6 mb-32 pt-20">
                 <RegistrationForm selectedTier={selectedTier} onSuccess={(data) => console.log('Success:', data)} />
             </section>
 

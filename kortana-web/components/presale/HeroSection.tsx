@@ -47,12 +47,18 @@ export default function HeroSection() {
                     transition={{ delay: 0.3 }}
                     className="flex flex-col sm:flex-row items-center justify-center gap-4"
                 >
-                    <button className="group px-8 py-4 bg-indigo-600 rounded-2xl font-black text-sm uppercase tracking-widest text-white hover:bg-indigo-700 transition flex items-center gap-2 shadow-2xl shadow-indigo-600/20">
+                    <button
+                        onClick={() => document.getElementById('registration-section')?.scrollIntoView({ behavior: 'smooth' })}
+                        className="group px-8 py-4 bg-indigo-600 rounded-2xl font-black text-sm uppercase tracking-widest text-white hover:bg-indigo-700 transition flex items-center gap-2 shadow-2xl shadow-indigo-600/20"
+                    >
                         Start Registration <ArrowRight size={18} className="group-hover:translate-x-1 transition" />
                     </button>
-                    <button className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-sm uppercase tracking-widest text-white hover:bg-white/10 transition">
+                    <a
+                        href="/docs/tokenomics"
+                        className="px-8 py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-sm uppercase tracking-widest text-white hover:bg-white/10 transition"
+                    >
                         View Tokenomics
-                    </button>
+                    </a>
                 </motion.div>
             </div>
         </section>
