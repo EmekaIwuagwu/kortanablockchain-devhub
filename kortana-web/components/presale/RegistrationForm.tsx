@@ -519,9 +519,22 @@ export default function RegistrationForm({ selectedTier: initialTier, onSuccess 
                             <button
                                 type="submit"
                                 disabled={status === 'loading'}
-                                className="w-full py-5 bg-indigo-600 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-2xl hover:bg-indigo-700 transition flex justify-center items-center"
+                                className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all relative overflow-hidden group ${status === 'loading'
+                                    ? 'bg-indigo-600/50 cursor-wait'
+                                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-600/20 active:scale-[0.98]'
+                                    }`}
                             >
-                                {status === 'loading' ? 'Verifying...' : 'Finalize Whitelist Registration'}
+                                <span className="relative z-10">
+                                    {status === 'loading' ? 'Submitting to Database...' : 'Finalize Whitelist Registration'}
+                                </span>
+                                {status === 'loading' && (
+                                    <motion.div
+                                        className="absolute inset-x-0 bottom-0 h-1 bg-white/30"
+                                        initial={{ width: 0 }}
+                                        animate={{ width: "100%" }}
+                                        transition={{ duration: 30, ease: "linear" }}
+                                    />
+                                )}
                             </button>
                         </form>
                     </motion.div>
