@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { email, fullName, phone, country, walletAddress, tier, referralCode: incomingRefCode } = body;
+        const { email, fullName, phone, country, walletAddress, tier, referralCode: incomingRefCode, transactionHash } = body;
 
         // 1. Basic Validation
         if (!email || !fullName || !walletAddress || !tier) {
@@ -26,6 +26,17 @@ export async function POST(req: NextRequest) {
         // 3. Check uniqueness
         const existingUser = await users.findOne({ $or: [{ email }, { walletAddress }] });
         if (existingUser) {
+            // Allow updating transaction hash if user is already registered but hasn't paid
+            if (transactionHash && existingUser.email === email) {
+                await users.updateOne({ email }, {
+                    $set: {
+                        transactionHash,
+                        paymentStatus: 'pending',
+                        updatedAt: new Date()
+                    }
+                });
+                return NextResponse.json({ success: true, message: 'Transaction hash updated for verification.' });
+            }
             return NextResponse.json({
                 success: false,
                 message: existingUser.email === email ? 'Email already registered' : 'Wallet address already registered'
@@ -54,6 +65,8 @@ export async function POST(req: NextRequest) {
             tier,
             referralCode: newUserRefCode,
             referrerId,
+            transactionHash: transactionHash || null,
+            paymentStatus: transactionHash ? 'pending' : 'awaiting_payment',
             status: 'confirmed',
             createdAt: new Date(),
             updatedAt: new Date(),

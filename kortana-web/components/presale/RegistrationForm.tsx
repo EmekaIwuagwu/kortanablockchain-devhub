@@ -23,6 +23,8 @@ export default function RegistrationForm({ selectedTier, onSuccess }: Registrati
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [error, setError] = useState('');
     const [referralData, setReferralData] = useState<{ link: string; code: string } | null>(null);
+    const [paymentSent, setPaymentSent] = useState(false);
+    const [txHash, setTxHash] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,14 +37,13 @@ export default function RegistrationForm({ selectedTier, onSuccess }: Registrati
         setError('');
 
         try {
-            // Get referral code from URL if exists
             const urlParams = new URLSearchParams(window.location.search);
             const referralCode = urlParams.get('ref');
 
             const response = await fetch('/api/presale/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, referralCode }),
+                body: JSON.stringify({ ...formData, referralCode, transactionHash: txHash }),
             });
 
             const data = await response.json();
@@ -61,10 +62,32 @@ export default function RegistrationForm({ selectedTier, onSuccess }: Registrati
         }
     };
 
+    const submitTxHash = async () => {
+        if (!txHash) return;
+        setStatus('loading');
+        try {
+            const response = await fetch('/api/presale/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email, transactionHash: txHash }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setPaymentSent(true);
+                setStatus('success');
+            } else {
+                setError(data.message);
+            }
+        } catch (err) {
+            setError('Failed to submit transaction hash.');
+        } finally {
+            setStatus('success');
+        }
+    };
+
     const copyRefLink = () => {
         if (referralData) {
             navigator.clipboard.writeText(referralData.link);
-            // Optional: Add a toast notification here
         }
     };
 
@@ -73,38 +96,86 @@ export default function RegistrationForm({ selectedTier, onSuccess }: Registrati
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center p-8 bg-indigo-600/10 rounded-3xl border border-indigo-500/30"
+                className="text-left p-8 md:p-12 bg-white/5 backdrop-blur-xl rounded-[40px] border border-white/10 shadow-2xl space-y-8"
             >
-                <div className="flex justify-center mb-6 text-green-500">
-                    <CheckCircle size={64} />
-                </div>
-                <h2 className="text-3xl font-black text-white mb-2 font-space">Welcome to the Revolution!</h2>
-                <p className="text-gray-400 mb-8 max-w-md mx-auto">
-                    Your registration for the <strong>{formData.tier.toUpperCase()}</strong> tier is complete.
-                    Check your email <strong>({formData.email})</strong> for confirmation and next steps.
-                </p>
-
-                <div className="bg-deep-space p-6 rounded-2xl border border-white/10 mb-8 max-w-md mx-auto">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-4">Your Unique Referral Link</p>
-                    <div className="flex gap-2">
-                        <div className="flex-1 bg-white/5 p-3 rounded-lg text-xs text-indigo-400 font-mono truncate border border-white/5">
-                            {referralData.link}
-                        </div>
-                        <button
-                            onClick={copyRefLink}
-                            className="p-3 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
-                        >
-                            <Copy size={16} />
-                        </button>
+                <div className="flex items-center gap-6">
+                    <div className="p-4 bg-green-500/20 text-green-500 rounded-2xl">
+                        <CheckCircle size={32} />
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-4 leading-relaxed line-clamp-2 italic">
-                        "Share this link and earn 10% bonus tokens for every successful referral who joins the presale!"
-                    </p>
+                    <div>
+                        <h2 className="text-3xl font-black text-white font-space">Success! {formData.fullName.split(' ')[0]}</h2>
+                        <p className="text-gray-400">Personal registration confirmed for <strong>{formData.tier.toUpperCase()}</strong> tier.</p>
+                    </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button className="px-8 py-3 bg-indigo-600 rounded-xl font-bold text-sm">Join Telegram Community</button>
-                    <button className="px-8 py-3 bg-white/10 rounded-xl font-bold text-sm">Follow on X (Twitter)</button>
+                {!paymentSent ? (
+                    <div className="bg-indigo-600/10 border border-indigo-500/20 p-8 rounded-3xl space-y-6">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+                            <h3 className="text-lg font-bold text-white uppercase tracking-wider">Final Step: Complete Purchase</h3>
+                        </div>
+
+                        <p className="text-sm text-gray-300">To finalize your allocation, please send your contribution to the official Kortana Presale Wallet below:</p>
+
+                        <div className="bg-deep-space p-6 rounded-2xl border border-white/5 space-y-4">
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Presale Deposit Address (KORTANA/ERC-20)</p>
+                            <div className="flex gap-2">
+                                <div className="flex-1 bg-white/5 p-4 rounded-xl text-xs font-mono text-indigo-400 truncate border border-white/5 select-all">
+                                    0x7a5E98C721A0F2d5856B73E366127394E2bDa789
+                                </div>
+                                <button
+                                    onClick={() => navigator.clipboard.writeText('0x7a5E98C721A0F2d5856B73E366127394E2bDa789')}
+                                    className="p-4 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition"
+                                >
+                                    <Copy size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Paste Transaction Receipt / Hash</p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="0x..."
+                                    value={txHash}
+                                    onChange={(e) => setTxHash(e.target.value)}
+                                    className="flex-1 bg-white/5 border border-white/10 p-4 rounded-xl outline-none focus:border-indigo-500 text-white font-mono text-xs transition"
+                                />
+                                <button
+                                    onClick={submitTxHash}
+                                    className="px-6 py-4 bg-indigo-600 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-700 transition"
+                                >
+                                    Submit Receipt
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-500 italic">Our system will verify the on-chain receipt within 5-10 minutes.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-green-500/10 border border-green-500/20 p-8 rounded-3xl text-center space-y-4">
+                        <CheckCircle size={48} className="mx-auto text-green-500" />
+                        <h3 className="text-xl font-bold text-white">Payment Received!</h3>
+                        <p className="text-sm text-gray-400">Your transaction is currently being verified by the Kortana nodes. You will receive an email confirmation shortly.</p>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-white uppercase tracking-widest">Share & Earn 10%</h4>
+                        <div className="flex gap-2">
+                            <div className="flex-1 bg-white/5 p-4 rounded-xl text-xs font-mono text-indigo-400 border border-white/5 truncate">
+                                {referralData.link}
+                            </div>
+                            <button onClick={copyRefLink} className="p-4 bg-white/10 rounded-xl hover:bg-white/20 transition">
+                                <Copy size={20} />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex items-end gap-3">
+                        <button className="flex-1 py-4 bg-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest">Join Telegram</button>
+                        <button className="flex-1 py-4 bg-white/10 rounded-2xl font-black text-xs uppercase tracking-widest">Follow on X</button>
+                    </div>
                 </div>
             </motion.div>
         );

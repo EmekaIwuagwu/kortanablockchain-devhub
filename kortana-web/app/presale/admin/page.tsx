@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Mail, Globe, Wallet, Calendar, Search, Download, Trash2, Shield } from 'lucide-react';
+import { Users, Mail, Globe, Wallet, Calendar, Search, Download, Trash2, Shield, ExternalLink } from 'lucide-react';
 
 export default function AdminDashboard() {
     const [users, setUsers] = useState<any[]>([]);
@@ -28,13 +28,14 @@ export default function AdminDashboard() {
     };
 
     const filteredUsers = users.filter(user =>
-        user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.walletAddress.toLowerCase().includes(searchTerm.toLowerCase())
+        user.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.walletAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.transactionHash?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const downloadCSV = () => {
-        const headers = ['FullName', 'Email', 'Phone', 'Country', 'Wallet', 'Tier', 'Date'];
+        const headers = ['FullName', 'Email', 'Phone', 'Country', 'Wallet', 'Tier', 'TxHash', 'Status', 'Date'];
         const rows = users.map(u => [
             u.fullName,
             u.email,
@@ -42,6 +43,8 @@ export default function AdminDashboard() {
             u.country,
             u.walletAddress,
             u.tier,
+            u.transactionHash || 'N/A',
+            u.paymentStatus || 'Awaiting',
             new Date(u.createdAt).toLocaleDateString()
         ]);
 
@@ -61,9 +64,9 @@ export default function AdminDashboard() {
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <Shield className="text-indigo-500" size={20} />
-                            <h1 className="text-3xl font-black font-space">Presale Admin</h1>
+                            <h1 className="text-3xl font-black font-space">Presale Management</h1>
                         </div>
-                        <p className="text-gray-400 text-sm">Monitor and manage whitelist registrations</p>
+                        <p className="text-gray-400 text-sm">Real-time payment verification & whitelist control</p>
                     </div>
                     <div className="flex gap-4">
                         <button
@@ -88,20 +91,20 @@ export default function AdminDashboard() {
                         <p className="text-2xl font-black">{users.length}</p>
                     </div>
                     <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                        <Globe className="text-emerald-400 mb-4" size={24} />
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Countries</p>
-                        <p className="text-2xl font-black">{new Set(users.map(u => u.country)).size}</p>
+                        <Shield className="text-emerald-400 mb-4" size={24} />
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Paid/Pending</p>
+                        <p className="text-2xl font-black">{users.filter(u => u.transactionHash).length}</p>
                     </div>
                     <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                        <Mail className="text-amber-400 mb-4" size={24} />
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Last 24 Hours</p>
-                        <p className="text-2xl font-black">{users.filter(u => new Date(u.createdAt) > new Date(Date.now() - 86400000)).length}</p>
+                        <Globe className="text-amber-400 mb-4" size={24} />
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Countries</p>
+                        <p className="text-2xl font-black">{new Set(users.map(u => u.country)).size}</p>
                     </div>
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                         <input
                             type="text"
-                            placeholder="Search investors..."
+                            placeholder="Search by Name, Wallet, or TX..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full h-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 outline-none focus:border-indigo-500 text-sm transition"
@@ -109,46 +112,68 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden">
+                <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-white/5 text-[10px] uppercase tracking-widest font-bold text-gray-500">
-                                <th className="px-6 py-4">Investor</th>
-                                <th className="px-6 py-4">Contact</th>
-                                <th className="px-6 py-4">Tier</th>
-                                <th className="px-6 py-4">Wallet Address</th>
-                                <th className="px-6 py-4">Date Joined</th>
-                                <th className="px-6 py-4">Actions</th>
+                            <tr className="bg-white/10 text-[10px] uppercase tracking-widest font-bold text-gray-400">
+                                <th className="px-6 py-5">Investor Info</th>
+                                <th className="px-6 py-5">Tier & Payment</th>
+                                <th className="px-6 py-5">On-Chain Receipt</th>
+                                <th className="px-6 py-5">Registered Wallet</th>
+                                <th className="px-6 py-5">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-sm">
-                            {filteredUsers.map((user, idx) => (
-                                <tr key={user._id} className="hover:bg-white/5 transition">
+                            {filteredUsers.map((user) => (
+                                <tr key={user._id} className="hover:bg-white/5 transition group">
                                     <td className="px-6 py-6">
                                         <p className="font-bold text-white">{user.fullName}</p>
-                                        <p className="text-xs text-indigo-400">{user.country}</p>
+                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                        <p className="text-[10px] text-indigo-400 mt-1">{user.country}</p>
                                     </td>
-                                    <td className="px-6 py-4 text-xs text-gray-400">
-                                        <p>{user.email}</p>
-                                        <p>{user.phone}</p>
+                                    <td className="px-6 py-6">
+                                        <div className="flex flex-col gap-2">
+                                            <span className={`w-fit px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${user.tier === 'enterprise' ? 'bg-purple-500/20 text-purple-400' :
+                                                    user.tier === 'professional' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-500/20 text-gray-400'
+                                                }`}>
+                                                {user.tier}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-1.5 h-1.5 rounded-full ${user.paymentStatus === 'confirmed' ? 'bg-green-500' :
+                                                        user.paymentStatus === 'pending' ? 'bg-amber-500 animate-pulse' : 'bg-gray-600'
+                                                    }`} />
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                                                    {user.paymentStatus === 'pending' ? 'VERIFICATION PENDING' :
+                                                        user.paymentStatus === 'confirmed' ? 'PAYMENT VERIFIED' : 'AWAITING PAYMENT'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${user.tier === 'enterprise' ? 'bg-purple-500/20 text-purple-400' :
-                                                user.tier === 'professional' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-500/20 text-gray-400'
-                                            }`}>
-                                            {user.tier}
-                                        </span>
+                                    <td className="px-6 py-6 font-mono text-xs">
+                                        {user.transactionHash ? (
+                                            <a
+                                                href={`https://etherscan.io/tx/${user.transactionHash}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition"
+                                            >
+                                                <span className="truncate max-w-[120px]">{user.transactionHash}</span>
+                                                <ExternalLink size={14} />
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-600 italic">No receipt submitted</span>
+                                        )}
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-xs text-gray-500">
+                                    <td className="px-6 py-6 font-mono text-xs text-gray-500">
                                         {user.walletAddress.slice(0, 10)}...{user.walletAddress.slice(-8)}
                                     </td>
-                                    <td className="px-6 py-4 text-xs text-gray-400">
-                                        {new Date(user.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <button className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition">
-                                            <Trash2 size={16} />
-                                        </button>
+                                    <td className="px-6 py-6">
+                                        <div className="flex gap-2">
+                                            <button className="px-3 py-1.5 bg-green-500/10 text-green-500 text-[10px] font-bold rounded-lg hover:bg-green-500/20 transition uppercase">Confirm</button>
+                                            <button className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -156,14 +181,14 @@ export default function AdminDashboard() {
                     </table>
 
                     {loading && (
-                        <div className="p-20 text-center text-gray-500 animate-pulse">
-                            Loading registration data...
+                        <div className="p-20 text-center text-gray-500 animate-pulse font-space uppercase tracking-[0.2em] text-xs">
+                            Synchronizing with Blockchain Data...
                         </div>
                     )}
 
                     {!loading && filteredUsers.length === 0 && (
                         <div className="p-20 text-center text-gray-500 italic">
-                            No investors found matching your search.
+                            No matching records found in the database.
                         </div>
                     )}
                 </div>
