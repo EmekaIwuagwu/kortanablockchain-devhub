@@ -16,17 +16,26 @@ export default function AdminDashboard() {
         fetchUsers();
     }, []);
 
-    const checkAuth = () => {
+    const checkAuth = async () => {
         const cookies = document.cookie.split('; ');
         const authCookie = cookies.find(row => row.startsWith('presale_admin_auth='));
+
         if (!authCookie) {
             router.push('/presale/admin/login');
+            return false;
         }
+        return true;
     };
 
     const fetchUsers = async () => {
         try {
             const res = await fetch('/api/presale/admin/registrations');
+
+            if (res.status === 401) {
+                router.push('/presale/admin/login');
+                return;
+            }
+
             const data = await res.json();
             if (data.success) {
                 setUsers(data.users);

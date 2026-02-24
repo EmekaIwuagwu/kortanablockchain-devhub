@@ -7,11 +7,11 @@ export async function POST(req: NextRequest) {
         if (username === 'admin' && password === 'kortana_presale') {
             const response = NextResponse.json({ success: true, message: 'Authenticated' });
 
-            // Setting a simple cookie for authentication
+            // Setting a cookie for authentication
             response.cookies.set('presale_admin_auth', 'authenticated', {
-                httpOnly: true,
+                httpOnly: false, // Changed to false so client-side check can see it
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                sameSite: 'lax',
                 maxAge: 60 * 60 * 24, // 24 hours
                 path: '/',
             });

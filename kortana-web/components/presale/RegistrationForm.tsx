@@ -18,11 +18,11 @@ const KORTANA_MAINNET_INFO = {
 };
 
 const PAYMENT_PLATFORMS = [
-    { id: 'eth', name: 'Ethereum (ERC-20)', symbol: 'ETH', token: 'USDT', icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png', address: '0x7a5E98C721A0F2d5856B73E366127394E2bDa789' },
-    { id: 'bnb', name: 'BSC (BEP-20)', symbol: 'BNB', token: 'USDT', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png', address: '0x7a5E98C721A0F2d5856B73E366127394E2bDa789' },
-    { id: 'sol', name: 'Solana Network', symbol: 'SOL', token: 'USDC', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png', address: 'BfXm7S7c... (Awaiting Your SOL Address)' },
-    { id: 'polygon', name: 'Polygon', symbol: 'MATIC', token: 'USDT', icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png', address: '0x7a5E98C721A0F2d5856B73E366127394E2bDa789' },
-    { id: 'trc20', name: 'TRON (TRC-20)', symbol: 'TRX', token: 'USDT', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', address: 'TX5tekNYLZXaVtje6QUMKjEsx9RxteSzC4' },
+    { id: 'eth', name: 'Ethereum (ERC-20)', symbol: 'USDT', token: 'USDT', icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png', address: '0x7a5E98C721A0F2d5856B73E366127394E2bDa789' },
+    { id: 'bnb', name: 'BSC (BEP-20)', symbol: 'USDT', token: 'USDT', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png', address: '0x7a5E98C721A0F2d5856B73E366127394E2bDa789' },
+    { id: 'sol', name: 'Solana Network', symbol: 'USDC', token: 'USDC', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png', address: 'BfXm7S7c... (Awaiting Your SOL Address)' },
+    { id: 'polygon', name: 'Polygon', symbol: 'USDT', token: 'USDT', icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png', address: '0x7a5E98C721A0F2d5856B73E366127394E2bDa789' },
+    { id: 'trc20', name: 'TRON (TRC-20)', symbol: 'USDT', token: 'USDT', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png', address: 'TX5tekNYLZXaVtje6QUMKjEsx9RxteSzC4' },
 ];
 
 export default function RegistrationForm({ selectedTier: initialTier, onSuccess }: RegistrationFormProps) {
@@ -67,12 +67,10 @@ export default function RegistrationForm({ selectedTier: initialTier, onSuccess 
 
     const calculateCost = () => {
         const usdTotal = tokenAmount * getPricePerToken();
-        if (!selectedPlatform) return { usd: usdTotal, crypto: 0 };
-
-        const price = cryptoPrices[selectedPlatform.id] || 1;
+        // Since we are using USDT/USDC across all platforms, it's 1:1
         return {
             usd: usdTotal,
-            crypto: usdTotal / price
+            crypto: usdTotal
         };
     };
 
@@ -418,12 +416,38 @@ export default function RegistrationForm({ selectedTier: initialTier, onSuccess 
                     >
                         <div className="flex justify-between items-end">
                             <div>
-                                <h2 className="text-3xl font-black text-white font-space mb-2">Final Step: Complete Registration</h2>
-                                <p className="text-gray-400">Provide your details and proof of payment.</p>
+                                <h2 className="text-3xl font-black text-white font-space mb-2">Step 3: Personal Details</h2>
+                                <p className="text-gray-400">Complete your registration and provide payment proof.</p>
                             </div>
                             <button onClick={prevStep} className="text-xs font-bold text-gray-500 hover:text-white flex items-center gap-2 pb-2">
-                                <ArrowLeft size={14} /> Payment Address
+                                <ArrowLeft size={14} /> Back to Payment
                             </button>
+                        </div>
+
+                        {/* Investment Summary Table */}
+                        <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
+                            <div className="bg-white/5 px-6 py-3 border-b border-white/5 flex justify-between items-center">
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Investment Summary</span>
+                                <span className="px-2 py-0.5 bg-indigo-600/20 text-indigo-400 text-[9px] font-black rounded uppercase">{formData.tier}</span>
+                            </div>
+                            <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black mb-1">Tokens</p>
+                                    <p className="text-lg font-black text-white">{(tokenAmount || 0).toLocaleString()} DNR</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black mb-1">Total Cost</p>
+                                    <p className="text-lg font-black text-white">${calculateCost().usd.toLocaleString()} USDT</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black mb-1">Price/Token</p>
+                                    <p className="text-lg font-black text-indigo-400">${getPricePerToken()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase font-black mb-1">Network</p>
+                                    <p className="text-lg font-black text-white">{selectedPlatform?.name.split(' ')[0]}</p>
+                                </div>
+                            </div>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
@@ -446,9 +470,9 @@ export default function RegistrationForm({ selectedTier: initialTier, onSuccess 
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-500 uppercase tracking-[0.1em] flex items-center gap-2">
-                                    <ExternalLink size={12} /> Explorer Transaction Receipt (URL or Hash)
+                                    <ExternalLink size={12} /> Full Explorer URL Receipt
                                 </label>
-                                <input required type="text" placeholder="https://etherscan.io/tx/... or 0x..." className="w-full bg-white/5 border border-white/10 p-4 rounded-xl outline-none border-indigo-500/50 p-4 rounded-xl text-white font-mono text-xs transition"
+                                <input required type="text" placeholder="https://etherscan.io/tx/... or https://tronscan.org/#/transaction/..." className="w-full bg-white/5 border border-white/10 p-4 rounded-xl outline-none border-indigo-500/50 p-4 rounded-xl text-white font-mono text-xs transition"
                                     value={formData.txReceipt} onChange={(e) => setFormData({ ...formData, txReceipt: e.target.value })} />
                             </div>
 
