@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Star, Rocket, Crown, Check } from 'lucide-react';
+import { Star, Rocket, Crown, Check, ArrowRight } from 'lucide-react';
 
 interface Tier {
     id: string;
@@ -70,8 +70,8 @@ export default function TierCards({ onSelectTier, selectedTier }: TierCardsProps
                         transition={{ delay: index * 0.1 }}
                         onClick={() => onSelectTier(tier.id)}
                         className={`cursor-pointer relative p-8 rounded-3xl border transition-all duration-300 ${tier.highlighted
-                                ? 'bg-indigo-600/20 border-indigo-500/50 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]'
-                                : 'bg-white/5 border-white/10 hover:border-white/20'
+                            ? 'bg-indigo-600/20 border-indigo-500/50 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]'
+                            : 'bg-white/5 border-white/10 hover:border-white/20'
                             } ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-600/30' : ''}`}
                     >
                         {tier.highlighted && (
@@ -112,12 +112,13 @@ export default function TierCards({ onSelectTier, selectedTier }: TierCardsProps
                         </div>
 
                         <button
-                            className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${tier.highlighted || isSelected
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
-                                    : 'bg-white/10 text-white hover:bg-white/20'
+                            className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${tier.highlighted || isSelected
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
+                                : 'bg-white/10 text-white hover:bg-white/20'
                                 }`}
                         >
-                            {isSelected ? 'Selected' : `Join as ${tier.name.charAt(0) + tier.name.slice(1).toLowerCase()}`}
+                            {isSelected ? 'Continue to Payment' : `Continue with ${tier.name.charAt(0) + tier.name.slice(1).toLowerCase()}`}
+                            <ArrowRight size={16} />
                         </button>
                     </motion.div>
                 );

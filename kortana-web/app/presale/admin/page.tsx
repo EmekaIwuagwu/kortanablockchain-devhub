@@ -134,13 +134,13 @@ export default function AdminDashboard() {
                                     <td className="px-6 py-6">
                                         <div className="flex flex-col gap-2">
                                             <span className={`w-fit px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${user.tier === 'enterprise' ? 'bg-purple-500/20 text-purple-400' :
-                                                    user.tier === 'professional' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-500/20 text-gray-400'
+                                                user.tier === 'professional' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-gray-500/20 text-gray-400'
                                                 }`}>
                                                 {user.tier}
                                             </span>
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-1.5 h-1.5 rounded-full ${user.paymentStatus === 'confirmed' ? 'bg-green-500' :
-                                                        user.paymentStatus === 'pending' ? 'bg-amber-500 animate-pulse' : 'bg-gray-600'
+                                                    user.paymentStatus === 'pending' ? 'bg-amber-500 animate-pulse' : 'bg-gray-600'
                                                     }`} />
                                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
                                                     {user.paymentStatus === 'pending' ? 'VERIFICATION PENDING' :
@@ -152,7 +152,12 @@ export default function AdminDashboard() {
                                     <td className="px-6 py-6 font-mono text-xs">
                                         {user.transactionHash ? (
                                             <a
-                                                href={`https://etherscan.io/tx/${user.transactionHash}`}
+                                                href={
+                                                    user.transactionHash.startsWith('http') ? user.transactionHash :
+                                                        user.paymentMethod?.toLowerCase().includes('trc') ? `https://tronscan.org/#/transaction/${user.transactionHash}` :
+                                                            user.paymentMethod?.toLowerCase().includes('polygon') ? `https://polygonscan.com/tx/${user.transactionHash}` :
+                                                                `https://etherscan.io/tx/${user.transactionHash}`
+                                                }
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 transition"
