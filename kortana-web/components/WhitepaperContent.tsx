@@ -38,6 +38,16 @@ export default function WhitepaperContent() {
 
     return (
         <div className="max-w-400 mx-auto px-4 py-16 flex flex-col lg:flex-row gap-16 relative z-10">
+            {/* Mobile Download Button - FAB */}
+            <a 
+                href="/kortana_whitepaper.pdf"
+                download="kortana_whitepaper.pdf"
+                className="lg:hidden fixed bottom-6 right-6 z-50 p-4 bg-white text-deep-space rounded-full shadow-2xl shadow-white/20 hover:scale-110 transition-transform flex items-center justify-center group"
+                aria-label="Download PDF"
+            >
+                <Download size={24} className="group-hover:animate-pulse" />
+            </a>
+
             <div className="hidden lg:block w-72 shrink-0">
                 <div className="sticky top-32 space-y-8">
                     <div className="glass-panel p-6 rounded-2xl border-white/5 bg-white/2">
@@ -98,7 +108,7 @@ export default function WhitepaperContent() {
                     </div>
                 </Section>
 
-                {/* ═══════════════════════════ ARCHITECTURE ═══════════════════════════ */}
+                
                 <Section id="architecture" title="1. System Architecture" icon={<Layers className="text-purple-400" />}>
                     <p className="mb-4">
                         Kortana&apos;s architecture is organized into five distinct, independently verifiable layers. Each layer is
@@ -137,7 +147,7 @@ export default function WhitepaperContent() {
                     </div>
                 </Section>
 
-                {/* ═══════════════════════════ CONSENSUS ═══════════════════════════ */}
+                
                 <Section id="consensus" title="2. Delegated Proof-of-History" icon={<Clock className="text-neon-green" />}>
                     <div className="prose prose-invert max-w-none text-gray-400 font-medium">
                         <p>
@@ -193,7 +203,7 @@ export default function WhitepaperContent() {
                     </div>
                 </Section>
 
-                {/* ═══════════════════════════ VALIDATORS ═══════════════════════════ */}
+                
                 <Section id="validators" title="3. Validators & Security" icon={<Shield className="text-red-400" />}>
                     <p className="mb-6">
                         Kortana&apos;s security model is anchored by an economic incentive system that makes honest behavior
@@ -229,7 +239,7 @@ export default function WhitepaperContent() {
                     </div>
                 </Section>
 
-                {/* ═══════════════════════════ EXECUTION ═══════════════════════════ */}
+                
                 <Section id="execution" title="4. Dual VM Execution Engine" icon={<Cpu className="text-blue-400" />}>
                     <p className="mb-8">
                         Kortana solves the fundamental tradeoff between ecosystem compatibility and raw performance by implementing
@@ -290,7 +300,7 @@ export default function WhitepaperContent() {
                     </p>
                 </Section>
 
-                {/* ═══════════════════════════ TOKENOMICS ═══════════════════════════ */}
+                
                 <Section id="tokenomics" title="5. Token Economics" icon={<CircleDollarSign className="text-yellow-400" />}>
                     <div className="mb-10">
                         <p className="text-lg">
