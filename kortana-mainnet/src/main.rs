@@ -115,17 +115,30 @@ async fn main() {
             (h, s)
         },
         _ => {
-            println!("{}GENESIS{}", CLR_CYAN, CLR_RESET);
-            let initial_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
-            let genesis_root = initial_state.calculate_root();
-            
-            // Persist GENESIS state and block 0 immediately so RPC/Explorer can see it
-            let genesis_block = kortana_blockchain_rust::core::genesis::create_genesis_block(genesis_root);
-            let _ = storage.put_state(0, &initial_state);
-            let _ = storage.put_block(&genesis_block);
-            let _ = storage.put_state_root(0, genesis_root);
-            
-            (0, initial_state)
+            // Fallback: Check if we have blocks but the pointer is missing
+            let max_h = storage.get_max_height_fallback();
+            if max_h > 0 {
+                if let Ok(Some(s)) = storage.get_state(max_h) {
+                    println!("{}RECOVERED FROM DB: HEIGHT {}{}", CLR_CYAN, max_h, CLR_RESET);
+                    (max_h, s)
+                } else {
+                    println!("{}INITIALIZING GENESIS...{}", CLR_CYAN, CLR_RESET);
+                    let initial_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+                    (0, initial_state)
+                }
+            } else {
+                println!("{}GENESIS{}", CLR_CYAN, CLR_RESET);
+                let initial_state = kortana_blockchain_rust::core::genesis::create_genesis_state();
+                let genesis_root = initial_state.calculate_root();
+                
+                // Persist GENESIS state and block 0 immediately so RPC/Explorer can see it
+                let genesis_block = kortana_blockchain_rust::core::genesis::create_genesis_block(genesis_root);
+                let _ = storage.put_state(0, &initial_state);
+                let _ = storage.put_block(&genesis_block);
+                let _ = storage.put_state_root(0, genesis_root);
+                
+                (0, initial_state)
+            }
         }
     };
     let genesis_root = state.calculate_root();

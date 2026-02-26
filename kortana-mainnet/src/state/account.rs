@@ -97,4 +97,17 @@ impl State {
     pub fn calculate_root(&self) -> [u8; 32] {
         self.trie.root_hash
     }
+
+    /// Senior Architect Update: Snapshot and Rollback for transactional integrity
+    pub fn snapshot(&self) -> Self {
+        self.clone()
+    }
+
+    pub fn rollback(&mut self, snapshot: Self) {
+        self.accounts = snapshot.accounts;
+        self.storage = snapshot.storage;
+        self.codes = snapshot.codes;
+        self.trie = snapshot.trie;
+        self.staking = snapshot.staking;
+    }
 }

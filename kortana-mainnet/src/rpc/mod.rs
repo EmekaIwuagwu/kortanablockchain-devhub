@@ -516,45 +516,6 @@ impl RpcHandler {
                     _ => Some(serde_json::Value::Null)
                 }
             }
-            "eth_requestDNR" => {
-                if let Some(arr) = p {
-                    if let Some(addr_str) = arr.first().and_then(|v| v.as_str()) {
-                        if let Ok(addr) = crate::address::Address::from_hex(addr_str) {
-                            let amount_str = arr.get(1).and_then(|v| v.as_str()).unwrap_or("10");
-                            let amount_dnr: u128 = amount_str.parse().unwrap_or(10);
-                            let amount_wei = amount_dnr * 10u128.pow(18);
-                            
-                            let mut state = self.state.lock().unwrap();
-                            let mut acc = state.get_account(&addr);
-                            acc.balance += amount_wei;
-                            state.update_account(addr, acc);
-
-                            let faucet_addr = crate::address::Address::ZERO; 
-                            let faucet_tx = crate::types::transaction::Transaction {
-                                from: faucet_addr,
-                                to: addr,
-                                value: amount_wei,
-                                nonce: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1000000,
-                                gas_limit: 21000,
-                                gas_price: 1,
-                                data: vec![],
-                                vm_type: crate::types::transaction::VmType::EVM,
-                                chain_id: self.chain_id,
-                                signature: Some(vec![0u8; 65]),
-                                cached_hash: None,
-                            };
-
-                            let _ = self.storage.put_transaction(&faucet_tx);
-                            let _ = self.storage.put_index(&addr, faucet_tx.hash());
-                            let _ = self.storage.put_index(&faucet_addr, faucet_tx.hash());
-                            let _ = self.storage.put_global_transaction(faucet_tx.hash());
-                            
-                            println!("[FAUCET] Distributed {} DNR to {} (Verified & Indexed)", amount_dnr, addr_str);
-                            Some(serde_json::to_value(true).unwrap())
-                        } else { None }
-                    } else { None }
-                } else { None }
-            }
             "eth_getValidators" => {
                 let consensus = self.consensus.lock().unwrap();
                 let validators: Vec<serde_json::Value> = consensus.validators.iter().enumerate().map(|(i, v)| {

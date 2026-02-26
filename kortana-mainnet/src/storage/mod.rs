@@ -20,6 +20,7 @@ impl Storage {
         // Index by hash
         let hash_key = format!("blockhash:{}", hex::encode(block.header.hash()));
         self.db.insert(hash_key, val).map_err(|e| e.to_string())?;
+        self.db.flush().map_err(|e| e.to_string())?; // Ensure block is on disk
         Ok(())
     }
 
@@ -117,7 +118,17 @@ impl Storage {
         self.db.insert(key, val).map_err(|e| e.to_string())?;
         // Also update latest state pointer
         self.db.insert("latest_state_height", &height.to_be_bytes()).map_err(|e| e.to_string())?;
+        self.db.flush().map_err(|e| e.to_string())?; // Ensure state and pointer are on disk
         Ok(())
+    }
+
+    pub fn get_state(&self, height: u64) -> Result<Option<crate::state::account::State>, String> {
+        let key = format!("state:{}", height);
+        let val = self.db.get(key).map_err(|e| e.to_string())?;
+        match val {
+            Some(data) => Ok(Some(serde_json::from_slice(&data).map_err(|e| e.to_string())?)),
+            None => Ok(None),
+        }
     }
 
     pub fn get_latest_state(&self) -> Result<Option<(u64, crate::state::account::State)>, String> {
@@ -132,6 +143,23 @@ impl Storage {
             }
         }
         Ok(None)
+    }
+
+    /// Senior Architect Update: Fallback mechanism to find the actual max height in the DB
+    /// if the 'latest_state_height' pointer is out of sync or missing.
+    pub fn get_max_height_fallback(&self) -> u64 {
+        let mut max_h = 0;
+        for item in self.db.scan_prefix("block:") {
+            if let Ok((k, _)) = item {
+                let k_str = String::from_utf8_lossy(&k);
+                if let Some(h_str) = k_str.strip_prefix("block:") {
+                    if let Ok(h) = h_str.parse::<u64>() {
+                        if h > max_h { max_h = h; }
+                    }
+                }
+            }
+        }
+        max_h
     }
 
     pub fn put_index(&self, address: &crate::address::Address, tx_hash: [u8; 32]) -> Result<(), String> {
