@@ -56,6 +56,7 @@ export default function Footer() {
                             <FooterLink href="/technology">Core Tech</FooterLink>
                             <FooterLink href="/tokenomics">Economics</FooterLink>
                             <FooterLink href="/whitepaper">Whitepaper</FooterLink>
+                            <FooterLink href="/security-audit" highlight>Security Audit</FooterLink>
                         </ul>
                     </div>
 
@@ -129,11 +130,12 @@ function StatusItem({ label, value, color }: { label: string, value: string, col
     );
 }
 
-function FooterLink({ href, children, target }: { href: string; children: React.ReactNode, target?: string }) {
+function FooterLink({ href, children, target, highlight }: { href: string; children: React.ReactNode, target?: string, highlight?: boolean }) {
     return (
         <li>
-            <Link href={href} target={target} className="text-gray-400 hover:text-cyan-400 transition-colors text-sm flex items-center gap-2 group justify-center md:justify-start">
+            <Link href={href} target={target} className={`hover:text-cyan-400 transition-colors text-sm flex items-center gap-2 group justify-center md:justify-start ${highlight ? 'text-emerald-400 font-bold' : 'text-gray-400'}`}>
                 <span className="w-1 h-1 rounded-full bg-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                {highlight && <span className="text-emerald-400">✓</span>}
                 {children}
             </Link>
         </li>

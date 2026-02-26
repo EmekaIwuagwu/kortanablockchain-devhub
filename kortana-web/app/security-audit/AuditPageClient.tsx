@@ -7,8 +7,9 @@ import {
     Server, Network, GitBranch, Star
 } from 'lucide-react';
 
+// Uploaded as resource_type=image with fl_inline flag — allows browser-native PDF viewing
 const AUDIT_PDF_URL =
-    'https://res.cloudinary.com/drha3dagy/raw/upload/v1772090185/kortana-docs/kortana-security-audit-report-2026.pdf';
+    'https://res.cloudinary.com/drha3dagy/image/upload/fl_inline/v1772090481/kortana-docs/kortana-security-audit-report-2026.pdf';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const findings = [
@@ -228,7 +229,41 @@ export default function AuditPageClient() {
                 </div>
             </section>
 
-            {/* Findings ───────────────────────────────────────────────────────────── */}
+            {/* Embedded PDF Preview ───────────────────────────────────────────────────── */}
+            <section className="max-w-5xl mx-auto px-4 pb-16">
+                <div className="mb-6">
+                    <p className="text-xs text-cyan-400 uppercase tracking-widest font-black mb-2">Live Document Preview</p>
+                    <h2 className="text-3xl font-black text-white">Read In-Browser</h2>
+                    <p className="text-gray-400 mt-2 text-sm">The full audit report is embedded below for immediate review — no download required.</p>
+                </div>
+                <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0d1130]/60 shadow-[0_0_60px_-15px_rgba(6,182,212,0.3)]">
+                    {/* Toolbar bar */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-midnight-blue/80">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500/70" />
+                            <div className="w-3 h-3 rounded-full bg-amber-500/70" />
+                            <div className="w-3 h-3 rounded-full bg-emerald-500/70" />
+                            <span className="ml-3 text-xs text-gray-400 font-mono">KORTANA_SECURITY_AUDIT_REPORT.pdf</span>
+                        </div>
+                        <a
+                            href={AUDIT_PDF_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-cyan-400 hover:text-white font-bold uppercase tracking-widest transition-colors flex items-center gap-1"
+                        >
+                            <ExternalLink size={12} /> Open Full Screen
+                        </a>
+                    </div>
+                    <iframe
+                        src={AUDIT_PDF_URL}
+                        title="Kortana Security Audit Report 2026"
+                        className="w-full"
+                        style={{ height: '75vh', minHeight: '600px', border: 'none', background: '#0a0e27' }}
+                        loading="lazy"
+                    />
+                </div>
+            </section>
+
             <section className="max-w-5xl mx-auto px-4 pb-16">
                 <div className="mb-8">
                     <p className="text-xs text-cyan-400 uppercase tracking-widest font-black mb-2">Detailed Analysis</p>

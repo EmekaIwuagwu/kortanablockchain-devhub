@@ -43,7 +43,6 @@ export default function Navbar() {
               <NavLink href="/technology">Technology</NavLink>
               <NavLink href="/developers">Developers</NavLink>
               <NavLink href="/docs">Docs Hub</NavLink>
-              <NavLink href="/security-audit">Security Audit</NavLink>
               <NavLink href="/community">Community</NavLink>
             </div>
           </div>
