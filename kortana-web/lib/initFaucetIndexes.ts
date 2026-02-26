@@ -24,7 +24,7 @@ export async function initFaucetIndexes(client: MongoClient): Promise<void> {
     }
 
     try {
-        const db = client.db('kortana_presale');
+        const db = client.db('faucet');
         const collection = db.collection('faucet_requests');
 
         // Create indexes in parallel for faster initialization

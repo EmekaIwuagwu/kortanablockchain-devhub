@@ -11,14 +11,13 @@ let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
 if (!uri) {
-    // During build phase, we might not have the URI yet if it's not in the CI environment.
-    // We return a mock promise that throws only when called, but let module evaluation succeed.
-    clientPromise = new Promise(() => {
-        if (process.env.NODE_ENV === 'production') {
-            // Only throw if we are actually trying to use it in production and it's missing
-            // This avoids crashing the build if the URI is only needed at runtime.
-        }
-    });
+    // If MONGODB_URI is not set, throw a clear error immediately
+    console.error('❌ MONGODB_URI is not set in environment variables!');
+    console.error('Please create a .env.local file with MONGODB_URI=mongodb://localhost:27017/kortana_presale');
+    
+    clientPromise = Promise.reject(
+        new Error('MONGODB_URI environment variable is not set. Please configure .env.local file.')
+    );
 } else {
     if (process.env.NODE_ENV === 'development') {
         let globalWithMongo = global as typeof globalThis & {
@@ -26,15 +25,31 @@ if (!uri) {
         };
 
         if (!globalWithMongo._mongoClientPromise) {
-            console.log('Connecting to MongoDB (Dev)...');
+            console.log('🔌 Connecting to MongoDB (Dev)...');
             client = new MongoClient(uri, options);
-            globalWithMongo._mongoClientPromise = client.connect();
+            globalWithMongo._mongoClientPromise = client.connect()
+                .then((client) => {
+                    console.log('✅ MongoDB connected successfully');
+                    return client;
+                })
+                .catch((error) => {
+                    console.error('❌ MongoDB connection failed:', error.message);
+                    throw error;
+                });
         }
         clientPromise = globalWithMongo._mongoClientPromise;
     } else {
-        console.log('Connecting to MongoDB (Prod)...');
+        console.log('🔌 Connecting to MongoDB (Prod)...');
         client = new MongoClient(uri, options);
-        clientPromise = client.connect();
+        clientPromise = client.connect()
+            .then((client) => {
+                console.log('✅ MongoDB connected successfully');
+                return client;
+            })
+            .catch((error) => {
+                console.error('❌ MongoDB connection failed:', error.message);
+                throw error;
+            });
     }
 }
 

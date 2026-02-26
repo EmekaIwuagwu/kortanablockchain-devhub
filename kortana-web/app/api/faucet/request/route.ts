@@ -149,70 +149,80 @@ export async function POST(req: NextRequest) {
 
         // Connect to MongoDB
         let client;
+        let db;
+        let requests;
+        let useDatabase = true;
+        
         try {
             client = await clientPromise;
+            db = client.db('faucet');
+            requests = db.collection('faucet_requests');
             // Initialize indexes on first connection (idempotent operation)
             await initFaucetIndexes(client);
         } catch (dbError) {
-            const error = createDatabaseError('connection', dbError as Error, context);
-            return errorResponseToNextResponse(error, origin);
+            // If MongoDB is not available, log warning and continue without rate limiting
+            Logger.warn('MongoDB not available, continuing without rate limiting', context);
+            console.warn('⚠️  MongoDB not available. Rate limiting is disabled.');
+            console.warn('⚠️  To enable rate limiting, install MongoDB and configure MONGODB_URI');
+            useDatabase = false;
         }
-
-        const db = client.db('kortana_presale');
-        const requests = db.collection('faucet_requests');
 
         // Rate limit check: query MongoDB for requests within configured hours
         // Requirements: 3.1, 3.2, 3.5, 7.2
-        const rateLimitMs = FAUCET_CONFIG.rateLimitHours * 60 * 60 * 1000;
-        const rateLimitDate = new Date(Date.now() - rateLimitMs);
-        let existing;
-        
-        try {
-            existing = await requests.findOne({
-                address: normalizedAddress,
-                createdAt: { $gt: rateLimitDate }
-            });
-        } catch (queryError) {
-            Logger.error('Rate limit query error', context, queryError as Error);
-            // Fail open: allow request to proceed if rate limit check fails
-            // This prevents blocking users due to database issues
-        }
-
-        if (existing) {
-            const timeDiff = Date.now() - existing.createdAt.getTime();
-            const hoursRemaining = Math.ceil((rateLimitMs - timeDiff) / (60 * 60 * 1000));
-            const minutesRemaining = Math.ceil((rateLimitMs - timeDiff) / (60 * 1000)) % 60;
-            const retryAfterSeconds = Math.ceil((rateLimitMs - timeDiff) / 1000);
+        if (useDatabase && requests) {
+            const rateLimitMs = FAUCET_CONFIG.rateLimitHours * 60 * 60 * 1000;
+            const rateLimitDate = new Date(Date.now() - rateLimitMs);
+            let existing;
             
-            const error = createRateLimitError(
-                hoursRemaining,
-                minutesRemaining,
-                retryAfterSeconds,
-                context
-            );
-            return errorResponseToNextResponse(error, origin);
+            try {
+                existing = await requests.findOne({
+                    address: normalizedAddress,
+                    createdAt: { $gt: rateLimitDate }
+                });
+            } catch (queryError) {
+                Logger.error('Rate limit query error', context, queryError as Error);
+                // Fail open: allow request to proceed if rate limit check fails
+                // This prevents blocking users due to database issues
+            }
+
+            if (existing) {
+                const timeDiff = Date.now() - existing.createdAt.getTime();
+                const hoursRemaining = Math.ceil((rateLimitMs - timeDiff) / (60 * 60 * 1000));
+                const minutesRemaining = Math.ceil((rateLimitMs - timeDiff) / (60 * 1000)) % 60;
+                const retryAfterSeconds = Math.ceil((rateLimitMs - timeDiff) / 1000);
+                
+                const error = createRateLimitError(
+                    hoursRemaining,
+                    minutesRemaining,
+                    retryAfterSeconds,
+                    context
+                );
+                return errorResponseToNextResponse(error, origin);
+            }
         }
 
-        // Create initial request record with status "pending"
+        // Create initial request record with status "pending" (if database available)
         // Requirements: 5.1, 5.4
-        const faucetRequest = {
-            address: normalizedAddress,
-            network,
-            amount: FAUCET_CONFIG.amount,
-            symbol: 'DNR',
-            status: 'pending',
-            createdAt: new Date(),
-            updatedAt: new Date()
-        };
+        if (useDatabase && requests) {
+            const faucetRequest = {
+                address: normalizedAddress,
+                network,
+                amount: FAUCET_CONFIG.amount,
+                symbol: 'DNR',
+                status: 'pending',
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
 
-        try {
-            const result = await requests.insertOne(faucetRequest);
-            requestId = result.insertedId.toString();
-            context.requestId = requestId;
-            Logger.info('Request record created', context);
-        } catch (insertError) {
-            const error = createDatabaseError('insert', insertError as Error, context);
-            return errorResponseToNextResponse(error, origin);
+            try {
+                const result = await requests.insertOne(faucetRequest);
+                requestId = result.insertedId.toString();
+                context.requestId = requestId;
+                Logger.info('Request record created', context);
+            } catch (insertError) {
+                Logger.warn('Failed to create request record, continuing anyway', context);
+                // Continue without storing the record
+            }
         }
 
         // Call requestDNR() from RPC service after validation and rate limit checks pass
@@ -221,84 +231,72 @@ export async function POST(req: NextRequest) {
 
         // Update request record status based on RPC response
         // Requirements: 5.2, 5.3, 7.1, 7.3
-        try {
-            if (rpcResult.success) {
-                // Update status to "completed"
-                await requests.updateOne(
-                    { _id: new ObjectId(requestId) },
-                    { 
-                        $set: { 
-                            status: 'completed',
-                            updatedAt: new Date(),
-                            txHash: typeof rpcResult.result === 'string' ? rpcResult.result : undefined
-                        } 
-                    }
-                );
+        if (useDatabase && requests && requestId) {
+            try {
+                if (rpcResult.success) {
+                    // Update status to "completed"
+                    await requests.updateOne(
+                        { _id: new ObjectId(requestId) },
+                        { 
+                            $set: { 
+                                status: 'completed',
+                                updatedAt: new Date(),
+                                txHash: typeof rpcResult.result === 'string' ? rpcResult.result : undefined
+                            } 
+                        }
+                    );
 
-                Logger.info('Faucet request completed successfully', {
-                    ...context,
-                    txHash: typeof rpcResult.result === 'string' ? rpcResult.result : undefined,
-                });
-
-                const response = NextResponse.json({
-                    success: true,
-                    message: `${FAUCET_CONFIG.amount} DNR tokens have been sent to your wallet!`,
-                    requestId,
-                    txHash: typeof rpcResult.result === 'string' ? rpcResult.result : undefined
-                });
-                
-                return setCORSHeaders(response, origin);
-            } else {
-                // Update status to "failed" with error message
-                await requests.updateOne(
-                    { _id: new ObjectId(requestId) },
-                    { 
-                        $set: { 
-                            status: 'failed',
-                            errorMessage: rpcResult.error,
-                            updatedAt: new Date()
-                        } 
-                    }
-                );
-
-                // Determine appropriate error response based on error type
-                // Requirements: 7.1, 7.3
-                const errorType = determineErrorType(rpcResult.error);
-                let errorResponse: ErrorResponse;
-
-                switch (errorType) {
-                    case ErrorType.RPC_TIMEOUT:
-                        errorResponse = createTimeoutError(context);
-                        break;
-                    case ErrorType.NETWORK_ERROR:
-                        errorResponse = createNetworkError(context);
-                        break;
-                    default:
-                        errorResponse = createRPCError(rpcResult.error, context);
+                    Logger.info('Faucet request completed successfully', {
+                        ...context,
+                        txHash: typeof rpcResult.result === 'string' ? rpcResult.result : undefined,
+                    });
+                } else {
+                    // Update status to "failed" with error message
+                    await requests.updateOne(
+                        { _id: new ObjectId(requestId) },
+                        { 
+                            $set: { 
+                                status: 'failed',
+                                errorMessage: rpcResult.error,
+                                updatedAt: new Date()
+                            } 
+                        }
+                    );
                 }
+            } catch (updateError) {
+                Logger.warn('Failed to update request record', context);
+                // Continue anyway - the RPC call result is what matters
+            }
+        }
 
-                return errorResponseToNextResponse(errorResponse, origin);
+        // Return response based on RPC result
+        if (rpcResult.success) {
+            const response = NextResponse.json({
+                success: true,
+                message: `${FAUCET_CONFIG.amount} DNR tokens have been sent to your wallet!`,
+                requestId,
+                txHash: typeof rpcResult.result === 'string' ? rpcResult.result : undefined
+            });
+            
+            return setCORSHeaders(response, origin);
+        } else {
+            // Determine appropriate error response based on error type
+            // Requirements: 7.1, 7.3
+            const errorType = determineErrorType(rpcResult.error);
+            let errorResponse: ErrorResponse;
+
+            switch (errorType) {
+                case ErrorType.RPC_TIMEOUT:
+                    errorResponse = createTimeoutError(context);
+                    break;
+                case ErrorType.NETWORK_ERROR:
+                    errorResponse = createNetworkError(context);
+                    break;
+                default:
+                    errorResponse = createRPCError(rpcResult.error, context);
             }
-        } catch (updateError) {
-            Logger.error('Database update error', context, updateError as Error);
-            // Request was made but we couldn't update the status
-            // Return success if RPC succeeded, error if RPC failed
-            if (rpcResult.success) {
-                const response = NextResponse.json({
-                    success: true,
-                    message: `${FAUCET_CONFIG.amount} DNR tokens have been sent to your wallet!`,
-                    requestId
-                });
-                return setCORSHeaders(response, origin);
-            } else {
-                const errorType = determineErrorType(rpcResult.error);
-                const errorResponse = errorType === ErrorType.RPC_TIMEOUT
-                    ? createTimeoutError(context)
-                    : errorType === ErrorType.NETWORK_ERROR
-                    ? createNetworkError(context)
-                    : createRPCError(rpcResult.error, context);
-                return errorResponseToNextResponse(errorResponse, origin);
-            }
+
+            return errorResponseToNextResponse(errorResponse, origin);
         }
 
     } catch (error) {

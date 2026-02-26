@@ -1,19 +1,9 @@
-/**
- * Database Index Creation Script for Faucet Requests Collection
- * 
- * This script creates performance indexes on the faucet_requests collection
- * to optimize rate limit queries, cleanup operations, and status-based queries.
- * 
- * Requirements: 3.1, 3.5
- * 
- * Usage:
- *   npx tsx scripts/create-faucet-indexes.ts
- * 
- * Or with ts-node:
- *   npx ts-node scripts/create-faucet-indexes.ts
- */
-
 import { MongoClient } from 'mongodb';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from .env.local
+config({ path: resolve(process.cwd(), '.env.local') });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -33,14 +23,11 @@ async function createIndexes() {
         await client.connect();
         console.log('Connected successfully');
 
-        const db = client.db('kortana_presale');
+        const db = client.db('faucet');
         const collection = db.collection('faucet_requests');
 
         console.log('\nCreating indexes on faucet_requests collection...\n');
 
-        // Index 1: Compound index for rate limit queries
-        // This index optimizes the query: { address: <value>, createdAt: { $gt: <date> } }
-        // Used in: Rate limiting check to find recent requests from the same address
         console.log('Creating compound index: { address: 1, createdAt: -1 }');
         await collection.createIndex(
             { address: 1, createdAt: -1 },
@@ -51,9 +38,6 @@ async function createIndexes() {
         );
         console.log('✓ Compound index created successfully');
 
-        // Index 2: Index for cleanup and monitoring queries
-        // This index optimizes queries that sort or filter by creation date
-        // Used in: Admin monitoring, cleanup of old records, time-based analytics
         console.log('\nCreating index: { createdAt: -1 }');
         await collection.createIndex(
             { createdAt: -1 },
@@ -64,9 +48,6 @@ async function createIndexes() {
         );
         console.log('✓ CreatedAt index created successfully');
 
-        // Index 3: Compound index for status-based queries
-        // This index optimizes queries that filter by status and sort by date
-        // Used in: Admin dashboard, monitoring failed/completed requests, analytics
         console.log('\nCreating compound index: { status: 1, createdAt: -1 }');
         await collection.createIndex(
             { status: 1, createdAt: -1 },
