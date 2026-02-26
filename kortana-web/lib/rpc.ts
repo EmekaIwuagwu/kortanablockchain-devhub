@@ -79,3 +79,65 @@ export async function ethCall(
         return null;
     }
 }
+
+/**
+ * Fetch the real total transaction count from the mainnet.
+ * Strategy: get the latest block number, batch-fetch block headers
+ * (up to MAX_BLOCKS most recent), sum transaction counts, then
+ * extrapolate for blocks beyond the window using the average tx-per-block.
+ */
+export async function getTotalTransactions(network: NetworkKey = "mainnet"): Promise<string> {
+    const rpcUrl = NETWORK[network].rpcUrl;
+    const MAX_BLOCKS = 200; // keep request count reasonable
+
+    try {
+        // 1. Get latest block number
+        const bnResp = await fetch(rpcUrl, {
+            method: "POST",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jsonrpc: "2.0", method: "eth_blockNumber", params: [], id: 1 }),
+        });
+        const bnData = await bnResp.json();
+        if (!bnData.result) return "N/A";
+        const latestBlock = parseInt(bnData.result, 16);
+
+        // 2. Batch-fetch the last MAX_BLOCKS block headers
+        const windowSize = Math.min(latestBlock + 1, MAX_BLOCKS);
+        const startBlock = latestBlock - windowSize + 1;
+
+        const batchReqs = Array.from({ length: windowSize }, (_, i) => ({
+            jsonrpc: "2.0",
+            method: "eth_getBlockByNumber",
+            params: ["0x" + (startBlock + i).toString(16), false],
+            id: startBlock + i,
+        }));
+
+        const batchResp = await fetch(rpcUrl, {
+            method: "POST",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(batchReqs),
+        });
+        const batchData: { result?: { transactions?: string[] } }[] = await batchResp.json();
+
+        // 3. Sum tx counts in the fetched window
+        let windowTxCount = 0;
+        let validBlocks = 0;
+        for (const item of batchData) {
+            const txs = item?.result?.transactions;
+            if (Array.isArray(txs)) {
+                windowTxCount += txs.length;
+                validBlocks++;
+            }
+        }
+
+        // 4. Extrapolate total across all blocks using average tx-per-block
+        const avgTxPerBlock = validBlocks > 0 ? windowTxCount / validBlocks : 0;
+        const estimatedTotal = Math.round(avgTxPerBlock * (latestBlock + 1));
+
+        return estimatedTotal.toLocaleString();
+    } catch {
+        return "N/A";
+    }
+}
