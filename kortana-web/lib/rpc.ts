@@ -16,16 +16,34 @@ export const NETWORK = {
         name: "Kortana Testnet",
         chainId: 72511,
         chainIdHex: "0x11B3F",
-        rpcUrl: "https://poseidon-rpc.testnet.kortana.xyz/",
+        rpcUrl: process.env.NEXT_PUBLIC_TESTNET_RPC_URL || "https://poseidon-rpc.testnet.kortana.xyz/",
         explorerUrl: "https://explorer.testnet.kortana.xyz",
         symbol: "DNR",
         decimals: 18,
         blockTime: 2,
         status: "🟢 LIVE",
     },
+    devnet: {
+        name: "Kortana Devnet",
+        chainId: 9001,
+        chainIdHex: "0x2329",
+        rpcUrl: process.env.NEXT_PUBLIC_DEVNET_RPC_URL || "http://localhost:8545",
+        explorerUrl: "http://localhost:3001",
+        symbol: "DNR",
+        decimals: 18,
+        blockTime: 2,
+        status: "🟡 DEV",
+    },
 } as const;
 
 type NetworkKey = keyof typeof NETWORK;
+
+// Faucet Configuration
+export const FAUCET_CONFIG = {
+    amount: parseInt(process.env.FAUCET_AMOUNT || "500", 10),
+    rateLimitHours: parseInt(process.env.FAUCET_RATE_LIMIT_HOURS || "24", 10),
+    rpcTimeoutMs: parseInt(process.env.FAUCET_RPC_TIMEOUT_MS || "30000", 10),
+} as const;
 
 async function fetchBlockHeight(rpcUrl: string): Promise<string> {
     try {

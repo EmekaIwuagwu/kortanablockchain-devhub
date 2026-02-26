@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:create-indexes": "tsx scripts/create-faucet-indexes.ts",
+    "test:faucet": "tsx scripts/test-faucet-integration.ts",
+    "test:faucet:full": "tsx scripts/test-faucet-integration.ts --test-rpc"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -39,6 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }
