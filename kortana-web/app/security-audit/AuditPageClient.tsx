@@ -9,13 +9,10 @@ import {
     Award, BookOpen, Calendar, Hash, Code2, Layers
 } from 'lucide-react';
 
-// ─── Cloudinary raw URL with fl_inline for direct browser viewing ─────────────
-const PDF_DOWNLOAD_URL =
-    'https://res.cloudinary.com/drha3dagy/raw/upload/fl_inline/v1772090185/kortana-docs/kortana-security-audit-report-2026.pdf';
-
-// Google Docs Viewer — most reliable cross-browser PDF embed
-const PDF_EMBED_URL =
-    'https://docs.google.com/viewer?url=https%3A%2F%2Fres.cloudinary.com%2Fdrha3dagy%2Fraw%2Fupload%2Fv1772090185%2Fkortana-docs%2Fkortana-security-audit-report-2026.pdf&embedded=true';
+// Served from same origin via Next.js public/ — zero CORS, native browser PDF rendering
+const PDF_URL = '/kortana-security-audit-2026.pdf';
+// Keep Cloudinary as a fallback download mirror
+const PDF_CLOUDINARY = 'https://res.cloudinary.com/drha3dagy/raw/upload/fl_inline/v1772090185/kortana-docs/kortana-security-audit-report-2026.pdf';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const META = [
@@ -223,7 +220,7 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AuditPageClient() {
-    const [pdfOpen, setPdfOpen] = useState(false);
+    const [pdfOpen, setPdfOpen] = useState(true); // open by default for investors
 
     return (
         <div className="min-h-screen bg-deep-space text-white relative overflow-hidden">
@@ -279,7 +276,7 @@ export default function AuditPageClient() {
                             {pdfOpen ? 'Close PDF Viewer' : 'View Audit Report PDF'}
                         </button>
                         <a
-                            href={PDF_DOWNLOAD_URL}
+                            href={PDF_URL}
                             download="Kortana-Security-Audit-2026.pdf"
                             target="_blank"
                             rel="noopener noreferrer"
@@ -300,19 +297,28 @@ export default function AuditPageClient() {
                                     <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
                                     <span className="ml-3 text-xs text-gray-400 font-mono">KORTANA_SECURITY_AUDIT_REPORT.pdf</span>
                                 </div>
-                                <a href={PDF_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer"
+                                <a href={PDF_URL} target="_blank" rel="noopener noreferrer"
                                     className="text-xs text-cyan-400 hover:text-white font-bold uppercase tracking-widest transition-colors flex items-center gap-1">
                                     <ExternalLink size={11} /> Open in New Tab
                                 </a>
                             </div>
-                            <iframe
-                                src={PDF_EMBED_URL}
-                                title="Kortana Security Audit Report 2026"
+                            {/* Native browser PDF renderer — object tag uses Chromium built-in PDF engine, zero CORS issues */}
+                            <object
+                                data={PDF_URL}
+                                type="application/pdf"
                                 className="w-full bg-[#0a0e27]"
-                                style={{ height: '80vh', minHeight: '700px', border: 'none' }}
-                                loading="lazy"
-                                allowFullScreen
-                            />
+                                style={{ height: '82vh', minHeight: '700px', border: 'none' }}
+                            >
+                                {/* Fallback for browsers that don't support object PDF */}
+                                <div className="flex flex-col items-center justify-center h-full gap-4 py-20">
+                                    <FileText size={48} className="text-gray-600" />
+                                    <p className="text-gray-400">Your browser blocked the inline preview.</p>
+                                    <a href={PDF_URL} target="_blank" rel="noopener noreferrer"
+                                        className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 px-6 py-3 rounded-xl font-bold text-sm hover:bg-cyan-500/20 transition-colors">
+                                        <ExternalLink size={14} /> Open PDF in New Tab
+                                    </a>
+                                </div>
+                            </object>
                         </div>
                     )}
 
@@ -483,7 +489,7 @@ export default function AuditPageClient() {
                         </p>
                         <div className="flex flex-wrap justify-center gap-4">
                             <a
-                                href={PDF_DOWNLOAD_URL}
+                                href={PDF_URL}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="group flex items-center gap-2.5 bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 active:scale-100 transition-all shadow-[0_0_40px_-8px_rgba(6,182,212,0.5)]"
@@ -493,7 +499,7 @@ export default function AuditPageClient() {
                                 <ExternalLink size={13} className="group-hover:translate-x-1 transition-transform" />
                             </a>
                             <a
-                                href={PDF_DOWNLOAD_URL}
+                                href={PDF_URL}
                                 download="Kortana-Security-Audit-2026.pdf"
                                 className="flex items-center gap-2.5 border border-white/20 bg-white/5 text-white px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-white/10 hover:border-white/40 hover:scale-105 active:scale-100 transition-all"
                             >
