@@ -1,1 +1,7 @@
 /target
+/data
+/Cargo.lock.lock
+*.exe
+*.pdb
+debug/
+release/
