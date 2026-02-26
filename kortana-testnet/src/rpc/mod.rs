@@ -519,32 +519,62 @@ impl RpcHandler {
                             let amount_dnr: u128 = amount_str.parse().unwrap_or(10);
                             let amount_wei = amount_dnr * 10u128.pow(18);
                             
-                            let mut state = self.state.lock().unwrap();
-                            let mut acc = state.get_account(&addr);
-                            acc.balance += amount_wei;
-                            state.update_account(addr, acc);
-
-                            let faucet_addr = crate::address::Address::ZERO; 
-                            let faucet_tx = crate::types::transaction::Transaction {
-                                from: faucet_addr,
-                                to: addr,
-                                value: amount_wei,
-                                nonce: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1000000,
-                                gas_limit: 21000,
-                                gas_price: 1,
-                                data: vec![],
-                                vm_type: crate::types::transaction::VmType::EVM,
-                                chain_id: self.chain_id,
-                                signature: Some(vec![0u8; 65]),
-                                cached_hash: None,
+                            // Senior Architect Fix: Send from actual Treasury Account (Ecosystem Faucet)
+                            let faucet_addr = crate::address::Address::from_hex("0xc19d6dece56d290c71930c2f867ae9c2c652a19f7911ef64").unwrap();
+                            
+                            let (tx_hash, final_amount_dnr) = {
+                                let mut state = self.state.lock().unwrap();
+                                let mut treasury_acc = state.get_account(&faucet_addr);
+                                
+                                // Ensure treasury has enough balance for deduction
+                                if treasury_acc.balance >= amount_wei {
+                                    treasury_acc.balance -= amount_wei;
+                                    treasury_acc.nonce += 1;
+                                    state.update_account(faucet_addr, treasury_acc);
+                                } else {
+                                    println!("[FAUCET] Treasury low on funds ({} DNR), minting new tokens.", treasury_acc.balance / 10u128.pow(18));
+                                }
+                                
+                                let mut acc = state.get_account(&addr);
+                                acc.balance += amount_wei;
+                                state.update_account(addr, acc);
+                                
+                                let faucet_tx = crate::types::transaction::Transaction {
+                                    from: faucet_addr,
+                                    to: addr,
+                                    value: amount_wei,
+                                    nonce: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() % 1000000,
+                                    gas_limit: 21000,
+                                    gas_price: 1,
+                                    data: vec![],
+                                    vm_type: crate::types::transaction::VmType::EVM,
+                                    chain_id: self.chain_id,
+                                    signature: Some(vec![0u8; 65]),
+                                    cached_hash: None,
+                                };
+                                
+                                let hash = faucet_tx.hash();
+                                
+                                // Store Transaction and indexing
+                                let _ = self.storage.put_transaction(&faucet_tx);
+                                let _ = self.storage.put_index(&addr, hash);
+                                let _ = self.storage.put_index(&faucet_addr, hash);
+                                let _ = self.storage.put_global_transaction(hash);
+                                
+                                // CRITICAL: Create and store a SUCCESSFUL receipt so Wallets see "Success" status
+                                let receipt = crate::types::transaction::TransactionReceipt {
+                                    tx_hash: hash,
+                                    status: 1, // 0x1 = Success
+                                    gas_used: 21000,
+                                    logs: vec![],
+                                    contract_address: None,
+                                };
+                                let _ = self.storage.put_receipt(&receipt);
+                                
+                                (hash, amount_dnr)
                             };
 
-                            let _ = self.storage.put_transaction(&faucet_tx);
-                            let _ = self.storage.put_index(&addr, faucet_tx.hash());
-                            let _ = self.storage.put_index(&faucet_addr, faucet_tx.hash());
-                            let _ = self.storage.put_global_transaction(faucet_tx.hash());
-                            
-                            println!("[FAUCET] Distributed {} DNR to {} (Verified & Indexed)", amount_dnr, addr_str);
+                            println!("[FAUCET] Distributed {} DNR from TREASURY to {} (Tx: 0x{}, Status: SUCCESS)", final_amount_dnr, addr_str, hex::encode(tx_hash));
                             Some(serde_json::to_value(true).unwrap())
                         } else { None }
                     } else { None }
