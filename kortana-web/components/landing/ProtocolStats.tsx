@@ -23,7 +23,7 @@ export default function ProtocolStats() {
                 <div className="flex gap-12 animate-marquee whitespace-nowrap">
                     <StatItem label="TOTAL TRANSACTIONS" value="142,593,021" />
                     <StatItem label="BLOCK HEIGHT" value={blockHeight} />
-                    <StatItem label="ACTIVE ACCOUNTS" value="2,504,119" />
+
                     <StatItem label="AVG BLOCK TIME" value="2.0s" color="cyan" />
                     <StatItem label="TOTAL STAKED" value="45,000,000,000 DNR" />
                     <StatItem label="CHAIN ID" value="9002" color="green" />
