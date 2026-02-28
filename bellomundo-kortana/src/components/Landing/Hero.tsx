@@ -21,14 +21,14 @@ export default function Hero() {
 
             {/* Background World - Ultra Premium Parallax Layering */}
             <motion.div style={{ y: y1, scale }} className="absolute inset-0 z-0">
-                <div className="absolute inset-0 bg-[url('/jaw_dropping_futuristic_city_bright_1772173267956.png')] bg-cover bg-center brightness-[0.7] saturate-[1.2]" />
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=3000&q=100')] bg-cover bg-center brightness-[0.7] saturate-[1.2]" />
 
                 {/* Luxury Architectural Texture Overlay */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 0.3 }}
                     transition={{ duration: 3 }}
-                    className="absolute inset-0 bg-[url('/luxury_architectural_abstract_1772173612043.png')] bg-cover bg-fixed mix-blend-overlay opacity-30"
+                    className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=3000&q=100')] bg-cover bg-fixed mix-blend-overlay opacity-30"
                 />
 
                 {/* Atmospheric Gradients */}
