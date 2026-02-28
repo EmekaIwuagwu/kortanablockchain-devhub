@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { executeSettlement } from "@/lib/walletProvider";
 
 const evCatalog = [
-    { id: "v1", make: "VOLT", model: "NEXUS PRIME", price: "28,500", range: "650 KM", image: "/luxury_ev_render.png", acceleration: "2.1s" },
+    { id: "v1", make: "VOLT", model: "NEXUS PRIME", price: "28,500", range: "650 KM", image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=2000&q=100", acceleration: "2.1s" },
     { id: "v2", make: "SOLARIS", model: "GT-X CORE", price: "42,000", range: "800 KM", image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80", acceleration: "1.9s" },
     { id: "v3", make: "AETHER", model: "NIMBUS ALPHA", price: "19,800", range: "450 KM", image: "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80", acceleration: "3.4s" },
 ];

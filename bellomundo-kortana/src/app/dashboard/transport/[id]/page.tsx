@@ -17,7 +17,7 @@ const evCatalog = [
         model: "NEXUS PRIME",
         price: "28,500",
         range: "650 KM",
-        image: "/luxury_ev_render.png",
+        image: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=2000&q=100",
         acceleration: "2.1s",
         description: "The Nexus Prime is the benchmark of Kortana City mobility. Featuring a liquid-cooled solid-state battery and Level 5 autonomous capabilities, it is designed for the high-velocity citizen."
     },

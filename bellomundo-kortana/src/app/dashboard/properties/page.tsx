@@ -5,9 +5,9 @@ import PropertyCard from "@/components/Properties/PropertyCard";
 import { Search, SlidersHorizontal, Map, Globe, Plus } from "lucide-react";
 
 const properties = [
-    { id: "1", title: "Aetheria Penthouse", type: "LUXURY PENTHOUSE", price: "2,400", location: "SKY DISTRICT, SECTOR 7", beds: 3, baths: 3.5, sqm: 240, image: "/luxury_penthouse_interior.png", isVerified: true },
-    { id: "2", title: "Neo-Classic Studio", type: "URBAN STUDIO", price: "450", location: "OLD TOWN, SECTOR 1", beds: 1, baths: 1, sqm: 45, image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80", isVerified: false },
-    { id: "3", title: "Biolume Villa", type: "STAKED VILLA", price: "1,800", location: "CRYSTAL GARDENS, SECTOR 4", beds: 4, baths: 4.5, sqm: 320, image: "/biolume_villa_exterior.png", isVerified: true },
+    { id: "1", title: "Aetheria Penthouse", type: "LUXURY PENTHOUSE", price: "2,400", location: "SKY DISTRICT, SECTOR 7", beds: 3, baths: 3.5, sqm: 240, image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=2000&q=100", isVerified: true },
+    { id: "2", title: "Neo-Oasis Loft", type: "URBAN LOFT", price: "850", location: "COMMERCIAL CORE, SECTOR 2", beds: 1, baths: 1.5, sqm: 120, image: "https://images.unsplash.com/photo-1600607687644-aac4c15cecb1?auto=format&fit=crop&w=2000&q=100", isVerified: true },
+    { id: "3", title: "Biolume Villa", type: "STAKED VILLA", price: "1,800", location: "CRYSTAL GARDENS, SECTOR 4", beds: 4, baths: 4.5, sqm: 320, image: "https://images.unsplash.com/photo-1613490908571-9ce224eb1496?auto=format&fit=crop&w=2000&q=100", isVerified: true },
     { id: "4", title: "Lumina Apartment", type: "SMART UNIT", price: "850", location: "DOWNTOWN, SECTOR 5", beds: 2, baths: 2, sqm: 85, image: "https://images.unsplash.com/photo-1536376074432-8d63d592bfde?auto=format&fit=crop&w=800&q=80", isVerified: true },
     { id: "5", title: "Zen Garden Suites", type: "RESIDENTIAL NODE", price: "1,200", location: "ECHO PARK, SECTOR 2", beds: 2, baths: 2.5, sqm: 110, image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80", isVerified: true },
     { id: "6", title: "Solaris Tower Unit", type: "HIGH-RISE CORE", price: "3,500", location: "SKY DISTRICT, SECTOR 8", beds: 4, baths: 5, sqm: 450, image: "https://images.unsplash.com/photo-1493201481624-3c550549b84e?auto=format&fit=crop&w=800&q=80", isVerified: false },
