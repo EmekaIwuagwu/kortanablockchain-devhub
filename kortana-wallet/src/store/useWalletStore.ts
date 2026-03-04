@@ -17,6 +17,8 @@ interface WalletState {
     privateKey: string | null;
     isLocked: boolean;
     balance: string;
+    lastInteraction: number;
+
 
     // Actions
     setAddress: (address: string | null) => void;
@@ -25,8 +27,12 @@ interface WalletState {
     setNetwork: (network: NetworkType) => void;
     setLocked: (isLocked: boolean) => void;
     setBalance: (balance: string) => void;
+    setTokens: (tokens: any[]) => void;
     setMnemonic: (mnemonic: string | null) => void;
     setPrivateKey: (key: string | null) => void;
+    updateLastInteraction: () => void;
+
+
 
     addAccount: (address: string) => void;
     reset: () => void;
@@ -47,6 +53,8 @@ export const useWalletStore = create<WalletState>()(
             privateKey: null,
             isLocked: true,
             balance: '0.00',
+            lastInteraction: Date.now(),
+
 
             // Setters
             setAddress: (address) => set({ address }),
@@ -61,12 +69,16 @@ export const useWalletStore = create<WalletState>()(
                 }
             },
             setBalance: (balance) => set({ balance }),
+            setTokens: (tokens) => set({ tokens }),
             setMnemonic: (mnemonic) => set({ mnemonic }),
             setPrivateKey: (privateKey) => set({ privateKey }),
+            updateLastInteraction: () => set({ lastInteraction: Date.now() }),
+
 
             addAccount: (address) => set((state) => ({
                 accounts: state.accounts.includes(address) ? state.accounts : [...state.accounts, address]
             })),
+
 
             reset: () => set({
                 address: null,

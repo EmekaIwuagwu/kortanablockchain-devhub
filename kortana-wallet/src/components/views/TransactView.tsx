@@ -44,7 +44,6 @@ export const TransactView: React.FC = () => {
         setError(null);
         setLoading(true);
         try {
-            // Rough gas estimation for premium feel
             const provider = providerService.getProvider(network);
             const estimate = await provider.estimateGas({
                 to: recipient,
@@ -56,8 +55,6 @@ export const TransactView: React.FC = () => {
             setGasEstimate(ethers.formatEther(totalGas));
             setStep('confirm');
         } catch (err: any) {
-            console.error('Estimation failed:', err);
-            // Default to some value if estimation fails (account for new address etc)
             setGasEstimate('0.00021');
             setStep('confirm');
         } finally {
@@ -65,9 +62,7 @@ export const TransactView: React.FC = () => {
         }
     };
 
-    const handleConfirm = () => {
-        setStep('password');
-    };
+    const handleConfirm = () => setStep('password');
 
     const handlePasswordSubmit = async () => {
         const inputHash = vaultService.hashPassword(password);
@@ -75,15 +70,10 @@ export const TransactView: React.FC = () => {
             setError('Incorrect password.');
             return;
         }
-
         setError(null);
         setStep('processing');
-
         try {
-            // Decrypt to get the actual key if needed, 
-            // but we assume privateKey is in memory or we decrypt it now
             let activeKey = privateKey;
-
             if (!activeKey && encryptedMnemonic) {
                 const decMnemonic = vaultService.decrypt(encryptedMnemonic, password);
                 if (decMnemonic) {
@@ -91,29 +81,19 @@ export const TransactView: React.FC = () => {
                     activeKey = wallet.privateKey;
                 }
             }
-
             if (!activeKey) throw new Error('Could not unlock wallet.');
-
             const provider = providerService.getProvider(network);
             const wallet = new ethers.Wallet(activeKey, provider);
-
             const tx = await wallet.sendTransaction({
                 to: recipient,
                 value: ethers.parseEther(amount),
             });
-
             setTxHash(tx.hash);
-
-            // Wait for confirmation
             await tx.wait();
-
-            // Refresh balance
             const newBalance = await providerService.getBalance(address!, network);
             setBalance(newBalance);
-
             setStep('success');
         } catch (err: any) {
-            console.error('Send failed:', err);
             setError(err.message || 'Transaction failed.');
             setStep('input');
         }
@@ -131,58 +111,64 @@ export const TransactView: React.FC = () => {
     const explorerUrl = txHash ? `${NETWORKS[network].explorer}/tx/${txHash}` : '#';
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto py-4 md:py-8">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto w-full pb-4">
             <AnimatePresence mode="wait">
-                {/* STEP: INPUT */}
+
+                {/* INPUT STEP */}
                 {step === 'input' && (
                     <motion.div
                         key="input"
                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                        className="space-y-6 md:space-y-8"
+                        className="space-y-4 md:space-y-6"
                     >
-                        <h2 className="text-2xl md:text-5xl font-black tracking-tighter uppercase text-white font-heading">Transact <span className="text-gradient-kortana">Assets</span></h2>
-                        <div className="glass-panel p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] space-y-6 md:space-y-8 relative overflow-hidden">
-                            <div className="space-y-3 md:space-y-4">
-                                <label className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Recipient Address</label>
+                        <h2 className="text-xl md:text-3xl lg:text-4xl font-black tracking-tighter uppercase text-white font-heading">
+                            Transact <span className="text-gradient-kortana">Assets</span>
+                        </h2>
+                        <div className="glass-panel p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] space-y-4 md:space-y-6 relative overflow-hidden">
+                            {/* Recipient */}
+                            <div className="space-y-2">
+                                <label className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Recipient Address</label>
                                 <div className="relative group">
-                                    <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                                    <Search className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400 transition-colors" size={15} />
                                     <input
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 pl-12 md:pl-16 focus:border-cyan-500/50 outline-none transition-all text-xs md:text-sm text-white font-mono placeholder:text-gray-700"
-                                        placeholder="0x ... or Domain Name"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-5 pl-10 md:pl-14 focus:border-cyan-500/50 outline-none transition-all text-xs text-white font-mono placeholder:text-gray-700"
+                                        placeholder="0x... or Domain Name"
                                         value={recipient}
                                         onChange={(e) => setRecipient(e.target.value)}
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-3 md:space-y-4">
-                                <label className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Amount (DNR)</label>
+
+                            {/* Amount */}
+                            <div className="space-y-2">
+                                <label className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Amount (DNR)</label>
                                 <div className="relative">
                                     <input
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-8 text-3xl md:text-6xl font-black text-white font-heading focus:border-purple-500/50 outline-none transition-all placeholder:text-white/5"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-6 text-2xl md:text-5xl font-black text-white font-heading focus:border-purple-500/50 outline-none transition-all placeholder:text-white/5 pr-16"
                                         placeholder="0.00"
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
                                     />
-                                    <div className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 text-base md:text-2xl font-black text-gray-800 uppercase pointer-events-none">DNR</div>
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm md:text-xl font-black text-gray-800 uppercase pointer-events-none">DNR</div>
                                 </div>
                             </div>
 
                             {error && (
-                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-3">
-                                    <AlertCircle className="text-rose-500 shrink-0" size={18} />
-                                    <p className="text-[10px] md:text-xs font-bold text-rose-500 uppercase tracking-wider">{error}</p>
+                                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center gap-2">
+                                    <AlertCircle className="text-rose-500 shrink-0" size={16} />
+                                    <p className="text-[9px] md:text-[10px] font-bold text-rose-500 uppercase tracking-wider">{error}</p>
                                 </motion.div>
                             )}
 
                             <button
                                 onClick={handleContinue}
                                 disabled={loading}
-                                className="w-full btn-launch !rounded-xl md:!rounded-2xl flex items-center justify-center gap-2 group py-4 md:py-6"
+                                className="w-full btn-launch !rounded-xl md:!rounded-2xl py-3 md:py-5 group"
                             >
-                                {loading ? <Loader2 className="animate-spin" size={20} /> : (
+                                {loading ? <Loader2 className="animate-spin" size={18} /> : (
                                     <>
                                         <span>Continue Securely</span>
-                                        <ArrowRight className="size-4 md:size-5 group-hover:translate-x-1 transition-transform" />
+                                        <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
                                     </>
                                 )}
                             </button>
@@ -190,28 +176,30 @@ export const TransactView: React.FC = () => {
                     </motion.div>
                 )}
 
-                {/* STEP: CONFIRM */}
+                {/* CONFIRM STEP */}
                 {step === 'confirm' && (
                     <motion.div
                         key="confirm"
                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.05 }}
-                        className="space-y-6 md:space-y-8"
+                        className="space-y-4 md:space-y-6"
                     >
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setStep('input')} className="p-2 hover:bg-white/5 rounded-full transition-colors"><ChevronLeft size={24} /></button>
-                            <h2 className="text-xl md:text-3xl font-black tracking-tighter uppercase text-white font-heading">Confirm <span className="text-gradient-kortana">Payload</span></h2>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setStep('input')} className="p-2 hover:bg-white/5 rounded-full transition-colors">
+                                <ChevronLeft size={20} />
+                            </button>
+                            <h2 className="text-lg md:text-2xl font-black tracking-tighter uppercase text-white font-heading">
+                                Confirm <span className="text-gradient-kortana">Payload</span>
+                            </h2>
                         </div>
 
-                        <div className="glass-panel p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] space-y-8">
-                            <div className="p-6 md:p-10 bg-gradient-to-br from-white/[0.03] to-transparent rounded-[1.5rem] md:rounded-[2.5rem] border border-white/5 space-y-6">
+                        <div className="glass-panel p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] space-y-5">
+                            <div className="p-4 md:p-8 bg-gradient-to-br from-white/[0.03] to-transparent rounded-xl md:rounded-[2rem] border border-white/5 space-y-4">
                                 <div className="text-center space-y-1">
                                     <p className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-[0.3em]">Amount to Transfer</p>
-                                    <h3 className="text-4xl md:text-7xl font-black text-white font-heading">{amount} <span className="text-gray-700 text-lg md:text-3xl">DNR</span></h3>
+                                    <h3 className="text-3xl md:text-5xl font-black text-white font-heading">{amount} <span className="text-gray-700 text-base md:text-2xl">DNR</span></h3>
                                 </div>
-
                                 <div className="h-px bg-white/5 w-full" />
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-3">
                                     <div className="space-y-1">
                                         <p className="text-[7px] md:text-[9px] font-black text-gray-600 uppercase tracking-widest">Recipient</p>
                                         <p className="font-mono text-[9px] md:text-xs text-cyan-400 break-all bg-black/20 p-2 rounded-lg">{recipient}</p>
@@ -225,61 +213,57 @@ export const TransactView: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-
-                            <button
-                                onClick={handleConfirm}
-                                className="w-full btn-launch !rounded-xl md:!rounded-2xl py-4 md:py-6"
-                            >
+                            <button onClick={handleConfirm} className="w-full btn-launch !rounded-xl md:!rounded-2xl py-3 md:py-5">
                                 Proceed to Signing
                             </button>
                         </div>
                     </motion.div>
                 )}
 
-                {/* STEP: PASSWORD */}
+                {/* PASSWORD STEP */}
                 {step === 'password' && (
                     <motion.div
                         key="password"
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6 md:space-y-8"
+                        className="space-y-4 md:space-y-6"
                     >
-                        <h2 className="text-xl md:text-3xl font-black tracking-tighter uppercase text-white font-heading text-center">Unlock <span className="text-gradient-kortana">Enclave</span></h2>
-                        <div className="glass-panel p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] space-y-8 max-w-sm mx-auto">
-                            <div className="w-16 h-16 md:w-24 md:h-24 bg-cyan-400/10 rounded-full flex items-center justify-center text-cyan-400 mx-auto border border-cyan-400/20 shadow-[0_0_50px_rgba(6,182,212,0.15)] animate-pulse">
-                                <Lock size={32} />
+                        <h2 className="text-lg md:text-2xl font-black tracking-tighter uppercase text-white font-heading text-center">
+                            Unlock <span className="text-gradient-kortana">Enclave</span>
+                        </h2>
+                        <div className="glass-panel p-6 md:p-10 rounded-2xl md:rounded-[3rem] space-y-6 max-w-sm mx-auto">
+                            <div className="w-14 h-14 md:w-20 md:h-20 bg-cyan-400/10 rounded-full flex items-center justify-center text-cyan-400 mx-auto border border-cyan-400/20 animate-pulse">
+                                <Lock size={24} />
                             </div>
-                            <div className="space-y-4">
-                                <label className="text-[9px] md:text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center block w-full">Enter Access Password</label>
+                            <div className="space-y-3">
+                                <label className="text-[8px] md:text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center block">Enter Access Password</label>
                                 <input
                                     type="password"
                                     autoFocus
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 text-center text-xl md:text-2xl font-black text-white focus:border-cyan-500/50 outline-none"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-5 text-center text-xl md:text-2xl font-black text-white focus:border-cyan-500/50 outline-none"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
                                 />
                             </div>
-
-                            {error && <p className="text-rose-500 text-center text-[10px] font-black uppercase tracking-widest">{error}</p>}
-
+                            {error && <p className="text-rose-500 text-center text-[9px] font-black uppercase tracking-widest">{error}</p>}
                             <div className="flex gap-3">
                                 <button onClick={() => setStep('confirm')} className="flex-1 btn-outline">Back</button>
-                                <button onClick={handlePasswordSubmit} className="flex-2 btn-launch">Confirm</button>
+                                <button onClick={handlePasswordSubmit} className="flex-1 btn-launch">Confirm</button>
                             </div>
                         </div>
                     </motion.div>
                 )}
 
-                {/* STEP: PROCESSING */}
+                {/* PROCESSING STEP */}
                 {step === 'processing' && (
                     <motion.div
                         key="processing"
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                        className="flex flex-col items-center justify-center py-20 md:py-40 space-y-10"
+                        className="flex flex-col items-center justify-center py-20 md:py-32 space-y-8"
                     >
                         <div className="relative">
-                            <div className="w-24 h-24 md:w-32 md:h-32 border-4 border-cyan-400/20 rounded-full" />
+                            <div className="w-20 h-20 md:w-28 md:h-28 border-4 border-cyan-400/20 rounded-full" />
                             <motion.div
                                 className="absolute inset-0 border-t-4 border-cyan-400 rounded-full"
                                 animate={{ rotate: 360 }}
@@ -287,49 +271,46 @@ export const TransactView: React.FC = () => {
                             />
                         </div>
                         <div className="text-center space-y-2">
-                            <h3 className="text-2xl md:text-4xl font-black text-white uppercase font-heading">Broadcasting...</h3>
-                            <p className="text-gray-500 font-bold uppercase tracking-[0.3em] text-[10px] md:text-xs">Submitting proof to Poseidon Network</p>
+                            <h3 className="text-2xl md:text-3xl font-black text-white uppercase font-heading">Broadcasting...</h3>
+                            <p className="text-gray-500 font-bold uppercase tracking-[0.3em] text-[9px] md:text-[10px]">Submitting to Poseidon Network</p>
                         </div>
                     </motion.div>
                 )}
 
-                {/* STEP: SUCCESS */}
+                {/* SUCCESS STEP */}
                 {step === 'success' && (
                     <motion.div
                         key="success"
                         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                        className="space-y-8 md:space-y-12 py-4"
+                        className="space-y-5 md:space-y-8"
                     >
-                        <div className="glass-panel p-8 md:p-16 rounded-[3rem] md:rounded-[4rem] text-center space-y-8 md:space-y-12 border-neon-green/10 bg-gradient-to-br from-neon-green/[0.03] to-transparent">
-                            <div className="w-20 h-20 md:w-28 md:h-28 bg-neon-green/10 rounded-full flex items-center justify-center text-neon-green mx-auto border border-neon-green/20 shadow-[0_0_60px_rgba(20,255,0,0.1)]">
-                                <CheckCircle2 className="size-10 md:size-14" />
+                        <div className="glass-panel p-6 md:p-12 rounded-2xl md:rounded-[3rem] text-center space-y-6 md:space-y-8 border-neon-green/10 bg-gradient-to-br from-neon-green/[0.03] to-transparent">
+                            <div className="w-16 h-16 md:w-24 md:h-24 bg-neon-green/10 rounded-full flex items-center justify-center text-neon-green mx-auto border border-neon-green/20">
+                                <CheckCircle2 className="size-8 md:size-12" />
                             </div>
-                            <div className="space-y-3">
-                                <h3 className="text-3xl md:text-6xl font-black text-white uppercase font-heading tracking-tight leading-none">Transmission <span className="text-neon-green">Success</span></h3>
-                                <p className="text-gray-500 font-bold uppercase tracking-[0.3em] text-[10px] md:text-xs">Your assets are now on the ledger.</p>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl md:text-4xl font-black text-white uppercase font-heading">Transmission <span className="text-neon-green">Success</span></h3>
+                                <p className="text-gray-500 font-bold uppercase tracking-[0.3em] text-[8px] md:text-[10px]">Your assets are now on the ledger.</p>
                             </div>
 
-                            <div className="bg-black/40 border border-white/5 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 space-y-6">
-                                <div className="flex justify-between items-center text-left gap-4">
-                                    <div className="space-y-1 truncate">
-                                        <p className="text-[8px] md:text-[10px] font-black text-gray-600 uppercase tracking-widest">Transaction Hash</p>
-                                        <p className="font-mono text-[10px] md:text-xs text-cyan-400 truncate">{txHash}</p>
+                            <div className="bg-black/40 border border-white/5 rounded-xl md:rounded-2xl p-4 md:p-6">
+                                <div className="flex justify-between items-center text-left gap-3">
+                                    <div className="space-y-0.5 truncate min-w-0">
+                                        <p className="text-[7px] md:text-[9px] font-black text-gray-600 uppercase tracking-widest">Transaction Hash</p>
+                                        <p className="font-mono text-[9px] md:text-[10px] text-cyan-400 truncate">{txHash}</p>
                                     </div>
                                     <a
                                         href={explorerUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="shrink-0 w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-xl flex items-center justify-center text-white hover:bg-cyan-400 hover:text-deep-space transition-all"
+                                        className="shrink-0 w-9 h-9 md:w-11 md:h-11 bg-white/5 rounded-xl flex items-center justify-center text-white hover:bg-cyan-400 hover:text-deep-space transition-all"
                                     >
-                                        <ExternalLink size={20} />
+                                        <ExternalLink size={16} />
                                     </a>
                                 </div>
                             </div>
 
-                            <button
-                                onClick={reset}
-                                className="w-full btn-outline py-4 md:py-6"
-                            >
+                            <button onClick={reset} className="w-full btn-outline py-3 md:py-5">
                                 Back to Enclave
                             </button>
                         </div>

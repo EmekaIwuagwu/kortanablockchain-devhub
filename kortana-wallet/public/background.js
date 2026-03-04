@@ -3,15 +3,28 @@
  */
 
 const NETWORKS = {
+    mainnet: {
+        rpc: 'https://zeus-rpc.mainnet.kortana.xyz',
+        chainId: 7251
+    },
     testnet: {
         rpc: 'https://poseidon-rpc.testnet.kortana.xyz/',
         chainId: 72511
     },
-    mainnet: {
-        rpc: 'https://zeus-rpc.mainnet.kortana.xyz',
-        chainId: 7251
+    sepolia: {
+        rpc: 'https://rpc.ankr.com/eth_sepolia',
+        chainId: 11155111
+    },
+    avalancheFuji: {
+        rpc: 'https://api.avax-test.network/ext/bc/C/rpc',
+        chainId: 43113
+    },
+    baseSepolia: {
+        rpc: 'https://sepolia.base.org',
+        chainId: 84532
     }
 };
+
 
 let currentNetwork = 'testnet';
 
