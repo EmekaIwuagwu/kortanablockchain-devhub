@@ -319,23 +319,23 @@ const App: React.FC = () => {
 
                 <div className="relative z-10 flex flex-col items-center max-w-lg w-full px-10">
                     {/* Main Branding */}
-                    <div className="flex flex-col items-center mb-12 animate-in fade-in zoom-in duration-1000">
+                    <div className="flex flex-col items-center mb-10 animate-in fade-in zoom-in duration-1000">
                         <div className="relative mb-6">
-                            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse" />
+                            <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 animate-pulse" />
                             <img
                                 src="/logo.png"
                                 alt="Kortana Logo"
-                                className="w-24 h-24 relative z-10 drop-shadow-[0_0_25px_rgba(79,70,229,0.4)]"
+                                className="w-20 h-20 md:w-28 md:h-28 relative z-10 drop-shadow-[0_0_25px_rgba(79,70,229,0.4)]"
                             />
                         </div>
                         <div className="text-center">
-                            <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
+                            <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
                                 Kortana Studio
                             </h1>
                             <div className="flex items-center justify-center space-x-2">
-                                <span className="h-px w-8 bg-indigo-500/50" />
-                                <p className="text-[12px] text-indigo-400 uppercase tracking-[0.4em] font-bold">The Next Generation IDE</p>
-                                <span className="h-px w-8 bg-indigo-500/50" />
+                                <span className="h-px w-6 md:w-8 bg-indigo-500/50" />
+                                <p className="text-[10px] md:text-[12px] text-indigo-400 uppercase tracking-[0.4em] font-bold">The Next Generation IDE</p>
+                                <span className="h-px w-6 md:w-8 bg-indigo-500/50" />
                             </div>
                         </div>
                     </div>
@@ -373,12 +373,20 @@ const App: React.FC = () => {
                             <button
                                 onClick={() => dispatch(connectWallet('metamask'))}
                                 disabled={isConnecting}
-                                className="w-full h-[64px] rounded-2xl bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-all flex items-center justify-center space-x-4 text-white/80 active:scale-[0.98] disabled:opacity-70"
+                                className="w-full h-[64px] rounded-2xl bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-all flex items-center justify-center space-x-4 text-white/80 active:scale-[0.98] disabled:opacity-70 group"
                             >
                                 {isConnecting ? (
                                     <Loader2 size={20} className="animate-spin" />
                                 ) : (
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Alpha_color.svg" className="w-6 h-6" alt="MetaMask" />
+                                    <svg width="24" height="24" viewBox="0 0 256 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid">
+                                        <path d="M239.066 14.505l-95.213 77.305 28.016-52.007L128 0l-43.869 39.803 28.016 52.007-95.213-77.305 13.568 113.111 25.132 23.447L29.351 161.4l51.914 36.335L128 240l46.735-42.265 51.914-36.335-26.283-10.342 25.132-23.447 13.568-113.111z" fill="#E2761B" />
+                                        <path d="M37.6 151.72l43.665 30.56L128 221.789l46.735-39.509 43.665-30.56L128 174.19l-90.4 22.47z" fill="#E4761B" />
+                                        <path d="M128 119.55l-2.022-26.68L128 94.137l2.022-1.267z" fill="#D7C1B3" />
+                                        <path d="M85.748 119.55l-3.37-44.468L128 94.137l45.622-19.055-3.371 44.468L128 136.56l-42.252-17.01z" fill="#233447" />
+                                        <path d="M27.329 127.616l25.132 23.447L29.351 161.4l-2.022-33.784zm174.209 0l-2.022 33.784-23.115-10.337 25.137-23.447z" fill="#CD7E2E" />
+                                        <path d="M37.6 151.72L128 174.19l-33.784-36.43zm180.8 0l-90.4 22.47 33.784-36.43z" fill="#763D16" />
+                                        <path d="M128 174.19l90.4-22.47L128 240l-90.4-88.28z" fill="#333" />
+                                    </svg>
                                 )}
                                 <span className="text-[15px] font-bold tracking-wide">Continue with MetaMask</span>
                             </button>
@@ -559,26 +567,14 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* ══════════ MAIN BODY ══════════ */}
-            <div className="flex flex-grow overflow-hidden">
+            {/* ══════════ MAIN WORKSPACE LAYOUT ══════════ */}
+            <div className="flex flex-grow overflow-hidden relative">
 
-                {/* ── Activity Bar ── */}
-                <div className="w-12 bg-vscode-activity border-r border-white/5 flex flex-col items-center py-4 space-y-4 shrink-0">
-                    {[
-                        { tab: 'files', Icon: Files, label: 'Explorer' },
-                        { tab: 'deploy', Icon: Play, label: 'Deploy' },
-                        { tab: 'tests', Icon: Beaker, label: 'Test' },
-                        { tab: 'search', Icon: Search, label: 'Search' },
-                    ].map(({ tab, Icon, label }) => (
-                        <div
-                            key={tab}
-                            title={label}
-                            className={`activity-item group ${sidebarActiveTab === tab ? 'active text-white' : 'text-vscode-muted'}`}
-                            onClick={() => dispatch(setSidebarTab(tab))}
-                        >
-                            <Icon className="w-5 h-5" />
-                        </div>
-                    ))}
+                {/* Left Sidebar — Activity Bar */}
+                <div className="w-12 md:w-14 bg-vscode-sidebar border-r border-white/5 flex flex-col items-center py-4 space-y-4 shrink-0">
+                    <SidebarIcon icon={<Files size={20} />} active={sidebarActiveTab === 'files'} onClick={() => dispatch(setSidebarTab('files'))} />
+                    <SidebarIcon icon={<Rocket size={20} />} active={sidebarActiveTab === 'deploy'} onClick={() => dispatch(setSidebarTab('deploy'))} />
+                    <SidebarIcon icon={<ShieldCheck size={20} />} active={sidebarActiveTab === 'tests'} onClick={() => dispatch(setSidebarTab('tests'))} />
                     <div className="flex-grow" />
                     <div className="activity-item text-vscode-muted hover:text-white group" title="Settings">
                         <Settings className="w-5 h-5 group-hover:rotate-45 transition-transform" />
@@ -888,7 +884,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* ══════════ RIGHT PANEL — Blockchain Manager ══════════ */}
-                <div className="w-72 bg-vscode-sidebar/95 border-l border-white/5 flex flex-col overflow-hidden shrink-0">
+                <div className="hidden lg:flex w-72 bg-vscode-sidebar/95 border-l border-white/5 flex-col overflow-hidden shrink-0">
                     <div className="p-4 border-b border-white/5 font-bold text-[10px] text-vscode-muted uppercase tracking-widest bg-black/20 flex items-center space-x-2">
                         <Globe size={12} />
                         <span>Blockchain Manager</span>
@@ -915,7 +911,15 @@ const App: React.FC = () => {
                                             : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white border-orange-500 hover:-translate-y-0.5 shadow-lg'
                                         }`}
                                 >
-                                    <span>🦊</span>
+                                    <svg width="14" height="14" viewBox="0 0 256 240" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid">
+                                        <path d="M239.066 14.505l-95.213 77.305 28.016-52.007L128 0l-43.869 39.803 28.016 52.007-95.213-77.305 13.568 113.111 25.132 23.447L29.351 161.4l51.914 36.335L128 240l46.735-42.265 51.914-36.335-26.283-10.342 25.132-23.447 13.568-113.111z" fill="#E2761B" />
+                                        <path d="M37.6 151.72l43.665 30.56L128 221.789l46.735-39.509 43.665-30.56L128 174.19l-90.4 22.47z" fill="#E4761B" />
+                                        <path d="M128 119.55l-2.022-26.68L128 94.137l2.022-1.267z" fill="#D7C1B3" />
+                                        <path d="M85.748 119.55l-3.37-44.468L128 94.137l45.622-19.055-3.371 44.468L128 136.56l-42.252-17.01z" fill="#233447" />
+                                        <path d="M27.329 127.616l25.132 23.447L29.351 161.4l-2.022-33.784zm174.209 0l-2.022 33.784-23.115-10.337 25.137-23.447z" fill="#CD7E2E" />
+                                        <path d="M37.6 151.72L128 174.19l-33.784-36.43zm180.8 0l-90.4 22.47 33.784-36.43z" fill="#763D16" />
+                                        <path d="M128 174.19l90.4-22.47L128 240l-90.4-88.28z" fill="#333" />
+                                    </svg>
                                     <span>{isConnected && walletType === 'metamask' ? `MetaMask • ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : 'Connect MetaMask'}</span>
                                 </button>
 
@@ -929,7 +933,7 @@ const App: React.FC = () => {
                                             : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white border-indigo-500 hover:-translate-y-0.5 shadow-lg'
                                         }`}
                                 >
-                                    <span>⚡</span>
+                                    <Zap size={14} fill="currentColor" />
                                     <span>{isConnected && walletType === 'kortana' ? `Kortana Wallet • ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : 'Connect Kortana Wallet'}</span>
                                 </button>
 
@@ -1066,19 +1070,21 @@ const App: React.FC = () => {
             </div>
 
             {/* ══════════ MODALS ══════════ */}
-            {(() => {
-                const mainContract = lastResult?.contracts?.find((c: any) => c.bytecode && c.bytecode.length > 50) || lastResult?.contracts?.[0];
-                return (
-                    <DeploymentModal
-                        isOpen={isDeployModalOpen}
-                        onClose={() => setIsDeployModalOpen(false)}
-                        onInteract={() => { setConsoleTab('interact'); setIsDeployModalOpen(false); }}
-                        contractName={mainContract?.name || activeFile?.name.replace(/\.(sol|qrl)$/, '') || 'Contract'}
-                        bytecode={mainContract?.bytecode || ''}
-                        abi={mainContract?.abi || []}
-                    />
-                );
-            })()}
+            {
+                (() => {
+                    const mainContract = lastResult?.contracts?.find((c: any) => c.bytecode && c.bytecode.length > 50) || lastResult?.contracts?.[0];
+                    return (
+                        <DeploymentModal
+                            isOpen={isDeployModalOpen}
+                            onClose={() => setIsDeployModalOpen(false)}
+                            onInteract={() => { setConsoleTab('interact'); setIsDeployModalOpen(false); }}
+                            contractName={mainContract?.name || activeFile?.name.replace(/\.(sol|ql)$/, '') || 'Contract'}
+                            bytecode={mainContract?.bytecode || ''}
+                            abi={mainContract?.abi || []}
+                        />
+                    );
+                })()
+            }
 
             <NewProjectModal
                 isOpen={isNewProjectModalOpen}
@@ -1087,44 +1093,46 @@ const App: React.FC = () => {
             />
 
             {/* ══════════ RICH CONTEXT MENU ══════════ */}
-            {contextMenu && (
-                <div
-                    className="fixed z-[500] min-w-[200px] bg-[#1a1b20] border border-white/10 shadow-2xl rounded-lg py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-                    style={{ left: Math.min(contextMenu.x, window.innerWidth - 210), top: Math.min(contextMenu.y, window.innerHeight - 200) }}
-                    onClick={e => e.stopPropagation()}
-                >
-                    {contextMenu.target === 'folder' ? (
-                        /* Folder context menu */
-                        <>
-                            <div className="px-2 py-1.5 text-[9px] text-vscode-muted/50 uppercase tracking-widest font-bold border-b border-white/5 mb-1">
-                                {projectPath?.split(/[/\\]/).pop()} / contracts
-                            </div>
-                            <ContextMenuItem
-                                icon={<FilePlus size={12} />}
-                                label={`New ${projectLanguage === 'solidity' ? 'Solidity Contract' : 'Quorlin Script'}`}
-                                shortcut={projectLanguage === 'solidity' ? '.sol' : '.ql'}
-                                onClick={handleCreateNewFileFromContext}
-                                color="text-indigo-400"
-                            />
-                            <div className="h-[1px] bg-white/5 my-1" />
-                            <ContextMenuItem icon={<FolderPlus size={12} />} label="New Sub-Folder" onClick={() => setContextMenu(null)} color="text-vscode-muted" />
-                        </>
-                    ) : (
-                        /* File context menu */
-                        <>
-                            <div className="px-2 py-1.5 text-[9px] text-vscode-muted/50 uppercase tracking-widest font-bold border-b border-white/5 mb-1 truncate">
-                                {files.find(f => f.id === contextMenu.fileId)?.name}
-                            </div>
-                            <ContextMenuItem icon={<Play size={12} />} label="Open" onClick={() => { if (contextMenu.fileId) { dispatch(setActiveFile(contextMenu.fileId)); setContextMenu(null); } }} color="text-white" />
-                            <ContextMenuItem icon={<Edit3 size={12} />} label="Rename" onClick={handleStartRename} color="text-vscode-muted" />
-                            <ContextMenuItem icon={<RotateCcw size={12} />} label="Undo Last Change" onClick={() => { dispatch(undoLastChange()); setContextMenu(null); }} color="text-amber-400" />
-                            <div className="h-[1px] bg-white/5 my-1" />
-                            <ContextMenuItem icon={<Trash2 size={12} />} label="Delete" onClick={handleDeleteFromContext} color="text-red-400" />
-                        </>
-                    )}
-                </div>
-            )}
-        </div>
+            {
+                contextMenu && (
+                    <div
+                        className="fixed z-[500] min-w-[200px] bg-[#1a1b20] border border-white/10 shadow-2xl rounded-lg py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                        style={{ left: Math.min(contextMenu.x, window.innerWidth - 210), top: Math.min(contextMenu.y, window.innerHeight - 200) }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {contextMenu.target === 'folder' ? (
+                            /* Folder context menu */
+                            <>
+                                <div className="px-2 py-1.5 text-[9px] text-vscode-muted/50 uppercase tracking-widest font-bold border-b border-white/5 mb-1">
+                                    {projectPath?.split(/[/\\]/).pop()} / contracts
+                                </div>
+                                <ContextMenuItem
+                                    icon={<FilePlus size={12} />}
+                                    label={`New ${projectLanguage === 'solidity' ? 'Solidity Contract' : 'Quorlin Script'}`}
+                                    shortcut={projectLanguage === 'solidity' ? '.sol' : '.ql'}
+                                    onClick={handleCreateNewFileFromContext}
+                                    color="text-indigo-400"
+                                />
+                                <div className="h-[1px] bg-white/5 my-1" />
+                                <ContextMenuItem icon={<FolderPlus size={12} />} label="New Sub-Folder" onClick={() => setContextMenu(null)} color="text-vscode-muted" />
+                            </>
+                        ) : (
+                            /* File context menu */
+                            <>
+                                <div className="px-2 py-1.5 text-[9px] text-vscode-muted/50 uppercase tracking-widest font-bold border-b border-white/5 mb-1 truncate">
+                                    {files.find(f => f.id === contextMenu.fileId)?.name}
+                                </div>
+                                <ContextMenuItem icon={<Play size={12} />} label="Open" onClick={() => { if (contextMenu.fileId) { dispatch(setActiveFile(contextMenu.fileId)); setContextMenu(null); } }} color="text-white" />
+                                <ContextMenuItem icon={<Edit3 size={12} />} label="Rename" onClick={handleStartRename} color="text-vscode-muted" />
+                                <ContextMenuItem icon={<RotateCcw size={12} />} label="Undo Last Change" onClick={() => { dispatch(undoLastChange()); setContextMenu(null); }} color="text-amber-400" />
+                                <div className="h-[1px] bg-white/5 my-1" />
+                                <ContextMenuItem icon={<Trash2 size={12} />} label="Delete" onClick={handleDeleteFromContext} color="text-red-400" />
+                            </>
+                        )}
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
@@ -1147,6 +1155,27 @@ const ContextMenuItem: React.FC<{
             <span>{label}</span>
         </div>
         {shortcut && <span className="text-[9px] opacity-40 ml-4">{shortcut}</span>}
+    </div>
+);
+
+const SidebarIcon: React.FC<{
+    icon: React.ReactNode;
+    active: boolean;
+    onClick: () => void;
+    title?: string;
+}> = ({ icon, active, onClick, title }) => (
+    <div
+        title={title}
+        className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center cursor-pointer transition-all relative group ${active ? 'text-white' : 'text-vscode-muted hover:text-white'}`}
+        onClick={onClick}
+    >
+        {active && <div className="absolute left-0 w-1 h-6 bg-indigo-500 rounded-r shadow-[0_0_10px_rgba(99,102,241,0.5)]" />}
+        {icon}
+        {!active && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-[#1a1b20] text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[1000] border border-white/10 pointer-events-none shadow-2xl">
+                {title}
+            </div>
+        )}
     </div>
 );
 

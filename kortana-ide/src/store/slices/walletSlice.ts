@@ -41,6 +41,9 @@ export const connectWallet = createAsyncThunk(
             const address = await service.connectWallet(type);
             return { address, type };
         } catch (err: any) {
+            if (err.message === 'CONNECTION_CANCELLED') {
+                return rejectWithValue('CANCELLED');
+            }
             return rejectWithValue(err.message || `Failed to connect ${type} wallet`);
         }
     }
