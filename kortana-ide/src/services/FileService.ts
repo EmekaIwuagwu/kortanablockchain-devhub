@@ -69,15 +69,15 @@ export class FileService {
     }
 
     /**
-     * Set the active wallet address. This MUST be called after wallet connection.
+     * Set the active wallet address. Called immediately after wallet connection.
      * Loads the workspace for that address from localStorage.
      * Returns the last project path for that address, or null.
      */
     public setAddress(address: string): string | null {
         this.currentAddress = address.toLowerCase();
         if (this.isWeb) {
-            // Migrate old legacy anonymous data if present
-            this._migrateLegacyData();
+            // Always purge old non-address-scoped keys — no migration, clean slate only
+            this._purgeLegacyKeys();
             this.loadFromStorage();
         }
         return localStorage.getItem(this.key('last_project'));
@@ -213,29 +213,30 @@ export class FileService {
         }
     }
 
-    /** @internal — one-time migration of old non-address-scoped data */
-    private _migrateLegacyData() {
-        const legacyFiles = localStorage.getItem('kortana_ide_files');
-        const legacyDirs = localStorage.getItem('kortana_ide_dirs');
-        const legacyProject = localStorage.getItem('kortana_ide_last_project');
+    /**
+     * @internal — Purge all legacy non-address-scoped localStorage keys.
+     * NO migration — old data is deleted cleanly. Every user starts fresh
+     * with their wallet address as their identity.
+     */
+    private _purgeLegacyKeys() {
+        const LEGACY_KEYS = [
+            'kortana_ide_files',
+            'kortana_ide_dirs',
+            'kortana_ide_last_project',
+            // Also remove address-anonymous workspace root that was created before
+            'kortana-workspace',
+        ];
+        LEGACY_KEYS.forEach(k => localStorage.removeItem(k));
 
-        // Only migrate if there IS legacy data AND the current address has NO data yet
-        const alreadyHasData = localStorage.getItem(this.key('files'));
-        if ((legacyFiles || legacyProject) && !alreadyHasData) {
-            if (legacyProject && legacyProject !== 'web-project-root') {
-                localStorage.setItem(this.key('last_project'), legacyProject);
-            }
-            if (legacyFiles) {
-                localStorage.setItem(this.key('files'), legacyFiles);
-            }
-            if (legacyDirs) {
-                localStorage.setItem(this.key('dirs'), legacyDirs);
-            }
+        // Also scan and remove any keys that reference the old 'web-project-root' workspace
+        const lastProject = localStorage.getItem(this.key('last_project'));
+        if (lastProject && (
+            lastProject.startsWith('web-project-root') ||
+            lastProject.startsWith('kortana-workspace')
+        )) {
+            localStorage.removeItem(this.key('last_project'));
+            localStorage.removeItem(this.key('files'));
+            localStorage.removeItem(this.key('dirs'));
         }
-
-        // Always clean up legacy keys
-        localStorage.removeItem('kortana_ide_files');
-        localStorage.removeItem('kortana_ide_dirs');
-        localStorage.removeItem('kortana_ide_last_project');
     }
 }

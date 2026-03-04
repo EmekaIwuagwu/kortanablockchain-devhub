@@ -300,81 +300,123 @@ const App: React.FC = () => {
     // WALLET LANDING PAGE — shown when no wallet is connected
     // This is the "front door" of the IDE. The user MUST connect to access it.
     // ─────────────────────────────────────────────────────────────────────────
+    if (isLoading) return <SplashScreen />;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // WALLET LANDING PAGE — Beautiful premium entry point
+    // ─────────────────────────────────────────────────────────────────────────
     if (!isConnected) {
         return (
-            <div className="h-screen w-screen bg-[#060709] flex flex-col items-center justify-center overflow-hidden relative font-sans">
-                {/* Ambient glow background */}
+            <div className="h-screen w-screen bg-[#020408] flex flex-col items-center justify-center overflow-hidden relative font-sans">
+                {/* Visual Elements: Animated backgrounds and gradients */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-1/4 left-1/3 w-[600px] h-[600px] rounded-full bg-indigo-600/10 blur-[120px]" />
-                    <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-violet-600/10 blur-[100px]" />
-                    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+                    <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse" />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] contrast-150" />
                 </div>
 
-                {/* Animated grid lines */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.03)_1px,transparent_1px)] bg-[size:60px_60px] pointer-events-none" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col items-center space-y-10 max-w-md w-full px-8">
-                    {/* Logo */}
-                    <div className="flex flex-col items-center space-y-4">
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-                            <Zap size={40} className="text-white" />
+                <div className="relative z-10 flex flex-col items-center max-w-lg w-full px-10">
+                    {/* Main Branding */}
+                    <div className="flex flex-col items-center mb-12 animate-in fade-in zoom-in duration-1000">
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse" />
+                            <img
+                                src="/logo.png"
+                                alt="Kortana Logo"
+                                className="w-24 h-24 relative z-10 drop-shadow-[0_0_25px_rgba(79,70,229,0.4)]"
+                            />
                         </div>
                         <div className="text-center">
-                            <h1 className="text-3xl font-black text-white tracking-tight">Kortana Studio</h1>
-                            <p className="text-[13px] text-indigo-300/70 mt-1 uppercase tracking-[0.3em] font-medium">Blockchain IDE</p>
+                            <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
+                                Kortana Studio
+                            </h1>
+                            <div className="flex items-center justify-center space-x-2">
+                                <span className="h-px w-8 bg-indigo-500/50" />
+                                <p className="text-[12px] text-indigo-400 uppercase tracking-[0.4em] font-bold">The Next Generation IDE</p>
+                                <span className="h-px w-8 bg-indigo-500/50" />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Tagline */}
-                    <div className="text-center space-y-2">
-                        <p className="text-[15px] text-white/60 leading-relaxed">
-                            Your workspace is tied to your wallet.<br />
-                            Connect to access your projects and pick up where you left off.
-                        </p>
-                    </div>
+                    {/* Content Section */}
+                    <div className="w-full bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[32px] p-8 shadow-2xl space-y-8 animate-in slide-in-from-bottom-8 duration-700 delay-200">
+                        <div className="text-center space-y-2">
+                            <h2 className="text-xl font-semibold text-white/90">Welcome back</h2>
+                            <p className="text-sm text-white/50 leading-relaxed px-4">
+                                Connect your wallet to access your private workspace and resume your blockchain projects.
+                            </p>
+                        </div>
 
-                    {/* Wallet Buttons */}
-                    <div className="w-full space-y-3">
-                        <button
-                            onClick={() => dispatch(connectWallet('metamask'))}
-                            disabled={isConnecting}
-                            className="w-full py-4 rounded-xl font-bold text-[14px] flex items-center justify-center space-x-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-orange-500/20 disabled:opacity-50"
-                        >
-                            {isConnecting ? <Loader2 size={18} className="animate-spin" /> : <span className="text-xl">🦊</span>}
-                            <span>{isConnecting ? 'Waiting for approval...' : 'Connect with MetaMask'}</span>
-                        </button>
+                        <div className="grid gap-4">
+                            {/* Kortana Wallet - Primary Action */}
+                            <button
+                                onClick={() => dispatch(connectWallet('kortana'))}
+                                disabled={isConnecting}
+                                className="group relative w-full h-[64px] rounded-2xl overflow-hidden transition-all active:scale-[0.98] disabled:opacity-70"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-indigo-700 group-hover:from-indigo-500 group-hover:to-indigo-600 transition-all" />
+                                <div className="relative flex items-center justify-center space-x-4 text-white">
+                                    {isConnecting ? (
+                                        <Loader2 size={20} className="animate-spin" />
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                                            <Zap size={18} fill="currentColor" />
+                                        </div>
+                                    )}
+                                    <span className="text-[15px] font-bold tracking-wide">Connect Kortana Wallet</span>
+                                </div>
+                            </button>
 
-                        <button
-                            onClick={() => dispatch(connectWallet('kortana'))}
-                            disabled={isConnecting}
-                            className="w-full py-4 rounded-xl font-bold text-[14px] flex items-center justify-center space-x-3 bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50"
-                        >
-                            {isConnecting ? <Loader2 size={18} className="animate-spin" /> : <span className="text-xl">⚡</span>}
-                            <span>{isConnecting ? 'Waiting for approval...' : 'Connect with Kortana Wallet'}</span>
-                        </button>
+                            {/* MetaMask - Secondary Action */}
+                            <button
+                                onClick={() => dispatch(connectWallet('metamask'))}
+                                disabled={isConnecting}
+                                className="w-full h-[64px] rounded-2xl bg-white/[0.05] border border-white/[0.1] hover:bg-white/[0.1] transition-all flex items-center justify-center space-x-4 text-white/80 active:scale-[0.98] disabled:opacity-70"
+                            >
+                                {isConnecting ? (
+                                    <Loader2 size={20} className="animate-spin" />
+                                ) : (
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Alpha_color.svg" className="w-6 h-6" alt="MetaMask" />
+                                )}
+                                <span className="text-[15px] font-bold tracking-wide">Continue with MetaMask</span>
+                            </button>
+                        </div>
 
-                        {/* Private Key fallback */}
-                        <div className="pt-1">
+                        {/* Private Key Divider */}
+                        <div className="relative py-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-white/[0.06]"></div>
+                            </div>
+                            <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em] font-bold text-white/20 bg-transparent px-4">
+                                or use specialized access
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
                             <button
                                 onClick={() => setShowPKInput(!showPKInput)}
-                                className="w-full text-center text-[11px] text-white/30 hover:text-white/60 transition-colors py-1"
+                                className="w-full py-2 text-[11px] font-bold text-white/30 hover:text-white/60 transition-all flex items-center justify-center space-x-2"
                             >
-                                {showPKInput ? '— Hide —' : '🔑 Use Private Key instead'}
+                                <Settings size={12} />
+                                <span>{showPKInput ? 'CANCEL ACCESS' : 'CONNECT WITH PRIVATE KEY'}</span>
                             </button>
+
                             {showPKInput && (
-                                <div className="mt-2 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                                <div className="space-y-3 animate-in slide-in-from-top-4 duration-300">
                                     <input
                                         type="password"
-                                        placeholder="Private Key (0x...)"
+                                        placeholder="Enter your private key (0x...)"
                                         value={privateKeyInput}
                                         onChange={e => setPrivateKeyInput(e.target.value)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[12px] text-white focus:outline-none focus:border-indigo-500/50 placeholder:text-white/20"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[13px] text-white focus:outline-none focus:border-indigo-500/50 placeholder:text-white/20 transition-all font-mono"
                                     />
                                     <button
                                         onClick={() => { if (privateKeyInput) dispatch(connectWithPrivateKey(privateKeyInput)); }}
-                                        className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-lg text-[12px] font-bold text-white transition-all"
+                                        className="w-full py-3 bg-white text-black rounded-xl text-[13px] font-black hover:bg-white/90 transition-all"
                                     >
-                                        Access with Key
+                                        VERIFY & ACCESS
                                     </button>
                                 </div>
                             )}
@@ -382,15 +424,19 @@ const App: React.FC = () => {
                     </div>
 
                     {walletError && (
-                        <div className="w-full p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start space-x-2 text-[11px] text-red-400">
-                            <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                            <span>{walletError}</span>
+                        <div className="mt-6 w-full p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start space-x-3 text-[12px] text-red-400 animate-in shake duration-500">
+                            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                            <p className="font-medium">{walletError}</p>
                         </div>
                     )}
 
-                    {/* Footer */}
-                    <div className="text-[10px] text-white/15 text-center uppercase tracking-widest">
-                        Powered by Kortana Protocol • Mainnet & Testnet
+                    {/* Bottom Status */}
+                    <div className="mt-12 flex flex-col items-center space-y-4">
+                        <div className="px-4 py-1.5 rounded-full border border-white/5 bg-white/[0.02] flex items-center space-x-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+                            <span className="text-[10px] text-white/40 uppercase tracking-widest font-black">Mainnet & Testnet Active</span>
+                        </div>
+                        <p className="text-[10px] text-white/20 tracking-widest">© 2026 KORTANA PROTOCOL FOUNDATION</p>
                     </div>
                 </div>
             </div>
