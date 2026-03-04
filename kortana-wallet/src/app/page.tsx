@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/Dashboard';
 import { SignRequest } from '@/components/views/SignRequest';
 import { TransactionRequest } from '@/components/views/TransactionRequest';
 import { useEffect, useState } from 'react';
+import { MotionConfig } from 'framer-motion';
 
 export default function Home() {
   const { mnemonic, address, isLocked, _hasHydrated } = useWalletStore();
@@ -24,39 +25,47 @@ export default function Home() {
     }
   }, [_hasHydrated]);
 
-  // Show spinner while async chromeStorage is being read
   if (!_hasHydrated) {
     return (
       <div style={{
-        width: '100%',
-        height: '100vh',
-        background: '#0a0e27',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        width: '100%', height: '100vh', background: '#0a0e27',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <div style={{
-          width: 32,
-          height: 32,
+          width: 32, height: 32,
           border: '2px solid rgba(6,182,212,0.2)',
           borderTop: '2px solid #06b6d4',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        {/* eslint-disable-next-line react/no-danger */}
+        <style dangerouslySetInnerHTML={{ __html: '@keyframes spin{to{transform:rotate(360deg)}}' }} />
       </div>
     );
   }
 
   if (pendingTxRequest) {
-    return <TransactionRequest onDismiss={() => setPendingTxRequest(false)} />;
+    return (
+      <MotionConfig reducedMotion="never">
+        <TransactionRequest onDismiss={() => setPendingTxRequest(false)} />
+      </MotionConfig>
+    );
   }
 
   if (pendingSignRequest) {
-    return <SignRequest onDismiss={() => setPendingSignRequest(false)} />;
+    return (
+      <MotionConfig reducedMotion="never">
+        <SignRequest onDismiss={() => setPendingSignRequest(false)} />
+      </MotionConfig>
+    );
   }
 
-  return address && mnemonic && !isLocked
-    ? <Dashboard />
-    : <Onboarding />;
+  return (
+    // MotionConfig with reducedMotion="never" forces framer-motion to always
+    // complete animations to their final state even in Chrome extension context
+    // where animation timing may behave differently from a regular browser tab.
+    <MotionConfig reducedMotion="never">
+      {address && mnemonic && !isLocked ? <Dashboard /> : <Onboarding />}
+    </MotionConfig>
+  );
 }
