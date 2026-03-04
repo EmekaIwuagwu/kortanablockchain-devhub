@@ -22,6 +22,7 @@ import {
     Rocket,
     Zap,
     Search,
+    ArrowRight,
 } from 'lucide-react';
 import { RootState, AppDispatch } from './store';
 import {
