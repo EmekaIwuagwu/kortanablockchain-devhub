@@ -1,34 +1,19 @@
 /**
  * Kortana Wallet - Background Service Worker
- * Restored to full functional state.
+ * Professional Edition - Robust Request Handling & Auto-Popup
  */
 
 const NETWORKS = {
-    mainnet: {
-        rpc: 'https://zeus-rpc.mainnet.kortana.xyz',
-        chainId: 7251
-    },
-    testnet: {
-        rpc: 'https://poseidon-rpc.testnet.kortana.xyz/',
-        chainId: 72511
-    },
-    sepolia: {
-        rpc: 'https://rpc.ankr.com/eth_sepolia',
-        chainId: 11155111
-    },
-    avalancheFuji: {
-        rpc: 'https://api.avax-test.network/ext/bc/C/rpc',
-        chainId: 43113
-    },
-    baseSepolia: {
-        rpc: 'https://sepolia.base.org',
-        chainId: 84532
-    }
+    mainnet: { rpc: 'https://zeus-rpc.mainnet.kortana.xyz', chainId: 7251 },
+    testnet: { rpc: 'https://poseidon-rpc.testnet.kortana.xyz/', chainId: 72511 },
+    sepolia: { rpc: 'https://rpc.ankr.com/eth_sepolia', chainId: 11155111 },
+    avalancheFuji: { rpc: 'https://api.avax-test.network/ext/bc/C/rpc', chainId: 43113 },
+    baseSepolia: { rpc: 'https://sepolia.base.org', chainId: 84532 }
 };
-
 
 let currentNetwork = 'testnet';
 
+// Listen for messages from the inpage provider (via content script)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.source !== 'kortana-inpage') return;
     handleRequest(request).then(sendResponse).catch((err) => {
@@ -37,6 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
+// Helper to get the persisted state from local storage
 async function getStoredState() {
     const data = await chrome.storage.local.get('kortana-wallet-secure-storage');
     if (data['kortana-wallet-secure-storage']) {
@@ -50,6 +36,7 @@ async function getStoredState() {
     return {};
 }
 
+// Open the wallet popup securely with fixed dimensions
 async function openPopup() {
     const popupUrl = chrome.runtime.getURL('index.html');
     try {
@@ -72,9 +59,8 @@ async function openPopup() {
     });
 }
 
-// Enforce size on resize attempt
+// Relentless window size enforcement to prevent maximization/resizing
 chrome.windows.onBoundsChanged.addListener((win) => {
-    // Only target our popup windows
     chrome.windows.get(win.id, { populate: true }, (fullWin) => {
         if (fullWin.type === 'popup' && fullWin.tabs?.[0]?.url?.includes(chrome.runtime.id)) {
             if (fullWin.width !== 420 || fullWin.height !== 620 || fullWin.state !== 'normal') {
@@ -84,7 +70,20 @@ chrome.windows.onBoundsChanged.addListener((win) => {
     });
 });
 
+// Polling helper for when a DApp is waiting for the user to unlock the wallet
+async function waitForAccountAccess(timeoutMs = 120000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+        await new Promise(r => setTimeout(r, 1000));
+        const state = await getStoredState();
+        if (state.address && state.isLocked === false) {
+            return { result: [state.address] };
+        }
+    }
+    return { error: { code: 4001, message: 'Login request timed out. Please unlock the wallet.' } };
+}
 
+// Polling helper for signatures
 async function waitForSignature(timeoutMs = 120000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -104,6 +103,7 @@ async function waitForSignature(timeoutMs = 120000) {
     return { error: { code: 4001, message: 'Sign request timed out.' } };
 }
 
+// Polling helper for transactions
 async function waitForTransaction(timeoutMs = 120000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -123,7 +123,7 @@ async function waitForTransaction(timeoutMs = 120000) {
     return { error: { code: 4001, message: 'Transaction request timed out.' } };
 }
 
-
+// Main RPC request handler
 async function handleRequest(request) {
     const { method, params } = request;
     const state = await getStoredState();
@@ -139,13 +139,10 @@ async function handleRequest(request) {
             return { result: [address] };
 
         case 'eth_requestAccounts':
+            // If locked, open the wallet and WAIT for the user to unlock
             if (isLocked || !address) {
-                return {
-                    error: {
-                        code: 4100,
-                        message: 'Kortana Wallet is locked. Please open and unlock it first.'
-                    }
-                };
+                await openPopup();
+                return await waitForAccountAccess(180000); // 3 minute window to unlock
             }
             return { result: [address] };
 
@@ -158,7 +155,10 @@ async function handleRequest(request) {
         case 'personal_sign':
         case 'eth_sign': {
             if (isLocked || !address) {
-                return { error: { code: 4100, message: 'Wallet is locked. Please unlock it first.' } };
+                await openPopup();
+                // Wait for unlock first, then proceed with the sign request logic
+                const access = await waitForAccountAccess(60000);
+                if (access.error) return access;
             }
 
             const message = params[0];
@@ -175,13 +175,13 @@ async function handleRequest(request) {
 
         case 'eth_sendTransaction': {
             if (isLocked || !address) {
-                return { error: { code: 4100, message: 'Wallet is locked. Please open and unlock it first.' } };
+                await openPopup();
+                const access = await waitForAccountAccess(60000);
+                if (access.error) return access;
             }
 
             const txParams = params?.[0];
-            if (!txParams) {
-                return { error: { code: -32602, message: 'Missing transaction parameters.' } };
-            }
+            if (!txParams) return { error: { code: -32602, message: 'Missing transaction parameters.' } };
 
             const reqId = Date.now().toString();
 
