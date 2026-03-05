@@ -1,13 +1,12 @@
 /**
- * Kortana Wallet — Chrome Extension Build Script (v3)
- *
- * Fixes applied after `next build`:
- *  1. Rename _next/ → next/ (Chrome blocks underscore-prefixed dirs)
- *  2. Patch absolute /next/ paths → relative ./next/ paths in all files
- *  3. Extract inline <script> blocks to .js files (MV3 CSP)
- *  4. Patch Turbopack's getAssetPrefix() — uses document.currentScript
- *     which is NULL for async scripts in extensions → blank popup
- *  5. Inject popup sizing CSS (420×600) and base-URL script into index.html
+ * Kortana Wallet — Chrome Extension Build Script (v4)
+ * 
+ * Aggressive fixes for blank popups:
+ *  1. Rename _next/ → next/
+ *  2. STRIP async="" from all scripts (fixes execution order issues)
+ *  3. Patch paths to be relative
+ *  4. Extract inline scripts (CSP)
+ *  5. Patch Turbopack runtime
  */
 
 'use strict';
@@ -32,9 +31,7 @@ console.log('✓ Build done.\n');
 
 // ── STEP 2: rename _next → next ───────────────────────────────────────────────
 console.log('[2/5] Renaming underscore dirs ...');
-
 function renameDirs(dir) {
-    // recurse depth-first so children are processed before parents
     for (const item of fs.readdirSync(dir)) {
         const full = path.join(dir, item);
         if (fs.statSync(full).isDirectory()) renameDirs(full);
@@ -52,20 +49,17 @@ function renameDirs(dir) {
 renameDirs(outDir);
 console.log('✓ Rename done.\n');
 
-// ── STEP 3: absolute-path fix ─────────────────────────────────────────────────
-console.log('[3/5] Patching absolute paths ...');
-
+// ── STEP 3: path patching & async removal ─────────────────────────────────────
+console.log('[3/5] Patching paths & removing async ...');
 walkFiles(outDir, (file) => {
     if (!/\.(html|js|css|txt|json)$/.test(file)) return;
+    let raw = fs.readFileSync(file, 'utf8');
 
-    const raw = fs.readFileSync(file, 'utf8');
-
-    // depth from outDir → determines how many "../" to prepend
     const rel = path.relative(outDir, path.dirname(file));
     const depth = rel === '' ? 0 : rel.split(path.sep).length;
     const p = depth === 0 ? './' : '../'.repeat(depth);
 
-    const fixed = raw
+    let fixed = raw
         .replace(/(href|src)="\/next\//g, `$1="${p}next/`)
         .replace(/(href|src)="\/_next\//g, `$1="${p}next/`)
         .replace(/url\(\/next\//g, `url(${p}next/`)
@@ -74,19 +68,23 @@ walkFiles(outDir, (file) => {
         .replace(/\/_not-found/g, `${p}not-found`)
         .replace(/"\/next\//g, `"${p}next/`);
 
+    // STRIP async from script tags in HTML
+    if (file.endsWith('.html')) {
+        fixed = fixed.replace(/<script([^>]*)\sasync=""([^>]*)>/gi, '<script$1$2>');
+        fixed = fixed.replace(/<script([^>]*)\sasync([^>]*)>/gi, '<script$1$2>');
+    }
+
     if (fixed !== raw) {
         fs.writeFileSync(file, fixed, 'utf8');
-        console.log(`  ${path.relative(outDir, file)}`);
+        console.log(`  ✓ ${path.relative(outDir, file)}`);
     }
 });
-console.log('✓ Path patching done.\n');
+console.log('✓ Path patching & async removal done.\n');
 
 // ── STEP 4: extract inline scripts ────────────────────────────────────────────
 console.log('[4/5] Extracting inline scripts ...');
-
 walkFiles(outDir, (file) => {
     if (!file.endsWith('.html')) return;
-
     const raw = fs.readFileSync(file, 'utf8');
     const dir = path.dirname(file);
     const base = path.basename(file, '.html');
@@ -104,51 +102,28 @@ walkFiles(outDir, (file) => {
 
     if (out !== raw) {
         fs.writeFileSync(file, out, 'utf8');
-        console.log(`  ${path.relative(outDir, file)} (${n} scripts)`);
+        console.log(`  ✓ ${path.relative(outDir, file)} (${n} scripts extracted)`);
     }
 });
 console.log('✓ CSP extraction done.\n');
 
-// ── STEP 5: patch Turbopack runtime + inject sizing ───────────────────────────
+// ── STEP 5: patch runtime & inject sizing ─────────────────────────────────────
 console.log('[5/5] Patching runtime & injecting popup sizing ...');
-
-/*
- * THE ROOT CAUSE OF THE BLANK POPUP:
- *
- * Turbopack generates a function like this in ff523c3d*.js:
- *
- *   function l() {
- *     let e = document.currentScript;   // ← NULL for async="" scripts!
- *     …
- *     let n = t.indexOf("/_next/");
- *     return t.slice(0, n);            // n=-1 → returns "" → wrong base
- *   }
- *
- * When getAssetPrefix() returns "" every dynamic chunk load resolves to
- * the wrong URL and React never mounts → black popup.
- *
- * We find the function using a brace-counting parser (works regardless of
- * what inner strings the minifier produces) and replace it.
- */
 const PATCHED_FN =
     'function l(){' +
     'if(typeof chrome!=="undefined"&&chrome.runtime&&chrome.runtime.getURL){' +
     'return chrome.runtime.getURL("/")}' +
     'var sc=document.currentScript;' +
     'if(!sc||!sc.src){return window.__EXT_BASE__||"./"}' +
-    'var u=new URL(sc.src);var i=u.pathname.indexOf("/next/");' +
+    'var u=new URL(sc.src);var i=u.pathname.indexOf("/next/");if(i===-1)i=u.pathname.indexOf("/_next/");' +
     'if(i===-1){i=u.pathname.lastIndexOf("/")+1}' +
     'return u.origin+u.pathname.slice(0,i)}';
 
-let patchedFiles = 0;
-
 walkFiles(outDir, (file) => {
     if (!file.endsWith('.js')) return;
-
     let src = fs.readFileSync(file, 'utf8');
     const orig = src;
 
-    // ── patch getAssetPrefix (brace-count method — works on any minification) ──
     const NEEDLE = 'function l(){let e=document.currentScript';
     const start = src.indexOf(NEEDLE);
     if (start !== -1) {
@@ -164,67 +139,29 @@ walkFiles(outDir, (file) => {
         }
     }
 
-    // ── patch the Turbopack chunk-base variable ──
-    // Matches:  let t="../../../next/"
-    src = src.replace(
-        /\blet t="\.\.\/\.\.\/\.\.\/next\/"/g,
-        `let t=(typeof chrome!=="undefined"&&chrome.runtime&&chrome.runtime.getURL)?chrome.runtime.getURL("next/"):"./next/"`
-    );
+    src = src.replace(/\blet t="\.\.\/\.\.\/\.\.\/next\/"/g,
+        `let t=(typeof chrome!=="undefined"&&chrome.runtime&&chrome.runtime.getURL)?chrome.runtime.getURL("next/"):"./next/"`);
 
-    // ── patch throw-guards ──
-    src = src
-        .replace(/if\(-1===([A-Za-z0-9_$]+)\.indexOf\("(?:\.\/|\/)?next\/"\)\)/g, 'if(false)')
-        .replace(/if\(-1===([A-Za-z0-9_$]+)\)throw/g, 'if(false&&-1===$1)throw');
-
-    if (src !== orig) {
-        fs.writeFileSync(file, src, 'utf8');
-        patchedFiles++;
-    }
+    if (src !== orig) fs.writeFileSync(file, src, 'utf8');
 });
 
-// ── inject popup sizing + base-URL script into index.html ──
-// IMPORTANT: Chrome MV3 CSP blocks ALL inline <script> content.
-// The base-URL helper must be a separate .js file referenced via src=.
 const indexHtml = path.join(outDir, 'index.html');
 if (fs.existsSync(indexHtml)) {
     let html = fs.readFileSync(indexHtml, 'utf8');
+    const extBaseJs = path.join(outDir, 'ext-base.js');
+    fs.writeFileSync(extBaseJs, 'if(typeof chrome!=="undefined"&&chrome.runtime&&chrome.runtime.getURL){window.__EXT_BASE__=chrome.runtime.getURL("/");}');
+
+    const inject = '<style id="ext-sizing">html,body{width:420px;height:600px;overflow:hidden;margin:0;padding:0;background:#0a0e27!important}</style>' +
+        '<script src="./ext-base.js"></script>';
 
     if (!html.includes('id="ext-sizing"')) {
-        // Write the chrome.runtime base helper as a standalone JS file
-        const extBaseJs = path.join(outDir, 'ext-base.js');
-        fs.writeFileSync(extBaseJs,
-            '// Chrome Extension base URL helper\n' +
-            'if(typeof chrome!=="undefined"&&chrome.runtime&&chrome.runtime.getURL){\n' +
-            '  window.__EXT_BASE__=chrome.runtime.getURL("/");\n' +
-            '}\n',
-            'utf8'
-        );
-        console.log('  ✓ Wrote ext-base.js');
-
-        // Only constrain html/body — let the app's own layout fill that space
-        // Do NOT constrain inner elements like main/div — that clips the wallet UI
-        const inject =
-            '<style id="ext-sizing">' +
-            'html,body{' +
-            'width:420px!important;min-width:420px!important;max-width:420px!important;' +
-            'height:600px!important;min-height:600px!important;max-height:600px!important;' +
-            'overflow:hidden!important;' +
-            'margin:0!important;padding:0!important;' +
-            'background:#0a0e27!important' +
-            '}' +
-            '</style>' +
-            '<script src="./ext-base.js"></script>';
-
         html = html.replace('<head>', '<head>' + inject);
         fs.writeFileSync(indexHtml, html, 'utf8');
-        console.log('  ✓ Popup sizing + ext-base.js injected into index.html');
+        console.log('  ✓ Injected sizing & ext-base.js');
     }
 }
 
-console.log(`✓ Done (${patchedFiles} JS files patched).\n`);
 console.log('═══════════════════════════════════════════════════');
 console.log('  Extension build complete!');
-console.log('  Load the "out/" folder in chrome://extensions/');
-console.log('  Popup: 420 × 600 px');
+console.log('  Reload the extension and try again.');
 console.log('═══════════════════════════════════════════════════\n');
-
