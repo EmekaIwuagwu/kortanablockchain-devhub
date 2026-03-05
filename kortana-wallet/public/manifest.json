@@ -4,6 +4,7 @@
     "version": "1.0.0",
     "description": "Premium EVM Blockchain Wallet",
     "action": {
+        "default_popup": "index.html",
         "default_icon": {
             "16": "images/logo.png",
             "48": "images/logo.png",

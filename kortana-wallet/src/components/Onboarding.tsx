@@ -122,10 +122,13 @@ export const Onboarding: React.FC = () => {
     };
 
     return (
-        <div className="h-screen flex items-start justify-center pt-10 p-4 relative bg-deep-space overflow-hidden">
-            <div className="grainy-overlay" />
-            <div className="nebula-purple absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-30 select-none pointer-events-none" />
-            <div className="nebula-cyan absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-20 select-none pointer-events-none" />
+        <div className="grid place-items-center h-screen w-full bg-deep-space overflow-hidden relative p-4">
+            {/* Cinematic Backgrounds */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] nebula-purple opacity-40 animate-pulse" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] nebula-cyan opacity-30 animate-pulse" />
+                <div className="grainy-overlay" />
+            </div>
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -134,12 +137,11 @@ export const Onboarding: React.FC = () => {
                     transition: { duration: 0.4 }
                 } : { opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
-                className="w-full max-w-sm sm:max-w-md glass-panel p-5 sm:p-8 md:p-10 rounded-2xl md:rounded-[2.5rem] relative z-10"
+                className="w-full max-w-sm glass-panel p-8 rounded-[2.5rem] relative z-10 border-white/10 shadow-2xl"
             >
-
                 <AnimatePresence mode="wait">
 
-                    {/* LOGIN */}
+
                     {step === 'login' && (
                         <motion.div key="login" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="space-y-6 md:space-y-8">
                             <div className="flex flex-col items-center text-center space-y-3 md:space-y-4">
@@ -317,6 +319,6 @@ export const Onboarding: React.FC = () => {
 
                 </AnimatePresence>
             </motion.div>
-        </div>
+        </div >
     );
 };

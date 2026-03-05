@@ -101,15 +101,17 @@ export const Dashboard: React.FC = () => {
     const isSubView = ['compliance', 'esg', 'stable', 'risk', 'subnet', 'transact', 'receive', 'history', 'settings'].includes(activeTab);
 
     return (
-        <div className="flex h-screen bg-deep-space text-white overflow-hidden relative font-sans">
-            <div className="grainy-overlay" />
+        <div className="flex h-screen w-full bg-deep-space text-white overflow-hidden relative font-sans justify-center items-center">
+            {/* Cinematic Backgrounds */}
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] nebula-purple opacity-30 animate-pulse" />
+                <div className="absolute bottom-[-20%] left-[-20%] w-[500px] h-[500px] nebula-cyan opacity-20 animate-pulse" />
+                <div className="grainy-overlay" />
+            </div>
 
-            {/* Background Nebulas */}
-            <div className="nebula-purple absolute top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full opacity-30 select-none pointer-events-none" />
-            <div className="nebula-cyan absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full opacity-20 select-none pointer-events-none" />
+            {/* ===== DESKTOP SIDEBAR (FIXED TO LEFT) ===== */}
+            <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-16 lg:w-64 glass-panel border-r-0 rounded-none bg-deep-space/60 backdrop-blur-3xl px-2 lg:px-5 py-6 flex-col z-20 transition-all duration-300 shrink-0">
 
-            {/* ===== DESKTOP SIDEBAR ===== */}
-            <aside className="hidden md:flex w-16 lg:w-64 xl:w-72 glass-panel border-r-0 rounded-none bg-deep-space/60 backdrop-blur-3xl px-2 lg:px-5 py-6 flex-col z-20 transition-all duration-300 shrink-0">
                 {/* Logo */}
                 <div className="mb-8 flex items-center justify-center lg:justify-start gap-3 lg:px-2">
                     <img src="/images/logo.png" alt="K" className="w-8 h-8 lg:w-10 lg:h-10 object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0" />
@@ -221,7 +223,8 @@ export const Dashboard: React.FC = () => {
             </nav>
 
             {/* ===== MAIN CONTENT ===== */}
-            <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-6 px-3 sm:px-4 md:px-8 lg:px-12 py-4 md:py-8 relative z-10 min-w-0">
+            <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-6 px-4 py-4 md:py-8 relative z-10 min-w-0 max-w-[440px] mx-auto w-full">
+
                 {/* Top Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-8 pt-2">
                     <div className="space-y-1 min-w-0">

@@ -1,91 +1,34 @@
 /**
- * Kortana Wallet - Background Service Worker v2
- * - Fixed window to 420x620 (non-resizable via bounds enforcement)
- * - Popup opens via chrome.windows.create instead of default action popup
+ * Kortana Wallet - Background Service Worker
+ * Restored to full functional state.
  */
 
-const POPUP_WIDTH = 420;
-const POPUP_HEIGHT = 620;
-
 const NETWORKS = {
-    mainnet: { rpc: 'https://zeus-rpc.mainnet.kortana.xyz', chainId: 7251 },
-    testnet: { rpc: 'https://poseidon-rpc.testnet.kortana.xyz/', chainId: 72511 },
-    sepolia: { rpc: 'https://rpc.ankr.com/eth_sepolia', chainId: 11155111 },
-    avalancheFuji: { rpc: 'https://api.avax-test.network/ext/bc/C/rpc', chainId: 43113 },
-    baseSepolia: { rpc: 'https://sepolia.base.org', chainId: 84532 }
+    mainnet: {
+        rpc: 'https://zeus-rpc.mainnet.kortana.xyz',
+        chainId: 7251
+    },
+    testnet: {
+        rpc: 'https://poseidon-rpc.testnet.kortana.xyz/',
+        chainId: 72511
+    },
+    sepolia: {
+        rpc: 'https://rpc.ankr.com/eth_sepolia',
+        chainId: 11155111
+    },
+    avalancheFuji: {
+        rpc: 'https://api.avax-test.network/ext/bc/C/rpc',
+        chainId: 43113
+    },
+    baseSepolia: {
+        rpc: 'https://sepolia.base.org',
+        chainId: 84532
+    }
 };
 
+
 let currentNetwork = 'testnet';
-let walletWindowId = null;
 
-// ── Open/Focus popup window ─────────────────────────────────────────────────
-async function openPopup() {
-    const popupUrl = chrome.runtime.getURL('index.html');
-
-    // If window already exists, focus it and snap size
-    if (walletWindowId !== null) {
-        try {
-            const win = await chrome.windows.get(walletWindowId);
-            if (win) {
-                await chrome.windows.update(walletWindowId, {
-                    focused: true,
-                    width: POPUP_WIDTH,
-                    height: POPUP_HEIGHT,
-                });
-                return;
-            }
-        } catch (e) {
-            walletWindowId = null;
-        }
-    }
-
-    // Try to find existing kortana popup by URL
-    try {
-        const windows = await chrome.windows.getAll({ populate: true });
-        const existing = windows.find(w =>
-            w.type === 'popup' && w.tabs?.some(t => t.url?.startsWith(popupUrl))
-        );
-        if (existing?.id) {
-            walletWindowId = existing.id;
-            await chrome.windows.update(existing.id, {
-                focused: true,
-                width: POPUP_WIDTH,
-                height: POPUP_HEIGHT,
-            });
-            return;
-        }
-    } catch (e) { /* ignore */ }
-
-    // Create a fresh locked-size popup
-    const win = await chrome.windows.create({
-        url: popupUrl,
-        type: 'popup',
-        width: POPUP_WIDTH,
-        height: POPUP_HEIGHT,
-        focused: true,
-    });
-    walletWindowId = win.id;
-}
-
-// ── Enforce fixed size whenever the user tries to resize ───────────────────
-chrome.windows.onBoundsChanged.addListener((win) => {
-    if (win.id !== walletWindowId) return;
-    if (win.width !== POPUP_WIDTH || win.height !== POPUP_HEIGHT) {
-        chrome.windows.update(win.id, { width: POPUP_WIDTH, height: POPUP_HEIGHT });
-    }
-});
-
-// Clean up window reference when the popup is closed
-chrome.windows.onRemoved.addListener((windowId) => {
-    if (windowId === walletWindowId) walletWindowId = null;
-});
-
-// ── Open wallet when the toolbar icon is clicked ───────────────────────────
-chrome.action.onClicked.addListener(() => {
-    openPopup();
-});
-
-// ── Message handler from content script ───────────────────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.source !== 'kortana-inpage') return;
     handleRequest(request).then(sendResponse).catch((err) => {
@@ -94,19 +37,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
-// ── Storage helpers ────────────────────────────────────────────────────────
 async function getStoredState() {
     const data = await chrome.storage.local.get('kortana-wallet-secure-storage');
     if (data['kortana-wallet-secure-storage']) {
         try {
             const parsed = JSON.parse(data['kortana-wallet-secure-storage']);
             return parsed.state || {};
-        } catch (e) { return {}; }
+        } catch (e) {
+            return {};
+        }
     }
     return {};
 }
 
-// ── Signature polling ──────────────────────────────────────────────────────
+async function openPopup() {
+    const popupUrl = chrome.runtime.getURL('index.html');
+    try {
+        const windows = await chrome.windows.getAll({ populate: true });
+        const existing = windows.find(w =>
+            w.type === 'popup' && w.tabs?.some(t => t.url?.startsWith(popupUrl))
+        );
+        if (existing && existing.id) {
+            await chrome.windows.update(existing.id, { focused: true, width: 420, height: 620 });
+            return;
+        }
+    } catch (e) { /* ignore */ }
+
+    await chrome.windows.create({
+        url: popupUrl,
+        type: 'popup',
+        width: 420,
+        height: 620,
+        focused: true
+    });
+}
+
+// Enforce size on resize attempt
+chrome.windows.onBoundsChanged.addListener((win) => {
+    // Only target our popup windows
+    chrome.windows.get(win.id, { populate: true }, (fullWin) => {
+        if (fullWin.type === 'popup' && fullWin.tabs?.[0]?.url?.includes(chrome.runtime.id)) {
+            if (fullWin.width !== 420 || fullWin.height !== 620 || fullWin.state !== 'normal') {
+                chrome.windows.update(win.id, { width: 420, height: 620, state: 'normal' });
+            }
+        }
+    });
+});
+
+
 async function waitForSignature(timeoutMs = 120000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -126,7 +104,6 @@ async function waitForSignature(timeoutMs = 120000) {
     return { error: { code: 4001, message: 'Sign request timed out.' } };
 }
 
-// ── Transaction polling ────────────────────────────────────────────────────
 async function waitForTransaction(timeoutMs = 120000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -146,7 +123,7 @@ async function waitForTransaction(timeoutMs = 120000) {
     return { error: { code: 4001, message: 'Transaction request timed out.' } };
 }
 
-// ── Request router ─────────────────────────────────────────────────────────
+
 async function handleRequest(request) {
     const { method, params } = request;
     const state = await getStoredState();
@@ -163,7 +140,12 @@ async function handleRequest(request) {
 
         case 'eth_requestAccounts':
             if (isLocked || !address) {
-                return { error: { code: 4100, message: 'Kortana Wallet is locked. Please open and unlock it first.' } };
+                return {
+                    error: {
+                        code: 4100,
+                        message: 'Kortana Wallet is locked. Please open and unlock it first.'
+                    }
+                };
             }
             return { result: [address] };
 
@@ -178,10 +160,15 @@ async function handleRequest(request) {
             if (isLocked || !address) {
                 return { error: { code: 4100, message: 'Wallet is locked. Please unlock it first.' } };
             }
+
             const message = params[0];
             const from = params[1] || address;
             const reqId = Date.now().toString();
-            await chrome.storage.session.set({ pendingSign: { message, from, reqId, status: 'pending' } });
+
+            await chrome.storage.session.set({
+                pendingSign: { message, from, reqId, status: 'pending' }
+            });
+
             await openPopup();
             return await waitForSignature(120000);
         }
@@ -190,12 +177,25 @@ async function handleRequest(request) {
             if (isLocked || !address) {
                 return { error: { code: 4100, message: 'Wallet is locked. Please open and unlock it first.' } };
             }
+
             const txParams = params?.[0];
-            if (!txParams) return { error: { code: -32602, message: 'Missing transaction parameters.' } };
+            if (!txParams) {
+                return { error: { code: -32602, message: 'Missing transaction parameters.' } };
+            }
+
             const reqId = Date.now().toString();
+
             await chrome.storage.session.set({
-                pendingTransaction: { ...txParams, reqId, status: 'pending', network: currentNetwork, rpcUrl: network.rpc, chainId: network.chainId }
+                pendingTransaction: {
+                    ...txParams,
+                    reqId,
+                    status: 'pending',
+                    network: currentNetwork,
+                    rpcUrl: network.rpc,
+                    chainId: network.chainId,
+                }
             });
+
             await openPopup();
             return await waitForTransaction(120000);
         }
@@ -205,7 +205,12 @@ async function handleRequest(request) {
                 const response = await fetch(network.rpc, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jsonrpc: '2.0', id: request.id || 1, method, params: params || [] })
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: request.id || 1,
+                        method,
+                        params: params || []
+                    })
                 });
                 const data = await response.json();
                 return { result: data.result, error: data.error };
