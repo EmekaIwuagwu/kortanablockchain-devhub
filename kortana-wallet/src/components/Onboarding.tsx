@@ -122,7 +122,7 @@ export const Onboarding: React.FC = () => {
     };
 
     return (
-        <div className="h-screen flex items-center justify-center p-4 relative bg-deep-space overflow-hidden">
+        <div className="h-screen flex items-start justify-center pt-10 p-4 relative bg-deep-space overflow-hidden">
             <div className="grainy-overlay" />
             <div className="nebula-purple absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-30 select-none pointer-events-none" />
             <div className="nebula-cyan absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-20 select-none pointer-events-none" />

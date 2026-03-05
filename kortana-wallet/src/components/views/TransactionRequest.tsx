@@ -125,12 +125,12 @@ export const TransactionRequest: React.FC<{ onDismiss: () => void }> = ({ onDism
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center p-4 bg-deep-space"
+            className="h-screen flex flex-col items-center justify-start pt-6 p-4 bg-deep-space overflow-hidden"
         >
-            <div className="w-full max-w-sm glass-panel rounded-3xl p-6 space-y-4">
+            <div className="w-full max-w-sm glass-panel rounded-3xl p-5 space-y-3">
                 {/* Header */}
-                <div className="flex flex-col items-center text-center space-y-2">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden">
+                <div className="flex flex-col items-center text-center space-y-1">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
                         <img src="/images/logo.png" alt="Kortana" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-xl font-black tracking-tighter text-white uppercase">
