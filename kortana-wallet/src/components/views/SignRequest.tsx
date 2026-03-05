@@ -98,37 +98,46 @@ export const SignRequest: React.FC<{ onDismiss: () => void }> = ({ onDismiss }) 
         : request.message;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="h-screen flex flex-col items-center justify-start pt-6 p-4 bg-deep-space overflow-hidden"
-        >
-            <div className="w-full max-w-sm glass-panel rounded-3xl p-5 space-y-4">
+        <div className="h-screen w-full flex items-center justify-center p-4 relative bg-deep-space overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 z-0">
+                <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] nebula-purple opacity-40 animate-pulse" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] nebula-cyan opacity-30 animate-pulse" />
+                <div className="grainy-overlay" />
+            </div>
+
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: "spring", damping: 20, stiffness: 100 }}
+                className="w-full max-w-sm glass-panel rounded-[2.5rem] p-6 space-y-4 relative z-10 border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]"
+            >
                 {/* Header */}
-                <div className="flex flex-col items-center text-center space-y-1">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden">
+                <div className="flex flex-col items-center text-center space-y-1 pb-2">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden mb-2 bg-white/5 border border-white/10 p-2 shadow-inner">
                         <img src="/images/logo.png" alt="Kortana" className="w-full h-full object-contain" />
                     </div>
-                    <h1 className="text-xl font-black tracking-tighter text-white uppercase">
+                    <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none">
                         Sign Request
                     </h1>
-                    <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
-                        BelloMundo is requesting your signature
+                    <p className="text-cyan-400 text-[9px] uppercase tracking-[0.3em] font-bold">
+                        BelloMundo Authorization
                     </p>
                 </div>
 
-                {/* From */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-                    <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1">From</p>
-                    <p className="text-[11px] text-white font-mono break-all">{request.from}</p>
-                </div>
+                {/* From & Message */}
+                <div className="space-y-3">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 shadow-inner">
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-black mb-1">Enclave Address</p>
+                        <p className="text-[10px] text-white font-mono break-all leading-tight opacity-80">{request.from}</p>
+                    </div>
 
-                {/* Message */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-3">
-                    <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1">Message</p>
-                    <pre className="text-[10px] text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed max-h-32 overflow-y-auto">
-                        {displayMessage}
-                    </pre>
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 shadow-inner">
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-black mb-1">Digital Signature Payload</p>
+                        <pre className="text-[10px] text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed max-h-24 overflow-y-auto custom-scrollbar italic opacity-60">
+                            {displayMessage}
+                        </pre>
+                    </div>
                 </div>
 
                 {/* Error */}
@@ -206,7 +215,8 @@ export const SignRequest: React.FC<{ onDismiss: () => void }> = ({ onDismiss }) 
                         </div>
                     </div>
                 )}
-            </div>
-        </motion.div>
+            </motion.div>
+        </div>
     );
 };
+
