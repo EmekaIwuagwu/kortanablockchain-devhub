@@ -7,14 +7,14 @@ import { useWalletStore } from '@/store/useWalletStore';
 import { vaultService } from '@/lib/VaultService';
 
 export const SettingsView: React.FC = () => {
-    const { mnemonic, privateKey, network, setNetwork, setPasswordHash, reset, passwordHash, setEncryptedMnemonic } = useWalletStore();
+    const { mnemonic, privateKey, network, setNetwork, setPasswordHash, reset, showNotification, setEncryptedMnemonic } = useWalletStore();
     const [showKey, setShowKey] = useState(false);
     const [newPass, setNewPass] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
 
     const handlePasswordChange = () => {
-        if (newPass.length < 8) return alert('Password too short');
-        if (newPass !== confirmPass) return alert('Passwords do not match');
+        if (newPass.length < 8) return showNotification('Password too short', 'error');
+        if (newPass !== confirmPass) return showNotification('Passwords do not match', 'error');
         const newHash = vaultService.hashPassword(newPass);
         setPasswordHash(newHash);
         if (mnemonic) {
@@ -23,8 +23,9 @@ export const SettingsView: React.FC = () => {
         }
         setNewPass('');
         setConfirmPass('');
-        alert('Password updated successfully.');
+        showNotification('Password updated successfully.', 'success');
     };
+
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto w-full space-y-4 md:space-y-8 pb-4">

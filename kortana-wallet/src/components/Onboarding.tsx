@@ -23,10 +23,12 @@ export const Onboarding: React.FC = () => {
         setPasswordHash,
         reset,
         setMnemonic: setMemoryMnemonic,
-        setPrivateKey: setMemoryPrivateKey
+        setPrivateKey: setMemoryPrivateKey,
+        showNotification
     } = useWalletStore();
 
     const [step, setStep] = useState<Step>('start');
+    const [isShaking, setIsShaking] = useState(false);
     const [mnemonic, setNewMnemonic] = useState<string>('');
     const [mnemonicInput, setMnemonicInput] = useState<string>('');
     const [password, setPassword] = useState('');
@@ -52,14 +54,22 @@ export const Onboarding: React.FC = () => {
         if (mnemonicInput.trim() === mnemonic) {
             setStep('password');
         } else {
-            alert('Invalid mnemonic phrase. Please check again.');
+            showNotification('Invalid mnemonic phrase. Please check again.', 'error');
+            triggerShake();
         }
     };
 
+    const triggerShake = () => {
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
+    };
+
+
     const handleSetPassword = () => {
-        if (password.length < 8) { alert('Password must be at least 8 characters.'); return; }
-        if (password !== confirmPassword) { alert('Passwords do not match.'); return; }
+        if (password.length < 8) { showNotification('Password must be at least 8 characters.', 'error'); triggerShake(); return; }
+        if (password !== confirmPassword) { showNotification('Passwords do not match.', 'error'); triggerShake(); return; }
         const hash = vaultService.hashPassword(password);
+
         setPasswordHash(hash);
         const encrypted = vaultService.encrypt(mnemonic, password);
         setEncryptedMnemonic(encrypted);
@@ -76,13 +86,17 @@ export const Onboarding: React.FC = () => {
                 setMemoryPrivateKey(wallet.privateKey);
                 setAddress(wallet.address);
                 setLocked(false);
+                showNotification('Wallet unlocked', 'success');
             } else {
-                alert('Decryption failed. Data may be corrupted.');
+                showNotification('Decryption failed. Data may be corrupted.', 'error');
+                triggerShake();
             }
         } else {
-            alert('Incorrect password.');
+            showNotification('Incorrect password.', 'error');
+            triggerShake();
         }
     };
+
 
     const completeSetup = () => {
         const dec = vaultService.decrypt(encryptedMnemonic!, password);
@@ -98,9 +112,11 @@ export const Onboarding: React.FC = () => {
     const handleImportMnemonic = () => {
         const input = mnemonicInput.trim();
         if (!input || input.split(' ').length !== 12) {
-            alert('Please enter a valid 12-word recovery phrase.');
+            showNotification('Please enter a valid 12-word recovery phrase.', 'error');
+            triggerShake();
             return;
         }
+
         setNewMnemonic(input);
         setStep('password');
     };
@@ -113,10 +129,14 @@ export const Onboarding: React.FC = () => {
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                animate={isShaking ? {
+                    x: [0, -10, 10, -10, 10, 0],
+                    transition: { duration: 0.4 }
+                } : { opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 className="w-full max-w-sm sm:max-w-md glass-panel p-5 sm:p-8 md:p-10 rounded-2xl md:rounded-[2.5rem] relative z-10"
             >
+
                 <AnimatePresence mode="wait">
 
                     {/* LOGIN */}

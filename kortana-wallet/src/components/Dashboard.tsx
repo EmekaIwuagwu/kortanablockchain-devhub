@@ -33,7 +33,12 @@ const NAV_ITEMS = [
 ];
 
 export const Dashboard: React.FC = () => {
-    const { address, balance, network, tokens, lastInteraction, setBalance, setTokens, setLocked, updateLastInteraction } = useWalletStore();
+    const {
+        address, balance, network, tokens, lastInteraction,
+        setBalance, setTokens, setLocked, updateLastInteraction,
+        showNotification
+    } = useWalletStore();
+
     const [isComplianceOpen, setIsComplianceOpen] = useState(false);
     const [isRegisterOpen, setIsRegisterOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('home');
@@ -89,8 +94,9 @@ export const Dashboard: React.FC = () => {
     const copyAddress = () => {
         if (!address) return;
         navigator.clipboard.writeText(address);
-        alert('Address copied to clipboard');
+        showNotification('Address copied to clipboard', 'success');
     };
+
 
     const isSubView = ['compliance', 'esg', 'stable', 'risk', 'subnet', 'transact', 'receive', 'history', 'settings'].includes(activeTab);
 

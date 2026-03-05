@@ -5,6 +5,7 @@ import { Onboarding } from '@/components/Onboarding';
 import { Dashboard } from '@/components/Dashboard';
 import { SignRequest } from '@/components/views/SignRequest';
 import { TransactionRequest } from '@/components/views/TransactionRequest';
+import { NotificationOverlay } from '@/components/NotificationOverlay';
 import { useEffect, useState } from 'react';
 import { MotionConfig } from 'framer-motion';
 
@@ -38,7 +39,9 @@ export default function Home() {
 
   return (
     <MotionConfig reducedMotion="always">
+      <NotificationOverlay />
       {renderContent()}
     </MotionConfig>
   );
 }
+

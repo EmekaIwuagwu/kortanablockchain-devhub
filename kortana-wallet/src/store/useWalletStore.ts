@@ -19,6 +19,10 @@ interface WalletState {
     balance: string;
     lastInteraction: number;
 
+    // Notifications (Memory-only)
+    notification: { message: string, type: 'success' | 'error' | 'info' } | null;
+    showNotification: (message: string, type?: 'success' | 'error' | 'info', duration?: number) => void;
+
     // Hydration tracking (not persisted)
     _hasHydrated: boolean;
     setHasHydrated: (state: boolean) => void;
@@ -38,6 +42,7 @@ interface WalletState {
     reset: () => void;
 }
 
+
 export const useWalletStore = create<WalletState>()(
     persist(
         (set) => ({
@@ -54,9 +59,18 @@ export const useWalletStore = create<WalletState>()(
             balance: '0.00',
             lastInteraction: Date.now(),
 
+            // Notifications
+            notification: null,
+            showNotification: (message, type = 'info', duration = 3000) => {
+                set({ notification: { message, type } });
+                setTimeout(() => {
+                    set((state) => (state.notification?.message === message ? { notification: null } : {}));
+                }, duration);
+            },
+
             // Hydration flag — starts false, set to true in onRehydrateStorage
             _hasHydrated: false,
-            setHasHydrated: (state) => set({ _hasHydrated: state }),
+            setHasHydrated: (state: boolean) => set({ _hasHydrated: state }),
 
             // Setters
             setAddress: (address) => set({ address }),

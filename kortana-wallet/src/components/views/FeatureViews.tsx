@@ -236,7 +236,7 @@ export const SubNetView = () => (
    STABLE VIEW
    ============================================================ */
 export const StableView = () => {
-    const { address, balance, network, privateKey } = useWalletStore();
+    const { address, balance, network, privateKey, showNotification } = useWalletStore();
     const [collateral, setCollateral] = useState('');
     const [isMinting, setIsMinting] = useState(false);
     const [txHash, setTxHash] = useState<string | null>(null);
@@ -244,20 +244,21 @@ export const StableView = () => {
     const kUSDAmount = useMemo(() => collateralService.calculateMintAmount(collateral), [collateral]);
 
     const handleMint = async () => {
-        if (!address || !privateKey) return alert('No Enclave session.');
-        if (!collateral || parseFloat(collateral) <= 0) return alert('Input amount.');
+        if (!address || !privateKey) return showNotification('No Enclave session.', 'error');
+        if (!collateral || parseFloat(collateral) <= 0) return showNotification('Input amount.', 'error');
         setIsMinting(true);
         try {
             const hash = await collateralService.mintKUSD(address, collateral, network, privateKey);
             setTxHash(hash);
             setCollateral('');
-            alert(`Minting pulse broadcasted! Hash: ${hash}`);
+            showNotification(`Minting pulse broadcasted! Hash: ${hash.slice(0, 10)}...`, 'success');
         } catch (error: any) {
-            alert(`Minting failed: ${error.message}`);
+            showNotification(`Minting failed: ${error.message}`, 'error');
         } finally {
             setIsMinting(false);
         }
     };
+
 
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 md:space-y-8 pb-4">
