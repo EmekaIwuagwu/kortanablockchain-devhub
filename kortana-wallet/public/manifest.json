@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Kortana Wallet",
     "version": "1.0.0",
-    "description": "Premium EVM Blockchain Wallet",
+    "description": "Official Gateway to the Kortana Enclave. High-Fidelity, ZK-Verified Blockchain Intelligence.",
     "action": {
         "default_popup": "index.html",
         "default_icon": {

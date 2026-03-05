@@ -59,5 +59,7 @@ export const NETWORKS = {
 export type NetworkType = keyof typeof NETWORKS;
 
 // Contract Addresses
-export const PRICE_ORACLE_ADDRESS = '0xA603b873302EE3D4769C834833ff2c1dfb734d59'; // Deploy address
+export const PRICE_ORACLE_ADDRESS = '0x2B53AF2fF168345C409da33d5cc68270F2905cA7'; // Mainnet Oracle V1
+export const KORTANA_BRIDGE_ADDRESS = '0x727D7462a572d5C9427f5304dc436Ec4136eF663';
+export const WDNR_ADDRESS = '0xEbd238521aabd9834A1be844a4eBE1acA820b416';
 

@@ -134,7 +134,7 @@ export const SignRequest: React.FC<{ onDismiss: () => void }> = ({ onDismiss }) 
 
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-3 shadow-inner">
                         <p className="text-[8px] text-gray-500 uppercase tracking-widest font-black mb-1">Digital Signature Payload</p>
-                        <pre className="text-[10px] text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed max-h-24 overflow-y-auto custom-scrollbar italic opacity-60">
+                        <pre className="text-[10px] text-gray-300 whitespace-pre-wrap break-words font-mono leading-relaxed max-h-24 overflow-y-auto custom-scrollbar opacity-60">
                             {displayMessage}
                         </pre>
                     </div>

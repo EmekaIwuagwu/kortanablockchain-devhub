@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     History, Send, Settings, LogOut,
     ExternalLink, Copy, Zap, ArrowLeft,
-    LayoutGrid, Layers, ArrowDownLeft, Menu, X
+    LayoutGrid, Layers, ArrowDownLeft, Menu, X, Shapes
 } from 'lucide-react';
 import { useWalletStore } from '@/store/useWalletStore';
 import { ComplianceModal } from './ComplianceModal';
@@ -13,12 +13,15 @@ import { RegisterTokenModal } from './RegisterTokenModal';
 import { providerService } from '@/lib/ProviderService';
 import { tokenService } from '@/lib/TokenService';
 
+import { priceService } from '@/lib/PriceService';
+
 // Import Views
 import { HomeView } from './views/HomeView';
 import { TransactView } from './views/TransactView';
 import { SettingsView } from './views/SettingsView';
 import { TransactionsView } from './views/TransactionsView';
 import { ReceiveView } from './views/ReceiveView';
+import { ArtifactsView } from './views/ArtifactsView';
 import {
     ComplianceView, ESGView, RiskAIView,
     SubNetView, StableView
@@ -28,6 +31,7 @@ const NAV_ITEMS = [
     { id: 'home', icon: LayoutGrid, label: 'Home' },
     { id: 'transact', icon: Send, label: 'Send' },
     { id: 'receive', icon: ArrowDownLeft, label: 'Receive' },
+    { id: 'artifacts', icon: Shapes, label: 'Artifacts' },
     { id: 'history', icon: History, label: 'History' },
     { id: 'settings', icon: Settings, label: 'Settings' },
 ];
@@ -63,7 +67,7 @@ export const Dashboard: React.FC = () => {
         };
     }, [lastInteraction]);
 
-    // Auto-refresh balance and tokens
+    // Auto-refresh balance, tokens, and prices
     useEffect(() => {
         if (address) {
             refreshAll();
@@ -74,7 +78,13 @@ export const Dashboard: React.FC = () => {
 
     const refreshAll = async () => {
         if (!address) return;
-        const newBalance = await providerService.getBalance(address, network);
+
+        // Parallelized Protocol Refresh
+        const [newBalance, _] = await Promise.all([
+            providerService.getBalance(address, network),
+            priceService.refreshAllPrices()
+        ]);
+
         setBalance(newBalance);
         const defaultTokenAddresses = tokenService.getDefaultTokens(network);
         const tokenPromises = defaultTokenAddresses.map(addr =>
@@ -98,7 +108,7 @@ export const Dashboard: React.FC = () => {
     };
 
 
-    const isSubView = ['compliance', 'esg', 'stable', 'risk', 'subnet', 'transact', 'receive', 'history', 'settings'].includes(activeTab);
+    const isSubView = ['compliance', 'esg', 'stable', 'risk', 'subnet', 'transact', 'receive', 'history', 'settings', 'artifacts'].includes(activeTab);
 
     return (
         <div className="flex h-screen w-full bg-deep-space text-white overflow-hidden relative font-sans">
@@ -267,11 +277,12 @@ export const Dashboard: React.FC = () => {
 
                     {/* Tab Content */}
                     <AnimatePresence mode="wait">
-                        {activeTab === 'home' && <HomeView key="home" balance={balance} network={network} tokens={tokens} onFeatureClick={handleFeatureClick} onRegisterToken={() => setIsRegisterOpen(true)} />}
+                        {activeTab === 'home' && <HomeView key="home" onFeatureClick={handleFeatureClick} onRegisterToken={() => setIsRegisterOpen(true)} />}
                         {activeTab === 'transact' && <TransactView key="transact" />}
                         {activeTab === 'receive' && <ReceiveView key="receive" />}
                         {activeTab === 'history' && <TransactionsView key="history" />}
                         {activeTab === 'settings' && <SettingsView key="settings" />}
+                        {activeTab === 'artifacts' && <ArtifactsView key="artifacts" />}
                         {activeTab === 'compliance' && <ComplianceView key="compliance" />}
                         {activeTab === 'esg' && <ESGView key="esg" />}
                         {activeTab === 'stable' && <StableView key="stable" />}

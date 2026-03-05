@@ -39,6 +39,7 @@ interface WalletState {
     setPrivateKey: (key: string | null) => void;
     updateLastInteraction: () => void;
     addAccount: (address: string) => void;
+    registerToken: (token: any) => void;
     reset: () => void;
 }
 
@@ -94,6 +95,12 @@ export const useWalletStore = create<WalletState>()(
                 accounts: state.accounts.includes(address)
                     ? state.accounts
                     : [...state.accounts, address]
+            })),
+
+            registerToken: (token) => set((state) => ({
+                tokens: state.tokens.some(t => t.address === token.address && t.network === token.network)
+                    ? state.tokens
+                    : [...state.tokens, token]
             })),
 
             reset: () => set({

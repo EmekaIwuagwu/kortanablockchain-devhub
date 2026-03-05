@@ -7,7 +7,7 @@ const axios = require("axios");
  */
 
 const SYMBOLS = ["DNR", "ETH", "USDC", "kUSD", "KR-ESG"];
-const ORACLE_ADDRESS = "0xA603b873302EE3D4769C834833ff2c1dfb734d59";
+const ORACLE_ADDRESS = "0x2B53AF2fF168345C409da33d5cc68270F2905cA7";
 
 async function getMarketPrice(symbol) {
     // Mapping for CoinGecko IDs
